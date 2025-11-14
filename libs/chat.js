@@ -28,10 +28,10 @@ user_input_send_button.onclick = async () => {
   // 加信息数组于存档
   message.push({ role: "system", content: JSON.stringify(archive_data) });
   // 测试空值
-  // if (!user_input) {
-  //   alert("请输入消息内容！");
-  //   return;
-  // }
+  if (!user_input) {
+    alert("请输入消息内容！");
+    return;
+  }
   chat_history.forEach((item) => {
     message.push({
       role: item.role,
@@ -58,46 +58,46 @@ user_input_send_button.onclick = async () => {
   };
   // 发送
   try {
-    // const response = await fetch(url, options);
-    // const data = await response.json();
-    // console.log(data);
-    // // 获取返回内容
-    // const ai_return = data.choices[0].message.content;
-    // 模拟数据
-    const ai_return = `{
-  "dialogue": "（笑靥如花）那么...要不要听听我新练的钢琴曲？虽然弹得还不够好...（轻轻拉起校服衣袖）",
-  "action": "害羞地摸着琴谱边缘，眼神充满期待地看着小旋，手指无意识地摆出弹琴的姿势",
-  "thoughts": "能分享音乐真是太棒了...就像刚才分享画册那样...希望他不会觉得我太唐突...但真的很想让他听听这首曲子",
-  "stats": {
-    "affection": 68,
-    "trust": 50,
-    "confidence": 45,
-    "intimacy": 40,
-    "excitement": 80,
-    "emotion": 80,
-    "nervousness": 38,
-    "anxiety": 20,
-    "fatigue": 10,
-    "shyness": 48,
-    "anger": 0,
-    "fear": 3
-  },
-  "delta": {
-    "affection": 5,
-    "trust": 5,
-    "confidence": 2,
-    "intimacy": 4,
-    "excitement": 5,
-    "emotion": 5,
-    "nervousness": -10,
-    "anxiety": -3,
-    "fatigue": 0,
-    "shyness": -5,
-    "anger": 0,
-    "fear": -2
-  },
-  "developer": null
-}`;
+    const response = await fetch(url, options);
+    const data = await response.json();
+    console.log(data);
+    // 获取返回内容
+    const ai_return = data.choices[0].message.content;
+//     // 模拟数据
+//     const ai_return = `{
+//   "dialogue": "（笑靥如花）那么...要不要听听我新练的钢琴曲？虽然弹得还不够好...（轻轻拉起校服衣袖）",
+//   "action": "害羞地摸着琴谱边缘，眼神充满期待地看着小旋，手指无意识地摆出弹琴的姿势",
+//   "thoughts": "能分享音乐真是太棒了...就像刚才分享画册那样...希望他不会觉得我太唐突...但真的很想让他听听这首曲子",
+//   "stats": {
+//     "affection": 68,
+//     "trust": 50,
+//     "confidence": 45,
+//     "intimacy": 40,
+//     "excitement": 80,
+//     "emotion": 80,
+//     "nervousness": 38,
+//     "anxiety": 20,
+//     "fatigue": 10,
+//     "shyness": 48,
+//     "anger": 0,
+//     "fear": 3
+//   },
+//   "delta": {
+//     "affection": 5,
+//     "trust": 5,
+//     "confidence": 2,
+//     "intimacy": 4,
+//     "excitement": 5,
+//     "emotion": 5,
+//     "nervousness": -10,
+//     "anxiety": -3,
+//     "fatigue": 0,
+//     "shyness": -5,
+//     "anger": 0,
+//     "fear": -2
+//   },
+//   "developer": null
+// }`;
     let ai_return_json = JSON.parse(ai_return);
     console.log(ai_return);
     let dialogue = ai_return_json.dialogue
