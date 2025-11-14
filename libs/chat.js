@@ -9,7 +9,9 @@ console.log("存档数据：", archive_data);
 let Api_Key = localStorage.getItem("api_key");
 console.log("API Key:", Api_Key);
 // 获取ai回复内容
-let ai_text = document.getElementById("ai_text");
+let ai_dialogue = document.getElementById("ai_dialogue");
+let ai_action = document.getElementById("ai_action");
+let ai_thoughts = document.getElementById("ai_thoughts");
 // 获取发送按钮
 const user_input_send_button = document.getElementById(
   "user_input_send_button"
@@ -26,10 +28,10 @@ user_input_send_button.onclick = async () => {
   // 加信息数组于存档
   message.push({ role: "system", content: JSON.stringify(archive_data) });
   // 测试空值
-  if (!user_input) {
-    alert("请输入消息内容！");
-    return;
-  }
+  // if (!user_input) {
+  //   alert("请输入消息内容！");
+  //   return;
+  // }
   chat_history.forEach((item) => {
     message.push({
       role: item.role,
@@ -56,19 +58,56 @@ user_input_send_button.onclick = async () => {
   };
   // 发送
   try {
-    const response = await fetch(url, options);
-    const data = await response.json();
-    console.log(data);
-    // 获取返回内容
-    const ai_return = data.choices[0].message.content;
+    // const response = await fetch(url, options);
+    // const data = await response.json();
+    // console.log(data);
+    // // 获取返回内容
+    // const ai_return = data.choices[0].message.content;
+    // 模拟数据
+    const ai_return = `{
+  "dialogue": "（笑靥如花）那么...要不要听听我新练的钢琴曲？虽然弹得还不够好...（轻轻拉起校服衣袖）",
+  "action": "害羞地摸着琴谱边缘，眼神充满期待地看着小旋，手指无意识地摆出弹琴的姿势",
+  "thoughts": "能分享音乐真是太棒了...就像刚才分享画册那样...希望他不会觉得我太唐突...但真的很想让他听听这首曲子",
+  "stats": {
+    "affection": 68,
+    "trust": 50,
+    "confidence": 45,
+    "intimacy": 40,
+    "excitement": 80,
+    "emotion": 80,
+    "nervousness": 38,
+    "anxiety": 20,
+    "fatigue": 10,
+    "shyness": 48,
+    "anger": 0,
+    "fear": 3
+  },
+  "delta": {
+    "affection": 5,
+    "trust": 5,
+    "confidence": 2,
+    "intimacy": 4,
+    "excitement": 5,
+    "emotion": 5,
+    "nervousness": -10,
+    "anxiety": -3,
+    "fatigue": 0,
+    "shyness": -5,
+    "anger": 0,
+    "fear": -2
+  },
+  "developer": null
+}`;
+    let ai_return_json = JSON.parse(ai_return);
     console.log(ai_return);
+    let dialogue = ai_return_json.dialogue
+    let action = ai_return_json.action
+    let thoughts = ai_return_json.thoughts
     // 写到页面上
-    ai_text.textContent = ai_return;
-    // 把对话加到message
-    // message.push({
-    //   role: "assistant",
-    //   content: `${ai_return}`,
-    // });
+    ai_dialogue.textContent = dialogue;
+    ai_action.textContent = action;
+    ai_thoughts.textContent = thoughts;
+
     console.log(message);
 
     chat_history.push({ role: "user", content: user_input });

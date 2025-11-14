@@ -5,23 +5,87 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>创建新的存档</title>
   </head>
+  <style>
+    body {
+      background-image: url(../assets/img/G36vr5qXQAAEvgn.jpg);
+      background-size: cover;
+      background-position: center;
+      background-attachment: fixed;
+      display: flex;
+      justify-content: space-evenly;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+    }
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background: linear-gradient(
+        to bottom right,
+        rgba(10, 10, 18, 0.45),
+        rgba(25, 12, 40, 0.45)
+      );
+      pointer-events: none;
+      z-index: -1;
+    }
+    .card {
+      padding: 20px;
+      max-width: 700px;
+      background-color: rgba(97, 97, 97, 0.111);
+      border: 1px solid rgb(165, 165, 165);
+      border-radius: 20px;
+      box-shadow: 0px 10px 30px rgba(0, 0, 0, 0.3);
+      backdrop-filter: blur(5px);
+    }
+    h1 {
+      color: #000000;
+      text-align: center;
+    }
+    input,
+    textarea,
+    select,
+    button {
+      background-color: rgba(97, 97, 97, 0.111);
+      border: 1px solid rgb(165, 165, 165);
+      border-radius: 5px;
+      box-shadow: 0px 10px 30px rgba(0, 0, 0, 0.3);
+      backdrop-filter: blur(5px);
+      width: 100%;
+    }
+    textarea {
+      width: 700px;
+    }
+    input {
+      height: 30px;
+    }
+    select {
+      height: 35px;
+    }
+    button {
+      height: 40px;
+      margin-top: 10px;
+      font-size: 16px;
+    }
+  </style>
   <body>
-    <h1>创建新的存档</h1>
-    <p>存档名称：</p>
-    <input type="text" id="archive_name" />
-    <p>存档介绍</p>
-    <textarea id="archive_description"></textarea>
-    <p>用户名：</p>
-    <input type="text" id="user_name" />
-    <p>选择模型：</p>
-    <select id="model_selection">
-      <option value="model_a">硅基流动</option>
-    </select>
-    <p>API密钥：</p>
+    <div class="card">
+      <h1>创建新的存档</h1>
+      <p>存档名称：</p>
+      <input type="text" id="archive_name" />
+      <p>存档介绍</p>
+      <textarea id="archive_description" rows="5" ></textarea>
+      <p>用户名：</p>
+      <input type="text" id="user_name" />
+      <p>选择模型：</p>
+      <select id="model_selection">
+        <option value="model_a">硅基流动</option>
+      </select>
+      <p>API密钥：</p>
 
-    <input type="password" id="api_key" />
-    <p>AI提示词：</p>
-    <textarea id="ai_prompt">
+      <input type="password" id="api_key" />
+      <p>AI提示词：</p>
+      <textarea id="ai_prompt" rows="5">
 系统设定：
 你现在扮演《Girls Band Cry》中的角色 Nina，IF线，与原作背景无关联。  
 角色设定：
@@ -88,15 +152,15 @@
 2. stats 可作为参考，JS 使用时通过累加 delta 更新属性。
 3. 表白行为根据属性变化合理生成 delta。
 4. 输出 JSON 时，每个字段都必须存在。</textarea
-    >
+      >
 
-    <p>角色</p>
+      <p>角色</p>
 
-    <select id="role_selection">
-      <option value="nina">nina</option>
-    </select>
-    <p>角色设定：</p>
-    <textarea id="role_setting">
+      <select id="role_selection">
+        <option value="nina">nina</option>
+      </select>
+      <p>角色设定：</p>
+      <textarea id="role_setting" rows="5">
 {
   "name": "Nina",
   "age": 17,
@@ -136,9 +200,9 @@
     "可与用户表白互动"
   ]
 }</textarea
-    >
-    <p>剧本设定：</p>
-    <textarea id="script_setting">
+      >
+      <p>剧本设定：</p>
+      <textarea id="script_setting" rows="5">
 {
   "title": "与你共鸣的日子",
   "concept": "玩家和 Nina 是刚入学初一的同班同学。IF 线设定：原作剧情改编，故事以玩家与 Nina 的日常互动为主。主题：慢慢建立信任与好感，探索少女内心世界，最终可能发展为恋爱关系。",
@@ -169,8 +233,9 @@
   },
   "story_style": "轻松温馨，但带少女内心真实情感。强调玩家选择影响关系。IF 线设定，故事可以自由发展，不受原作约束。"
 }</textarea
-    >
-    <button id="archive_initialization">创建存档</button>
+      >
+      <button id="archive_initialization">创建存档</button>
+    </div>
   </body>
   <script src="save_archive.js"></script>
 </html>
