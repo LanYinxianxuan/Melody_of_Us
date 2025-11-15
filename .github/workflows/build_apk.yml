@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ 拉取仓库
+      # 1️⃣ 拉取仓库代码
       - uses: actions/checkout@v3
 
       # 2️⃣ 安装 Node.js >=20
@@ -19,25 +19,25 @@ jobs:
         with:
           node-version: '20.x'
 
-      # 3️⃣ 安装依赖
+      # 3️⃣ 安装 npm 依赖
       - name: Install dependencies
         run: npm install
 
-      # 4️⃣ 添加 Android 平台（如果还没添加）
+      # 4️⃣ 添加 Android 平台（干净环境必需）
       - name: Add Capacitor Android platform
         run: npx cap add android || echo "Android platform already exists"
 
-      # 5️⃣ 同步 Capacitor
+      # 5️⃣ 同步 Capacitor（网页资源同步到 Android 工程）
       - name: Sync Capacitor
         run: npx cap sync android
 
-      # 6️⃣ 构建 APK
+      # 6️⃣ 构建 APK（Debug 版）
       - name: Build APK
         run: |
           cd android
           ./gradlew assembleDebug
 
-      # 7️⃣ 上传 APK 到 artifacts
+      # 7️⃣ 上传 APK 到 GitHub Artifacts
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
