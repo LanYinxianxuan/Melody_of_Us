@@ -17,10 +17,15 @@ jobs:
         with:
           node-version: '20.x'
 
+      - name: Setup Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
       - name: Install dependencies
         run: npm install
 
-      # ✅ 添加 Android 平台（如果不存在）
       - name: Add Android platform if missing
         run: |
           if [ ! -d "./android" ]; then
