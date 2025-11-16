@@ -51,7 +51,8 @@ user_input_send_button.onclick = async () => {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "deepseek-ai/DeepSeek-R1",
+      model: "deepseek-ai/DeepSeek-V3",
+      stream: true,
       messages: message,
       temperature: 1.0,
     }),
@@ -59,57 +60,77 @@ user_input_send_button.onclick = async () => {
   // 发送
   try {
     const response = await fetch(url, options);
-    const data = await response.json();
-    console.log(data);
-    // 获取返回内容
-    const ai_return = data.choices[0].message.content;
-//     // 模拟数据
-//     const ai_return = `{
-//   "dialogue": "（笑靥如花）那么...要不要听听我新练的钢琴曲？虽然弹得还不够好...（轻轻拉起校服衣袖）",
-//   "action": "害羞地摸着琴谱边缘，眼神充满期待地看着小旋，手指无意识地摆出弹琴的姿势",
-//   "thoughts": "能分享音乐真是太棒了...就像刚才分享画册那样...希望他不会觉得我太唐突...但真的很想让他听听这首曲子",
-//   "stats": {
-//     "affection": 68,
-//     "trust": 50,
-//     "confidence": 45,
-//     "intimacy": 40,
-//     "excitement": 80,
-//     "emotion": 80,
-//     "nervousness": 38,
-//     "anxiety": 20,
-//     "fatigue": 10,
-//     "shyness": 48,
-//     "anger": 0,
-//     "fear": 3
-//   },
-//   "delta": {
-//     "affection": 5,
-//     "trust": 5,
-//     "confidence": 2,
-//     "intimacy": 4,
-//     "excitement": 5,
-//     "emotion": 5,
-//     "nervousness": -10,
-//     "anxiety": -3,
-//     "fatigue": 0,
-//     "shyness": -5,
-//     "anger": 0,
-//     "fear": -2
-//   },
-//   "developer": null
-// }`;
-    let ai_return_json = JSON.parse(ai_return);
-    console.log(ai_return);
-    let dialogue = ai_return_json.dialogue
-    let action = ai_return_json.action
-    let thoughts = ai_return_json.thoughts
-    // 写到页面上
-    ai_dialogue.textContent = dialogue;
-    ai_action.textContent = action;
-    ai_thoughts.textContent = thoughts;
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder("utf-8");
+    let partial = "";
+    let full_response = "";
 
-    console.log(message);
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
 
+      partial += decoder.decode(value, { stream: true });
+      let lines = partial.split("\n");
+      partial = lines.pop(); // 保留最后一行残余
+
+      for (let line of lines) {
+        line = line.trim();
+        if (!line || !line.startsWith("data:")) continue;
+
+        const jsonStr = line.replace(/^data:\s*/, "");
+        if (jsonStr === "[DONE]") continue;
+
+        try {
+          const parsed = JSON.parse(jsonStr);
+          const ai_delta = parsed.choices[0]?.delta?.content;
+          if (ai_delta) {
+            full_response += ai_delta;
+            for (let char of ai_delta) {
+              ai_dialogue.textContent += char;
+              await new Promise((r) => setTimeout(r, 50)); // 逐字显示
+            }
+          }
+        } catch (e) {
+          console.error("流解析错误:", e);
+        }
+      }
+    }
+    //     // 模拟数据
+    //     const ai_return = `{
+    //   "dialogue": "（笑靥如花）那么...要不要听听我新练的钢琴曲？虽然弹得还不够好...（轻轻拉起校服衣袖）",
+    //   "action": "害羞地摸着琴谱边缘，眼神充满期待地看着小旋，手指无意识地摆出弹琴的姿势",
+    //   "thoughts": "能分享音乐真是太棒了...就像刚才分享画册那样...希望他不会觉得我太唐突...但真的很想让他听听这首曲子",
+    //   "stats": {
+    //     "affection": 68,
+    //     "trust": 50,
+    //     "confidence": 45,
+    //     "intimacy": 40,
+    //     "excitement": 80,
+    //     "emotion": 80,
+    //     "nervousness": 38,
+    //     "anxiety": 20,
+    //     "fatigue": 10,
+    //     "shyness": 48,
+    //     "anger": 0,
+    //     "fear": 3
+    //   },
+    //   "delta": {
+    //     "affection": 5,
+    //     "trust": 5,
+    //     "confidence": 2,
+    //     "intimacy": 4,
+    //     "excitement": 5,
+    //     "emotion": 5,
+    //     "nervousness": -10,
+    //     "anxiety": -3,
+    //     "fatigue": 0,
+    //     "shyness": -5,
+    //     "anger": 0,
+    //     "fear": -2
+    //   },
+    //   "developer": null
+    // }`;
+    let ai_return = full_response;
     chat_history.push({ role: "user", content: user_input });
     chat_history.push({ role: "assistant", content: ai_return });
     localStorage.setItem("chat_history", JSON.stringify(chat_history));
@@ -121,3 +142,6 @@ user_input_send_button.onclick = async () => {
     console.error("发生错误:", error);
   }
 };
+// 显示历史记录
+const chat_history_button = document.getElementById("chat_history_button");
+chat_history_button.onclick = () => {};

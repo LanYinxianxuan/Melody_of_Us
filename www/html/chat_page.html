@@ -1,17 +1,21 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>聊天页面</title>
-  </head>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>聊天页面</title>
+
   <style>
+    /* 背景图 + 暗色渐变 */
     body {
+      margin: 0;
       background-image: url(../assets/img/G36vr5qXQAAEvgn.jpg);
       background-size: cover;
       background-position: center;
       background-attachment: fixed;
+      font-family: "微软雅黑", sans-serif;
     }
+
     body::before {
       content: "";
       position: fixed;
@@ -21,17 +25,118 @@
         rgba(10, 10, 18, 0.45),
         rgba(25, 12, 40, 0.45)
       );
-      pointer-events: none;
+      backdrop-filter: blur(2px);
       z-index: -1;
     }
+
+    /* 聊天显示区 */
+    .ai {
+      height: calc(100vh - 80px);
+      overflow-y: auto;
+      padding: 16px;
+      box-sizing: border-box;
+      color: #fff;
+
+      /* 毛玻璃卡片 */
+      background: rgba(255, 255, 255, 0.12);
+      backdrop-filter: blur(8px);
+      border-radius: 16px;
+
+      margin: 12px;
+    }
+
+    /* 聊天内容格式美化 */
+    pre {
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      font-size: 16px;
+      line-height: 1.5;
+    }
+
+    /* 底部输入栏 */
+    .play {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+
+      background: rgba(255,255,255,0.2);
+      backdrop-filter: blur(10px);
+      padding: 10px 12px;
+
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 10px;
+    }
+
+    input {
+      flex: 1;
+      height: 42px;
+      border-radius: 20px;
+      padding: 0 14px;
+      border: none;
+      outline: none;
+
+      font-size: 16px;
+
+      background: rgba(255,255,255,0.9);
+    }
+
+    /* 按钮容器 */
+    .b {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    /* 圆形按钮 */
+    button {
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      border: none;
+      background: rgba(0,0,0,0.55);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+      transition: 0.25s;
+    }
+
+    button:hover {
+      background: rgba(0,0,0,0.75);
+      transform: scale(1.08);
+    }
   </style>
-  <body>
-    <textarea id="user_input"></textarea>
-    <button id="user_input_send_button">发送</button>
-    <button id="chat_history_button">聊天记录</button>
+</head>
+
+<body>
+  <div class="ai">
     <pre id="ai_dialogue"></pre>
     <pre id="ai_action"></pre>
     <pre id="ai_thoughts"></pre>
-  </body>
+  </div>
+
+  <div class="play">
+    <input id="user_input" placeholder="请输入内容">
+    <div class="b">
+      <button id="user_input_send_button">
+        <!-- 发送图标 -->
+        <svg viewBox="0 0 1024 1024" width="22" height="22">
+          <path d="M925.6 559.2L152 145.6c-11.2-5.6-24.8 3.2-23.2 15.2l60 714.4c0.8 11.2 12 17.6 22.4 13.6L460.8 784l136.8 155.2c8.8 9.6 24 5.6 27.2-6.4l65.6-245.6 235.2-99.2c11.2-5.6 12-22.4 0-28.8z" fill="#ffffff"/>
+        </svg>
+      </button>
+
+      <button id="chat_history_button">
+        <!-- 历史记录图标 -->
+        <svg viewBox="0 0 1024 1024" width="22" height="22">
+          <path d="M511.1 0C229.1 0 .5 228.6.5 510.6.5 792.6 229.1 1021.2 511.1 1021.2c282 0 510.6-228.6 510.6-510.6C1021.7 228.6 793.1 0 511.1 0zM764.6 764.2c-5.8 5.9-13.5 8.8-21.2 8.8-7.7 0-15.4-3-21.2-8.8L481.3 521.1V216.2c0-16.6 13.4-30 30-30s30 13.4 30 30v264.3l223.5 223.5c11.7 11.7 11.7 30.7-.2 42.2z" fill="#ffffff"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
   <script src="../libs/chat.js"></script>
+</body>
 </html>
