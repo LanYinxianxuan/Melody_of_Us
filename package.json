@@ -1,6 +1,12 @@
 {
   "name": "myapp",
   "version": "1.0.0",
+  "scripts": {
+    "serve": "npx http-server www -p 8000",
+    "cap:sync": "npx cap sync android",
+    "cap:open:android": "npx cap open android",
+    "build:android": "cd android && ./gradlew assembleDebug"
+  },
   "dependencies": {
     "@capacitor/android": "^7.4.4",
     "@capacitor/cli": "^7.4.4",
