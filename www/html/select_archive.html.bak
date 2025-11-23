@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>选择存档 · Melody_of_Us</title>
+    <link rel="stylesheet" href="../css/main.css">
+    <style>
+      /* small page-specific tweaks */
+      .title { color: #fff; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap container">
+      <div class="header">
+        <div class="title">选择或管理存档</div>
+        <div class="actions">
+          <button class="btn" id="btn_new">创建新存档</button>
+        </div>
+      </div>
+
+      <div class="search">
+        <input id="search_input" placeholder="输入存档名搜索（回车或自动过滤）" />
+      </div>
+
+      <div id="grid" class="grid"></div>
+
+      <div id="empty_state" class="empty" style="display:none;">
+        暂无存档。点击“创建新存档”开始。
+      </div>
+    </div>
+
+    <script>
+      // 简单辅助：从 localStorage 读取数组
+      function loadArchives() {
+        try {
+          const raw = localStorage.getItem('archive');
+          const parsed = raw ? JSON.parse(raw) : [];
+          return Array.isArray(parsed) ? parsed : [];
+        } catch (e) {
+          console.error('读取存档失败', e);
+          return [];
+        }
+      }
+
+      function saveArchives(arr) {
+        try {
+          localStorage.setItem('archive', JSON.stringify(arr));
+        } catch (e) {
+          console.error('保存存档失败', e);
+        }
+      }
+
+      const grid = document.getElementById('grid');
+      const emptyState = document.getElementById('empty_state');
+      const searchInput = document.getElementById('search_input');
+
+      // 渲染函数：传入 archives 数组，渲染卡片
+      function render(archives) {
+        grid.innerHTML = '';
+        const arr = archives || [];
+        if (arr.length === 0) {
+          emptyState.style.display = '';
+          return;
+        } else {
+          emptyState.style.display = 'none';
+        }
+
+        arr.forEach(a => {
+          const card = document.createElement('div');
+          card.className = 'card';
+
+          const title = document.createElement('h3');
+          title.textContent = a.archive_name || '未命名存档';
+          card.appendChild(title);
+
+          const desc = document.createElement('p');
+          desc.textContent = a.archive_description || '无存档说明';
+          card.appendChild(desc);
+
+          const meta = document.createElement('div');
+          meta.className = 'meta';
+          const updated = a.archive_id ? new Date(Number(a.archive_id)).toLocaleString() : '';
+          meta.textContent = '创建于：' + (updated || '-');
+          card.appendChild(meta);
+
+          const row = document.createElement('div');
+          row.className = 'row';
+
+          const selectBtn = document.createElement('button');
+          selectBtn.className = 'small-btn';
+          selectBtn.textContent = '选择';
+          selectBtn.addEventListener('click', () => {
+            // 跳转到聊天页面，传 id
+            window.location.href = `chat_page.html?id=${a.archive_id}`;
+          });
+
+          const delBtn = document.createElement('button');
+          delBtn.className = 'small-btn';
+          delBtn.textContent = '删除';
+          delBtn.addEventListener('click', () => {
+            if (!confirm('确认删除存档：' + (a.archive_name || '未命名') + ' ?')) return;
+            let list = loadArchives();
+            list = list.filter(x => x.archive_id !== a.archive_id);
+            saveArchives(list);
+            render(list);
+          });
+
+          row.appendChild(selectBtn);
+          row.appendChild(delBtn);
+          card.appendChild(row);
+
+          grid.appendChild(card);
+        });
+      }
+
+      // 初始化
+      function init() {
+        const archives = loadArchives();
+        render(archives);
+
+        // 搜索
+        searchInput.addEventListener('input', () => {
+          const q = searchInput.value.trim().toLowerCase();
+          const list = loadArchives().filter(a => (a.archive_name||'').toLowerCase().includes(q) || (a.archive_description||'').toLowerCase().includes(q));
+          render(list);
+        });
+
+        // 新建跳转（复用已有创建页）
+        document.getElementById('btn_new').addEventListener('click', () => {
+          window.location.href = 'create_new_archive.html';
+        });
+      }
+
+      init();
+    </script>
+  </body>
+</html>

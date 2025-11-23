@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>聊天页面</title>
+    <link rel="stylesheet" href="../css/main.css">
+
+    <style>
+      /* Page-specific small tweaks (most styles are in main.css) */
+      body { font-family: "微软雅黑", sans-serif; }
+    </style>
+    </style>
+  </head>
+
+  <body>
+    <div class="ai">
+      <pre id="ai_dialogue"></pre>
+      <pre id="ai_action"></pre>
+      <pre id="ai_thoughts"></pre>
+    </div>
+
+    <div class="play">
+      <input id="user_input" placeholder="请输入内容" />
+      <div class="b">
+        <button id="user_input_send_button">
+          <!-- 发送图标 -->
+          <svg viewBox="0 0 1024 1024" width="22" height="22">
+            <path
+              d="M925.6 559.2L152 145.6c-11.2-5.6-24.8 3.2-23.2 15.2l60 714.4c0.8 11.2 12 17.6 22.4 13.6L460.8 784l136.8 155.2c8.8 9.6 24 5.6 27.2-6.4l65.6-245.6 235.2-99.2c11.2-5.6 12-22.4 0-28.8z"
+              fill="#ffffff"
+            />
+          </svg>
+        </button>
+
+        <button id="chat_history_button">
+          <!-- 历史记录图标 -->
+          <svg viewBox="0 0 1024 1024" width="22" height="22">
+            <path
+              d="M511.1 0C229.1 0 .5 228.6.5 510.6.5 792.6 229.1 1021.2 511.1 1021.2c282 0 510.6-228.6 510.6-510.6C1021.7 228.6 793.1 0 511.1 0zM764.6 764.2c-5.8 5.9-13.5 8.8-21.2 8.8-7.7 0-15.4-3-21.2-8.8L481.3 521.1V216.2c0-16.6 13.4-30 30-30s30 13.4 30 30v264.3l223.5 223.5c11.7 11.7 11.7 30.7-.2 42.2z"
+              fill="#ffffff"
+            />
+          </svg>
+        </button>
+      </div>
+    </div>
+    <div class="history_card">
+      <pre id="history_card" aria-valuetext=""></pre>
+    </div>
+
+    <script src="../libs/chat.js"></script>
+  </body>
+</html>
