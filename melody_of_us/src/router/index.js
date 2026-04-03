@@ -10,6 +10,31 @@ const router = createRouter({
       component: HomeView,
     },
     {
+      path: '/createArchive',
+      name: '创建新的存档',
+      component: () => import('../views/CreateArchiveView.vue'),
+    },
+    {
+      path: '/archiveList',
+      name: '过往存档',
+      component: () => import('../views/ArchiveListView.vue'),
+    },
+    {
+      path: '/achievements',
+      name: '成就图鉴',
+      component: () => import('../views/AchievementsView.vue'),
+    },
+    {
+      path: '/settings',
+      name: '设置',
+      component: () => import('../views/SettingsView.vue'),
+    },
+    {
+      path: '/help',
+      name: '帮助',
+      component: () => import('../views/HelpView.vue'),
+    },
+    {
       path: '/about',
       name: 'about',
       // route level code-splitting

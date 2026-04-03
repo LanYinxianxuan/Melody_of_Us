@@ -1,18 +1,15 @@
 import { fileURLToPath, URL } from 'node:url'
-
 import { defineConfig } from 'vite'
-import vue from '@vitejs/plugin-vue'
-import vueDevTools from 'vite-plugin-vue-devtools'
+import vue from '@vitejs/plugin-vue' // 1. 必须引入这个插件
 
-// https://vite.dev/config/
+// https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
-    vue(),
-    vueDevTools(),
-  ],
-  resolve: {
-    alias: {
-      '@': fileURLToPath(new URL('./src', import.meta.url))
-    },
-  },
-})
+      vue(), // 2. 必须在这里调用它
+        ],
+          resolve: {
+              alias: {
+                    '@': fileURLToPath(new URL('./src', import.meta.url))
+                        }
+                          }
+                          })
