@@ -15,6 +15,11 @@ const router = createRouter({
       component: () => import('../views/CreateArchiveView.vue'),
     },
     {
+      path:'/chat',
+      name:'聊天',
+      component: () => import('../views/ChatView.vue'),
+    },
+    {
       path: '/archiveList',
       name: '过往存档',
       component: () => import('../views/ArchiveListView.vue'),
