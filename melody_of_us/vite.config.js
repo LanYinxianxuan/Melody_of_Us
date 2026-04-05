@@ -6,7 +6,7 @@ import vue from '@vitejs/plugin-vue'
 export default defineConfig({
   // 添加这一行，替换为你的 GitHub 仓库名称
   // 注意：前后都要有斜杠！
-  base: '/MELODY_OF_US/', 
+  base: '/Melody_of_Us/', 
 
   plugins: [
     vue(),
