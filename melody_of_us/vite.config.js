@@ -1,15 +1,19 @@
 import { fileURLToPath, URL } from 'node:url'
 import { defineConfig } from 'vite'
-import vue from '@vitejs/plugin-vue' // 1. 必须引入这个插件
+import vue from '@vitejs/plugin-vue'
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  // 添加这一行，替换为你的 GitHub 仓库名称
+  // 注意：前后都要有斜杠！
+  base: '/MELODY_OF_US/', 
+
   plugins: [
-      vue(), // 2. 必须在这里调用它
-        ],
-          resolve: {
-              alias: {
-                    '@': fileURLToPath(new URL('./src', import.meta.url))
-                        }
-                          }
-                          })
+    vue(),
+  ],
+  resolve: {
+    alias: {
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
+    },
+  },
+})
