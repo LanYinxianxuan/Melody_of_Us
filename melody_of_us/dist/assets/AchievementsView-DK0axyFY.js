@@ -1,0 +1,1 @@
+import{c as e,h as t,i as n,o as r,t as i}from"./runtime-core.esm-bundler-Dq0aYuQT.js";import{r as a}from"./index-CYCT67n3.js";var o={};function s(a,o){return t(),r(i,null,[o[0]||=e(` \\n `,-1),o[1]||=n(`div`,{class:`achievements`},[e(` \\n `),n(`h1`,null,`Achievements Page`),e(` \\n `)],-1),o[2]||=e(` \\n `,-1)],64)}var c=a(o,[[`render`,s]]);export{c as default};
