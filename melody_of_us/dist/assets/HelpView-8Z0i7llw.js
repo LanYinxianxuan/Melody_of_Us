@@ -1,1 +1,0 @@
-import{g as e,i as t,l as n,s as r,t as i}from"./runtime-core.esm-bundler-DITiT6I6.js";import{r as a}from"./index-DKsv_po3.js";var o={};function s(a,o){return e(),r(i,null,[o[0]||=n(` \\n `,-1),o[1]||=t(`div`,{class:`help`},[n(` \\n `),t(`h1`,null,`Help Page`),n(` \\n `)],-1),o[2]||=n(` \\n `,-1)],64)}var c=a(o,[[`render`,s]]);export{c as default};
