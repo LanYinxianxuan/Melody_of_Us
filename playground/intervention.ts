@@ -33,13 +33,15 @@ export function setNpcNameGetters(main: () => string, user: () => string) {
 function npcIsNearby(npc: NpcState): boolean {
     const mainLoc = herLocation();
     const npcLoc = npc.location;
-    // 学校相关地点互通：学校/教室/图书馆/食堂 视为同场景
-    const schoolZones = ["学校", "教室", "图书馆", "食堂", "社团活动", "放学"];
-    if (schoolZones.includes(mainLoc) && schoolZones.includes(npcLoc)) return true;
+    // 场景地点互通：主角所在的场所（场景配置）+ 往返路上 视为同场景
+    const s = store.scene;
+    const zones = [s.place, `${s.place}附近`, "去" + s.place + "的路上"];
+    if (zones.includes(mainLoc) && zones.includes(npcLoc)) return true;
     if (mainLoc === npcLoc) return true;
     // 路上相遇
-    if (mainLoc === "上学路上" && npcLoc === "上学路上") return true;
-    if (mainLoc === "回家路上" && npcLoc === "回家路上") return true;
+    if (mainLoc === "去" + s.place + "的路上" && npcLoc === "去" + s.place + "的路上") return true;
+    if (mainLoc === "回家的路上" && npcLoc === "回家的路上") return true;
+    if (mainLoc === "家" && npcLoc === "家") return true;
     return false;
 }
 
@@ -79,7 +81,7 @@ export function screenNpcCandidates(recentText: string): InterventionCandidate[]
         if (hit) {
             score += 30;
             reason = `你们聊到了${npc.profile.name}`;
-            // 在学校且她也在 → 直接出现；不在 → 发消息
+            // 在同一场景 → 直接出现；不在 → 发消息
             mode = npcIsNearby(npc) ? "join" : "message";
         }
 

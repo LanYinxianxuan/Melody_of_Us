@@ -43,6 +43,22 @@ export const PRESETS: Record<string, CharacterProfile> = {
     },
 };
 
+// 空角色模板：所有字段为空（自定义创建时以此为准，绝不继承预设内容）
+export function emptyCharacter(): CharacterProfile {
+    return {
+        name: "",
+        age: "",
+        appearance: "",
+        personality: "",
+        background: "",
+        speechStyle: "",
+        likes: "",
+        dislikes: "",
+        relation: "",
+        secrets: "",
+    };
+}
+
 export function defaultCharacter(): CharacterProfile {
     return { ...PRESETS.nina! };
 }
@@ -50,15 +66,21 @@ export function defaultCharacter(): CharacterProfile {
 export function loadCharacter(): CharacterProfile {
     try {
         const raw = localStorage.getItem(CHAR_KEY);
-        if (!raw) return defaultCharacter();
+        if (!raw) return emptyCharacter(); // 无存档：空模板（不污染自定义创建）
         const data = JSON.parse(raw);
-        return { ...defaultCharacter(), ...data };
+        // 以空模板为底，只填存档字段——绝不混入任何预设默认值
+        return { ...emptyCharacter(), ...data };
     } catch {
-        return defaultCharacter();
+        return emptyCharacter();
     }
 }
 
 export let CHARACTER: CharacterProfile = loadCharacter();
+
+// 整体替换角色（自定义创建时用：直接覆盖，不继承任何预设默认值）
+export function setCharacter(c: CharacterProfile) {
+    CHARACTER = { ...c };
+}
 
 export function saveCharacter() {
     try {
@@ -70,7 +92,7 @@ export function saveCharacter() {
 
 export function characterToText(c: CharacterProfile): string {
     return [
-        `名字：${c.name}（${c.age}）`,
+        `名字：${c.name}${c.age ? `（${c.age}）` : ""}`,
         `外貌：${c.appearance}`,
         `性格：${c.personality}`,
         `背景：${c.background}`,
@@ -78,6 +100,8 @@ export function characterToText(c: CharacterProfile): string {
         `喜好：${c.likes}`,
         `讨厌：${c.dislikes}`,
         `与用户的关系：${c.relation}`,
-        `隐藏设定：${c.secrets}（除非关系足够亲密，不要主动透露）`,
-    ].join("\n");
+        `隐藏设定：${c.secrets}${c.secrets ? "（除非关系足够亲密，不要主动透露）" : ""}`,
+    ]
+        .filter((line) => !line.endsWith("："))
+        .join("\n");
 }

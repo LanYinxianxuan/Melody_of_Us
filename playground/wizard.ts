@@ -1,9 +1,80 @@
 // wizard.ts —— 角色创建向导：预设选择 / 自由介绍 + AI 访谈追问 / 降级补缺
 // 依赖 character / ai；保存后的界面反馈通过回调交给 chat.ts。
 
-import { CHARACTER, PRESETS, saveCharacter, type CharacterProfile } from "./character";
+import { CHARACTER, PRESETS, saveCharacter, setCharacter, type CharacterProfile } from "./character";
 import { interviewWithAI, type InterviewTurn } from "./ai";
-import { CHAR_KEY } from "./storage";
+import { CHAR_KEY, store, DEFAULT_SCENE, type SceneConfig } from "./storage";
+import { aiState, initStateForRelation } from "./state";
+
+// ============ 场景解析 ============
+// 用户自由描述"在哪生活/她平时做什么" → 场景配置（驱动作息/地点/世界观）
+function parseSceneText(text: string): SceneConfig {
+    const t = text.trim();
+    if (!t) return { ...DEFAULT_SCENE };
+
+    // 常见场所关键词 → 场所名；否则用整句的开头部分
+    const placeMap: [RegExp, string][] = [
+        [/咖啡|奶茶|饮品|甜品|点心/, "咖啡店"],
+        [/酒吧|live|Live|livehouse|live house/, "酒吧"],
+        [/便利店|超市|商店|小店/, "便利店"],
+        [/公司|写字楼|办公室|上班/, "公司"],
+        [/学校|大学|学院|教室|高中|初中/, "学校"],
+        [/医院|诊所/, "医院"],
+        [/工作室|画室|摄影/, "工作室"],
+        [/乐队|排练|舞台|演唱会/, "排练室"],
+        [/书店|图书馆/, "书店"],
+        [/海边|小镇|村子|乡村/, "小镇"],
+    ];
+    let place = "她住的地方附近";
+    for (const [re, p] of placeMap) {
+        if (re.test(t)) { place = p; break; }
+    }
+
+    // 她平时做的事：找动作描述
+    const routineMap: [RegExp, string][] = [
+        [/冲咖啡|做咖啡|拉花/, "冲咖啡、招呼客人"],
+        [/唱歌|驻唱|弹吉他|弹琴/, "排练、唱歌"],
+        [/写代码|编程|程序员|开发/, "写代码"],
+        [/上课|学习|读书|考研/, "上课学习"],
+        [/画画|画漫画|插画/, "画画"],
+        [/写小说|写作|写稿/, "写稿"],
+        [/收银|理货|摆货架/, "理货、收银"],
+        [/看病|出诊|护士/, "看诊"],
+        [/练习|排练/, "排练"],
+        [/开店|经营|营业/, "看店、招呼客人"],
+        [/打工|店员|服务员|兼职/, "招呼客人、忙店里的事"],
+    ];
+    let routine = "忙着";
+    for (const [re, r] of routineMap) {
+        if (re.test(t)) { routine = r; break; }
+    }
+    if (routine === "忙着") routine = "忙她自己的事";
+
+    const othersMap: [RegExp, string][] = [
+        [/咖啡|奶茶/, "顾客"],
+        [/酒吧|live|Live/, "观众"],
+        [/公司|办公室|上班/, "同事"],
+        [/学校|大学|教室/, "同学"],
+        [/医院|诊所/, "病人"],
+        [/工作室|画室/, "同伴"],
+        [/乐队|排练|舞台/, "乐队伙伴"],
+        [/书店|图书馆/, "来看书的人"],
+    ];
+    let others = "周围的人";
+    for (const [re, o] of othersMap) {
+        if (re.test(t)) { others = o; break; }
+    }
+
+    // 忙/休息时段标签
+    let busyLabel = "忙";
+    let restLabel = "休息";
+    if (place === "学校") { busyLabel = "上课"; restLabel = "课间"; }
+    else if (place === "公司") { busyLabel = "上班"; restLabel = "休息"; }
+    else if (place === "排练室" || place === "酒吧") { busyLabel = "排练"; restLabel = "休息"; }
+    else if (place === "便利店" || place === "咖啡店" || place === "书店") { busyLabel = "开店"; restLabel = "空闲"; }
+
+    return { name: t.slice(0, 24), place, routine, others, busyLabel, restLabel };
+}
 
 // ============ 草稿与字段 ============
 
@@ -105,6 +176,10 @@ function applyPreset(key: string) {
     if (PRESETS[key]) {
         Object.assign(CHARACTER, { ...PRESETS[key]! });
         saveCharacter();
+        // 预设默认场景（校园）；用户可在"自定义创建"里改成任何地方
+        store.scene = { ...DEFAULT_SCENE };
+        // 按预设关系初始化情感（如小鲸"最亲近的人"→ 高好感）
+        initStateForRelation(CHARACTER.relation ?? "");
         closeWizard();
         savedCallback?.();
     }
@@ -182,8 +257,10 @@ function renderWizard() {
 
     if (wizardStep === 1) {
         wizardBody.innerHTML = `
-            <div class="wiz-q">用一段话介绍她（至少写名字和性格，其他随意）：<small>例：她叫小夏，19 岁，粉色短发扎着双马尾，性格活泼又有点爱逞强，是便利店店员，喜欢做章鱼烧，讨厌下雨天。</small></div>
-            <textarea class="wiz-input" id="wiz-intro" rows="5" placeholder="写在这里…"></textarea>`;
+            <div class="wiz-q">用一段话介绍她（至少写名字和性格，其他随意）：<small>例：她叫小夏，19 岁，粉色短发扎着双马尾，性格活泼又有点爱逞强，喜欢做章鱼烧，讨厌下雨天。</small></div>
+            <textarea class="wiz-input" id="wiz-intro" rows="4" placeholder="写在这里…"></textarea>
+            <div class="wiz-q" style="margin-top:14px;">你们在哪里生活？她平时在做什么？<small>可选，决定她的日常作息和你们相处的场景。例：海边小镇的咖啡店 / 她在公司上班 / 她的乐队在排练室……留空默认校园。</small></div>
+            <input class="wiz-input" id="wiz-scene" placeholder="例：我们住在一个海边小镇，她在一家咖啡店打工（可留空）">`;
         wizardPrev.style.display = "";
         wizardNext.style.display = "";
         wizardNext.textContent = "开始访谈 →";
@@ -331,6 +408,10 @@ function startInterview() {
         return;
     }
 
+    // 场景：读用户的自由描述 → 存 store.scene（驱动作息/地点/世界观）
+    const sceneText = ((document.getElementById("wiz-scene") as HTMLInputElement)?.value ?? "").trim();
+    store.scene = parseSceneText(sceneText);
+
     wizardDraft = emptyDraft();
     wizardDraft.background = intro;
     Object.assign(wizardDraft, parseIntro(intro));
@@ -376,6 +457,8 @@ wizardNext.addEventListener("click", () => {
             startInterview();
         } else {
             const intro = ((document.getElementById("wiz-intro") as HTMLTextAreaElement)?.value ?? "").trim();
+            const sceneText = ((document.getElementById("wiz-scene") as HTMLInputElement)?.value ?? "").trim();
+            store.scene = parseSceneText(sceneText);
             wizardDraft = emptyDraft();
             wizardDraft.background = intro;
             Object.assign(wizardDraft, parseIntro(intro));
@@ -387,10 +470,8 @@ wizardNext.addEventListener("click", () => {
     }
 
     if (interviewDone) {
-        Object.assign(CHARACTER, wizardDraft);
-        saveCharacter();
-        closeWizard();
-        savedCallback?.();
+        // 自定义创建：直接用草稿覆盖角色（不继承任何预设默认值）
+        finishWizard(wizardDraft);
         return;
     }
 
@@ -399,16 +480,23 @@ wizardNext.addEventListener("click", () => {
     if (wizardStep >= 2 && wizardStep < previewStep) collectCurrentStep();
 
     if (wizardStep === previewStep) {
-        Object.assign(CHARACTER, wizardDraft);
-        saveCharacter();
-        closeWizard();
-        savedCallback?.();
+        finishWizard(wizardDraft);
         return;
     }
 
     wizardStep++;
     renderWizard();
 });
+
+// 保存角色：整体覆盖 + 按关系初始化情感数值（恋人不该是"陌生人"初始值）
+function finishWizard(draft: CharacterProfile) {
+    setCharacter(draft);
+    saveCharacter();
+    // 关系 → 初始情感（恋人高好感/信任/亲密；朋友中等；刚认识保持默认）
+    initStateForRelation(draft.relation ?? "");
+    closeWizard();
+    savedCallback?.();
+}
 
 wizardPrev.addEventListener("click", () => {
     if (wizardStep > 0) wizardStep--;

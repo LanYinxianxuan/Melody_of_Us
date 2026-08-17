@@ -9,6 +9,7 @@ import {
     describeMood,
     dominantTrait,
     resetState,
+    initStateForRelation,
     USER_EMOTION_FIX,
     EMOTION_NAMES,
 } from "./state";
@@ -33,7 +34,9 @@ import {
     setSlotChangeHandler,
     setDayChangeHandler,
     setMessageSender as setTimeMessageSender,
+    setRelationGetter,
     setRandomMomentHook,
+    herLocation,
 } from "./time";
 import {
     fallbackStory,
@@ -457,14 +460,16 @@ async function executeDirectorDecision(decision: DirectorDecision) {
         }
     }
 
-    // 2. NPC 介入（Director 指定，走现有 runNpcIntervention 渲染）
-    if (decision.eventType === "npc_intervention" && decision.npcId) {
+    // 2. NPC 介入（Director 指定，走现有 runNpcIntervention 渲染；多人模式关闭时不介入）
+    if (decision.eventType === "npc_intervention" && decision.npcId && store.npcEnabled) {
         const npc = store.npcs[decision.npcId];
         if (npc && !npc.present && !npcBusy) {
             npcBusy = true;
             try {
-                // 复用介入模式：默认"加入场景"，跨场景用"发消息"
-                const nearby = ["学校", "教室", "图书馆", "食堂", "放学"].some((z) => z === npc.location);
+                // 复用介入模式：NPC 在主角所在场景附近 → 直接出现；否则 → 发消息
+                const s = store.scene;
+                const nearbyZones = [s.place, `${s.place}附近`, "去" + s.place + "的路上", "回家的路上"];
+                const nearby = nearbyZones.includes(npc.location) || npc.location === herLocation();
                 const mode: InterventionMode = nearby ? "join" : "message";
                 const pick: InterventionCandidate = { npc, mode, reason: decision.reason, score: 100 };
                 await runNpcIntervention(pick);
@@ -561,6 +566,8 @@ let npcBusy = false;
 async function maybeNpcIntervention() {
     if (npcBusy || demoMode) return;
     if (!localStorage.getItem("deepseek-key")) return;
+    // 多人模式默认关闭：不启用 NPC 动态介入
+    if (!store.npcEnabled) return;
 
     // 取最近对话文本用于关键词匹配（主角刚回复完，最近几条就是当前话题）
     const recentText = store.chatHistory.slice(-4).map((e) => e.content).join(" ");
@@ -871,8 +878,29 @@ demoBtn.addEventListener("click", () => {
     }
 });
 
+// 多人模式开关（默认关闭）：控制支线 NPC 动态介入
+const npcToggleBtn = document.getElementById("npc-toggle") as HTMLButtonElement;
+function refreshNpcToggle() {
+    npcToggleBtn.textContent = store.npcEnabled ? "👥 多人:开" : "👥 多人:关";
+    npcToggleBtn.classList.toggle("active", store.npcEnabled);
+}
+npcToggleBtn.addEventListener("click", () => {
+    store.npcEnabled = !store.npcEnabled;
+    // 关闭时清场：NPC 全部离开，恢复二人世界
+    if (!store.npcEnabled) {
+        store.presentNpcs = [];
+        for (const npc of Object.values(store.npcs)) npc.present = false;
+    }
+    saveState();
+    refreshNpcToggle();
+    appendMessage("ai").textContent = store.npcEnabled
+        ? "👥 已开启多人模式：支线 NPC 可能会在合适的时机自然地出现（小雨、小美…）。"
+        : "👤 已关闭多人模式：现在是你们两个人的世界，支线角色不会出现。";
+});
+refreshNpcToggle();
+
 document.getElementById("reset-state")!.addEventListener("click", () => {
-    if (confirm("重置为新学期？会清空：情感、剧情、聊天记录、时间线，且无法恢复。")) {
+    if (confirm("重置这段故事？会清空：情感、剧情、聊天记录、时间线，且无法恢复。")) {
         resetState();
 
         store.turnCount = 0;
@@ -906,7 +934,7 @@ document.getElementById("reset-state")!.addEventListener("click", () => {
         updateStoryUI();
         updateScheduleUI();
         saveState(); // 重置后立即保存（含新的 NPC 世界）
-        appendMessage("ai").textContent = "🔄 已重置。新的学期开始了——一切从零开始。";
+        appendMessage("ai").textContent = "🔄 已重置。一切从零开始——新的开始。";
     }
 });
 
@@ -970,6 +998,9 @@ document.getElementById("char-cancel")!.addEventListener("click", () => {
 document.getElementById("char-save")!.addEventListener("click", () => {
     readCharForm();
     saveCharacter();
+    // 关系变了 → 重新初始化情感数值（改成"恋人"就该有恋人的好感，不再是陌生人）
+    initStateForRelation(CHARACTER_REF.relation ?? "");
+    updateStateUI();
     charModal.classList.add("hidden");
     appendMessage("ai").textContent = `🔄 角色设定已更新。我是${CHARACTER_REF.name}，接下来也请多指教。`;
 });
@@ -985,6 +1016,7 @@ document.getElementById("char-reset-preset")!.addEventListener("click", () => {
 // ============ 胶水：跨模块回调注册 ============
 
 setCharacterGetter(() => CHARACTER_REF);
+setRelationGetter(() => CHARACTER_REF.relation ?? ""); // 关系阶段判断（是否"第一次见面"）
 
 setTimeMessageSender((text, opts) => {
     if (busy || userIsTyping()) return; // AI 回复中或用户正在输入，不打扰
@@ -1033,8 +1065,10 @@ const hadSave = loadState();
 const hasChar = !!localStorage.getItem(CHAR_KEY);
 updateStateUI();
 updateStoryUI();
+refreshNpcToggle(); // 按存档的多人开关刷新按钮（loadState 后）
 
-// 没有存档（新游戏）：时间停在"第一次相遇"，初始化 NPC 世界
+// 没有存档（新游戏）：时间停在"开工"时段起点，初始化 NPC 世界
+// （刚认识 → 第一次相遇的情境由 currentSchedule 按关系判断，恋人/朋友则从普通的一天开始）
 if (!hadSave) {
     store.virtualMs = store.dayBaseMs + slotMinutes(FIRST_MEETING_HHMM) * 60000;
     store.scheduleIndex = scheduleIndexFor(store.virtualMs);

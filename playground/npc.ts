@@ -30,6 +30,7 @@ export interface NpcProfile {
     schedule: NpcScheduleEntry[];
     keywords: string[];       // 触发关键词（提到她时介入概率上升）
     meetLocation: string;     // 常见出没地点（与主角交集）
+    goal?: string | null;     // 她自己的小目标/心事（推动剧情用）
 }
 
 export interface NpcState {
@@ -117,6 +118,37 @@ export const NPCS: NpcProfile[] = [
 ];
 
 // ============ NPC 状态管理 ============
+
+// 场景化：把 NPC 原型里的"学校"词汇替换为场景配置（创建角色后 NPC 属于当前世界）
+// 保留人格/说话风格/好感等性格内核，只替换身份与地点
+export function applySceneToProfile(profile: NpcProfile, scene: { place: string; others: string; routine: string }): NpcProfile {
+    const p = { ...profile, schedule: profile.schedule.map((e) => ({ ...e })) };
+    const place = scene.place;
+    const others = scene.others;
+
+    // 地点/身份词汇替换
+    const replaceWords = (t: string) =>
+        t
+            .replace(/同班同学/g, `${others}，和你挺熟`)
+            .replace(/隔壁班女生/g, `在${place}认识的女生`)
+            .replace(/图书馆常客/g, `${place}常客`)
+            .replace(/上学路上/g, `去${place}的路上`)
+            .replace(/学校食堂/g, place)
+            .replace(/教室|隔壁班/g, place)
+            .replace(/图书馆/g, place)
+            .replace(/学校/g, place);
+
+    p.title = replaceWords(p.title);
+    p.background = replaceWords(p.background);
+    p.likes = replaceWords(p.likes);
+    p.dislikes = replaceWords(p.dislikes);
+    p.goal = replaceWords(p.goal ?? "");
+    p.schedule = p.schedule.map((e) => ({ ...e, activity: replaceWords(e.activity), location: replaceWords(e.location) }));
+    p.keywords = p.keywords.map((k) => replaceWords(k)).filter((k, i, arr) => arr.indexOf(k) === i);
+    p.meetLocation = replaceWords(p.meetLocation);
+
+    return p;
+}
 
 // 每档 NPC 情感初始值（复用 38 维的情感基线风格，但只取关键情绪）
 function initEmotion(): Record<NpcEmotionKey, number> {

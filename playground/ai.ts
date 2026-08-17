@@ -36,7 +36,7 @@ export const SYSTEM_PROMPT = (character: CharacterProfile) =>
     "\n\n你的内心有 38 个维度（含人性阴影面），当前值（0-100）如下：\n" +
     DIMENSIONS.map((d) => `${d.label.replace(/[^\w]/g, "")}${Math.round(aiState[d.key])}`).join(" / ") + "\n" +
     `状态描述：${describeMood()}\n` +
-    `当前剧情阶段：${storyStage().name}（${storyStage().desc}）｜学期进度 ${store.storyProgress}%\n` +
+    `当前剧情阶段：${storyStage().name}（${storyStage().desc}）｜这段日子 ${store.storyProgress}%\n` +
     `【你此刻的情境】现在是 ${fmtVirtualDate()} ${fmtVirtualTime()} ${currentSchedule().label}（第 ${currentDayIndex()} 天），你正在做的事：${currentSchedule().activity}。\n` +
     `【此刻的方位与交流方式】${presentContext(character.name)}` +
     `【她此刻是否正忙】${busyContext()}` +
@@ -61,7 +61,7 @@ export const SYSTEM_PROMPT = (character: CharacterProfile) =>
     '"memory":"本轮对话中值得长期记住的事（新约定、重要的事、对方告诉你的秘密等，30字内）；没有就写空字符串",' +
     '"story":{"event":"本轮是否发生了值得记录的小事？有就写一句话（15~30字）；只是普通聊天没有特别的事，就写空字符串",' +
     '"progress":0~5(只有发生了推动剧情的事才给>0，普通聊天给0),"thread":"new|continue|end——有进行中的剧情线就continue；这轮收尾了结就用end；没开新线就new"}}' +
-    "【story.event 填写要求】**可填可不填**：基于当前时间、地点、你正在做的事、你的心情、剧情阶段，只有在真的发生了一件具体鲜活的小事时才写（窗外下雨、注意到对方的细节、路过的同学说的话、心里冒出的小念头）。" +
+    "【story.event 填写要求】**可填可不填**：基于当前时间、地点、你正在做的事、你的心情、剧情阶段，只有在真的发生了一件具体鲜活的小事时才写（窗外下雨、注意到对方的细节、路过的熟人说的话、心里冒出的小念头）。" +
     "如果是普通寒暄/闲聊/问答，event 写空字符串，progress 写 0——不要为了填而硬编事件。事件要承接当前对话，不能和对话无关。有进行中的剧情线时，event 优先推进那条线。" +
     "【重要】①memory 和 story.event 都可以是空字符串，宁缺毋滥；②有进行中的剧情线时，要记得在后续轮次推进、收尾，不要断头。";
 
@@ -104,18 +104,20 @@ function presentContext(mainName: string): string {
         `- 不要无视在场的人，也不要让她们抢走你和对方的对话。\n`;
 }
 
-// 她此刻是否正忙（上课/打工/睡着）→ 面对面时说话方式不同
+// 她此刻是否正忙（忙碌时段/睡着）→ 面对面时说话方式不同（场景驱动）
 function busyContext(): string {
-    const label = currentSchedule().label;
+    const slot = currentSchedule();
+    const label = slot.label;
+    const s = store.scene;
 
     if (label === "深夜") {
         return `你刚刚睡着，对方在你身边轻声叫你，你被迷迷糊糊地吵醒了——还没完全清醒，说话含糊、断断续续，带着睡意；说着说着可能又困得睁不开眼。你很高兴他/她还在你身边，但真的很困。\n`;
     }
-    if (label.includes("课") || label === "早自习") {
-        return `你们正在上课（${label}），周围有老师同学。只能压低声音说悄悄话、传小纸条那样地交流：话要短、要小声，不能大声说话；老师看过来就得闭嘴。\n`;
+    if (slot.busy) {
+        return `你们现在正忙（${label}，在${s.place}，她正在${s.routine}），周围有${s.others}。只能压低声音说悄悄话那样地交流：话要短、要小声，不能大声；旁边的人看过来就得先停下。\n`;
     }
     if (label === "傍晚") {
-        return `她正在打工（在便利店里）。有顾客进来的时候她得先招呼客人，你们的话会被打断；没人的时候才能好好说两句。\n`;
+        return `傍晚，你们一起往回走。路上偶尔有别的人经过，但不影响你们说话。\n`;
     }
     return "";
 }

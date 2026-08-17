@@ -74,6 +74,60 @@ export function resetState() {
     }
 }
 
+// 按角色关系初始化情感数值（恋人/朋友不该是"陌生人"初始值）
+// relation: 角色卡的"与用户的关系"文本
+export function initStateForRelation(relation: string): void {
+    resetState();
+    const rel = relation.toLowerCase();
+
+    if (/恋人|女朋友|男朋友|对象|老婆|老公|结婚|已婚/.test(rel)) {
+        // 恋人：高好感/信任/亲密
+        aiState.affection = 78;
+        aiState.trust = 68;
+        aiState.intimacy = 62;
+        aiState.familiarity = 70;
+        aiState.loyalty = 60;
+        aiState.dependence = 40;
+        aiState.joy = 58;
+        aiState.possessiveness = 30; // 占有欲也会随亲密浮现一点
+        return;
+    }
+    if (/青梅竹马|一起长大|发小/.test(rel)) {
+        aiState.affection = 55;
+        aiState.trust = 55;
+        aiState.intimacy = 30;
+        aiState.familiarity = 75;
+        aiState.loyalty = 45;
+        aiState.dependence = 25;
+        return;
+    }
+    if (/最好的朋友|挚友|好朋友|闺蜜|死党/.test(rel)) {
+        aiState.affection = 45;
+        aiState.trust = 50;
+        aiState.intimacy = 20;
+        aiState.familiarity = 60;
+        aiState.loyalty = 40;
+        return;
+    }
+    if (/朋友/.test(rel)) {
+        aiState.affection = 35;
+        aiState.trust = 32;
+        aiState.intimacy = 12;
+        aiState.familiarity = 38;
+        aiState.loyalty = 25;
+        return;
+    }
+    if (/家人|兄妹|姐弟|父女|母女/.test(rel)) {
+        aiState.affection = 50;
+        aiState.trust = 45;
+        aiState.intimacy = 25;
+        aiState.familiarity = 65;
+        aiState.loyalty = 50;
+        return;
+    }
+    // 刚认识/同事/同学/同桌/默认：保持陌生人基线
+}
+
 export function clamp(v: number): number {
     return Math.max(0, Math.min(100, v));
 }

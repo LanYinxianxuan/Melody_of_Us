@@ -2,7 +2,7 @@
 // 其他模块（time/story/chat/menu）都从这里读写持久化数据。
 
 import { aiState, INITIAL_STATE } from "./state";
-import { NPCS, createNpcState, type NpcState } from "./npc";
+import { NPCS, createNpcState, applySceneToProfile, type NpcState } from "./npc";
 
 // ============ 槽位 ============
 
@@ -52,6 +52,27 @@ export interface DayJournal {
     summary: string;
 }
 
+// 场景配置：角色创建向导时询问"你们在哪里生活/她平时做什么"
+// 所有"她白天在哪、忙什么、周围是谁"都由场景驱动，不再写死学校
+export interface SceneConfig {
+    name: string;        // 场景名（用户填的自由描述，如"海边小镇的咖啡店"）
+    place: string;       // 她白天待的场所（学校/咖啡店/公司/工作室…）
+    routine: string;     // 她平时做的事（上课/冲咖啡招呼客人/写代码/排练…）
+    others: string;      // 她身边的人（同学/顾客/同事/乐队的伙伴…）
+    busyLabel: string;   // 忙时段标签（上课/上班/开店/排练…）
+    restLabel: string;   // 休息时段标签（课间/休息/空闲…）
+}
+
+// 默认场景（兼容旧存档/未设置）：校园
+export const DEFAULT_SCENE: SceneConfig = {
+    name: "学校",
+    place: "学校",
+    routine: "上课",
+    others: "同学",
+    busyLabel: "上课",
+    restLabel: "课间",
+};
+
 // 所有需要随存档持久化的可变数据集中在这里（模块间通过 store 读写，避免 import 重绑定问题）
 export const store = {
     turnCount: 0,
@@ -78,6 +99,10 @@ export const store = {
     npcs: {} as Record<string, NpcState>,
     // 当前在场者（主角之外的参与者 id 列表，用于主角感知在场变化）
     presentNpcs: [] as string[],
+    // 多人模式开关：默认关闭（NPC 动态介入不启用；主角 prompt 也不注入在场者）
+    npcEnabled: false,
+    // 场景配置（创建角色时询问；默认校园兼容旧存档）
+    scene: { ...DEFAULT_SCENE } as SceneConfig,
     // 用户当前方位（家 / 学校 / 路上 / 打工处）——决定面对面还是手机聊天
     userLocation: "家",
     // 深夜发出去、她睡着没看到的消息（等她醒来再送达）
@@ -132,23 +157,34 @@ export function loadState(): boolean {
         store.lastNeglectRealAt = typeof data.lastNeglectRealAt === "number" ? data.lastNeglectRealAt : 0;
         store.lastNeglectLevel = typeof data.lastNeglectLevel === "number" ? data.lastNeglectLevel : 0;
 
+        // 场景：旧存档没有 → 默认校园；有 → 合并（防止新增字段缺失）
+        // 必须在 NPC 之前加载（NPC 按场景生成身份/地点）
+        const savedScene = data.scene && typeof data.scene === "object" ? data.scene : {};
+        store.scene = {
+            ...DEFAULT_SCENE,
+            ...savedScene,
+        };
+
         // 支线 NPC：旧存档没有 → 自动初始化默认 NPC；有 → 合并（防止新增 NPC 缺失）
+        // 一律按当前场景生成（身份/作息/地点随场景变化）
         const savedNpcs = data.npcs && typeof data.npcs === "object" ? data.npcs : {};
         store.npcs = {};
-        for (const profile of NPCS) {
-            const saved = savedNpcs[profile.id];
+        for (const base of NPCS) {
+            const profile = applySceneToProfile(base, store.scene);
+            const saved = savedNpcs[base.id];
             if (saved && saved.profile?.id) {
                 // 保留存档中的状态，但用最新 profile 定义补齐字段
-                store.npcs[profile.id] = { ...createNpcState(profile), ...saved, profile };
+                store.npcs[base.id] = { ...createNpcState(profile), ...saved, profile };
                 // 确保关键字段存在
-                if (!store.npcs[profile.id]!.emotion) store.npcs[profile.id]!.emotion = createNpcState(profile).emotion;
-                if (!Array.isArray(store.npcs[profile.id]!.knownFacts)) store.npcs[profile.id]!.knownFacts = [];
-                if (!Array.isArray(store.npcs[profile.id]!.history)) store.npcs[profile.id]!.history = [];
+                if (!store.npcs[base.id]!.emotion) store.npcs[base.id]!.emotion = createNpcState(profile).emotion;
+                if (!Array.isArray(store.npcs[base.id]!.knownFacts)) store.npcs[base.id]!.knownFacts = [];
+                if (!Array.isArray(store.npcs[base.id]!.history)) store.npcs[base.id]!.history = [];
             } else {
-                store.npcs[profile.id] = createNpcState(profile);
+                store.npcs[base.id] = createNpcState(profile);
             }
         }
         store.presentNpcs = Array.isArray(data.presentNpcs) ? data.presentNpcs : [];
+        store.npcEnabled = typeof data.npcEnabled === "boolean" ? data.npcEnabled : false; // 旧存档默认关闭
         store.userLocation = ["家", "学校", "路上", "打工处"].includes(data.userLocation)
             ? data.userLocation
             : "家";
@@ -163,8 +199,9 @@ export function loadState(): boolean {
 // 初始化默认 NPC 世界（无存档时调用）
 export function initNpcWorld() {
     store.npcs = {};
-    for (const profile of NPCS) {
-        store.npcs[profile.id] = createNpcState(profile);
+    for (const base of NPCS) {
+        // 按当前场景生成 NPC（身份/作息/地点随场景变化）
+        store.npcs[base.id] = createNpcState(applySceneToProfile(base, store.scene));
     }
     store.presentNpcs = [];
 }

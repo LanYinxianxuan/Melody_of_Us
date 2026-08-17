@@ -95,8 +95,8 @@ export function worldSnapshot(): string {
     ).join("\n");
 
     return [
-        `【时间】第${currentDayIndex()}天 ${fmtVirtualDate()} ${fmtVirtualTime()} ${slot.label}，${slot.activity}。${inSchool() ? "在校（面对面）" : `不在身边（在${herLocation()}，手机聊天）`}`,
-        `【剧情阶段】${stage.name}（${stage.desc}）｜学期进度 ${store.storyProgress}%`,
+        `【时间】第${currentDayIndex()}天 ${fmtVirtualDate()} ${fmtVirtualTime()} ${slot.label}，${slot.activity}。你们在一起（在${herLocation()}，面对面）。`,
+        `【剧情阶段】${stage.name}（${stage.desc}）｜这段日子 ${store.storyProgress}%`,
         `【进行中的剧情线】${store.activeThread ?? "无"}`,
         `【主角状态】${mainMood}；关系/情绪维度：${keyDims}`,
         `【最近剧情档案】${journalText().split("\n").slice(0, 3).join("；")}`,
@@ -130,7 +130,7 @@ export const DIRECTOR_PROMPT =
     "你只负责判断：这个世界是否值得发生一点变化。你的决策必须服务于一个核心：**用户与主角的关系线是绝对主线**。\n\n" +
     "【角色定位铁律】\n" +
     "- 主角是唯一核心陪伴对象；所有 NPC 都是 support character（支线角色）。\n" +
-    "- NPC 的作用：展示主角之外的世界、推动事件、提供朋友/同学/家人关系、制造日常偶然、表现主角性格。\n" +
+    "- NPC 的作用：展示主角之外的世界、推动事件、提供朋友、熟人、家人关系、制造日常偶然、表现主角性格。\n" +
     "- 禁止：NPC 抢夺主角戏份、NPC 主动追求用户、NPC 与主角竞争用户、多个 NPC 形成恋爱路线、NPC 频繁打断用户与主角的聊天。\n\n" +
     "【关系系统限制】\n" +
     "- 主角与用户：可以完整成长（陌生→熟悉→信任→亲密），这是主要情感线路。\n" +

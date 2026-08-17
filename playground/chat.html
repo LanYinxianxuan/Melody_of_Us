@@ -757,7 +757,7 @@
 <!-- 角色设定弹层 -->
 <div id="char-modal" class="hidden">  <div class="box">
     <h2>👤 角色设定</h2>
-    <div class="sub">定义 AI 是谁（名字/性格/背景/关系…）。保存即生效。对话中可能出现其他人（朋友/同学/同事/家人），由 AI 根据上下文自行应变扮演。</div>
+    <div class="sub">定义 AI 是谁（名字/性格/背景/关系…）。保存即生效。对话中可能出现其他人（朋友/熟人/家人），由 AI 根据上下文自行应变扮演。</div>
 
     <div style="text-align:right;margin-bottom:10px;">
       <button id="char-wizard-reopen" style="padding:6px 14px;border:1px solid rgba(250,216,49,0.5);border-radius:999px;background:rgba(250,216,49,0.12);color:#fad831;font-size:11px;cursor:pointer;">✨ 重新引导创建</button>
@@ -858,7 +858,7 @@
     <div class="story-desc" id="story-stage-desc">转学第一周</div>
     <div class="story-bar"><div class="story-fill" id="story-progress-bar" style="width:0%"></div></div>
     <div style="display:flex;justify-content:space-between;font-size:10px;color:rgba(255,255,255,0.5);margin-top:3px;">
-      <span>学期进度</span><span id="story-progress-val">0%</span>
+      <span>这段日子</span><span id="story-progress-val">0%</span>
     </div>
     <div id="story-events"></div>
   </div>
@@ -903,6 +903,7 @@
   <div id="chat-header">
     <div class="dot" id="status-dot"></div>
     <span id="chat-title-text">情感 AI · 准备就绪</span>
+    <button id="npc-toggle" class="mini-btn" title="支线 NPC 动态介入（默认关闭）">👥 多人:关</button>
     <button id="history-btn" class="mini-btn">📜 记录</button>
     <button id="char-btn" class="mini-btn">👤 角色</button>
     <button id="demo-btn" class="mini-btn">🎭 演示</button>

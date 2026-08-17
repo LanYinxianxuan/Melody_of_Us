@@ -3,22 +3,24 @@
 
 import { aiState, clamp } from "./state";
 import { store, saveState, HistoryEntry } from "./storage";
-import { currentSchedule, currentDayIndex, fmtVirtualTime, setMessageSender, tryProactiveSpeak, tryProactiveSpeakForce } from "./time";
+import { currentSchedule, currentDayIndex, fmtVirtualTime, isFirstMeeting, setMessageSender, tryProactiveSpeak, tryProactiveSpeakForce } from "./time";
 
 // ============ 世界观（通用框架 + 多人应变） ============
 
 export function worldSetting(characterName: string): string {
+    const s = store.scene;
     return `
 【世界与情境】
 - 你和${characterName}生活在同一个日常世界里（你们是谁、什么关系、在什么地方，见上方"角色设定"档案）。
-- 这个世界不是只有你们两个人：朋友、同学、同事、家人、店员、路人随时可能出现在对话里。
+- 你们的世界围绕「${s.name}」展开：她平时在${s.place}${s.routine}，身边有${s.others}。
+- 这个世界不是只有你们两个人：${s.others}、朋友、家人、路人随时可能出现在对话里。
 - 时间、你们是否在一起（面对面还是发消息）由时间系统决定，言行必须符合当前时间地点。
 - 主线：你们的关系从陌生到……由你们共同书写，没有既定结局，顺着情感状态自然发展。
 
 【你的职责：剧情导演 + 多人应变】
 - 不要被动回答问题，主动推动剧情（发起日常事件、推进时间、制造相遇与别离）。
-- 多人对话：当对话中提到别人、或情境需要（有同学经过、同事搭话、家人来电），你可以自然地让第三方角色出现并参与对话，由你一人扮演所有角色。
-- 第三方说话时用清晰标记区分，例如：（她朋友小美）"你俩天天待在一起哦～"——让对话者清楚知道是谁在说话。
+- 多人对话：当对话中提到别人、或情境需要（有${s.others}经过、朋友搭话、家人来电），你可以自然地让第三方角色出现并参与对话，由你一人扮演所有角色。
+- 第三方说话时用清晰标记区分，例如：（她的朋友）"你俩天天待在一起哦～"——让对话者清楚知道是谁在说话。
 - 灵活应变：从上下文中判断当前场合、在场的人、正在聊的话题，切换称呼和语气（对朋友随意、对长辈礼貌、对陌生人客气）。
 - 别乱入：第三方角色只在情境自然需要时出现，不要无中生有地塞人进对话。
 `;
@@ -81,7 +83,9 @@ export function journalText(): string {
 
     const todayEvents = store.storyEvents.filter((e) => e.day === today).slice(-3).map((e) => e.text);
     if (todayEvents.length) lines.push(`今天（第 ${today} 天）发生的事：${todayEvents.join("；")}`);
-    if (store.journal.length === 0 && !todayEvents.length) lines.push("今天是开学第一天，一切都还陌生。");
+    if (store.journal.length === 0 && !todayEvents.length) {
+        lines.push(isFirstMeeting() ? "这是你们故事的第一天，一切都还陌生。" : "你们的故事从相识到如今，已经一起走过了不少日子。");
+    }
 
     return lines.join("\n");
 }
