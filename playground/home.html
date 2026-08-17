@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <meta name="theme-color" content="#c084fc">
+  <meta name="theme-color" content="#d65a7e">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="manifest" href="./manifest.webmanifest">
@@ -13,16 +13,21 @@
       * { box-sizing: border-box; margin: 0; padding: 0; }
 
       :root {
-          --accent: #c084fc;
-          --accent-2: #f472b6;
-          --ink: #3b2a5a;
-          --ink-soft: #6b5f8e;
-          --card: rgba(255, 255, 255, 0.82);
-          --card-strong: rgba(255, 255, 255, 0.94);
-          --line: rgba(139, 92, 246, 0.16);
-          --grad: linear-gradient(135deg, #c084fc 0%, #f472b6 100%);
-          --shadow: 0 8px 32px rgba(120, 80, 180, 0.14);
-          --shadow-lg: 0 16px 48px rgba(120, 80, 180, 0.22);
+          --accent: #d65a7e;
+          --accent-deep: #b84567;
+          --accent-soft: rgba(214, 90, 126, 0.10);
+          --accent-line: rgba(214, 90, 126, 0.24);
+          --ink: #2d2a32;
+          --ink-soft: #6e6a76;
+          --card: rgba(255, 255, 255, 0.88);
+          --card-strong: #ffffff;
+          --bg: #faf7f4;
+          --line: rgba(45, 42, 50, 0.08);
+          --shadow: 0 6px 24px rgba(120, 80, 60, 0.10);
+          --shadow-lg: 0 16px 48px rgba(120, 80, 60, 0.16);
+          --shadow-accent: 0 6px 20px rgba(214, 90, 126, 0.28);
+          --radius-lg: 24px;
+          --radius-md: 14px;
       }
 
       body {
@@ -54,11 +59,11 @@
           max-width: 620px;
           text-align: center;
           background: var(--card);
-          border: 1px solid var(--line);
+          border: 1px solid rgba(255, 255, 255, 0.65);
           border-radius: 28px;
           box-shadow: var(--shadow-lg);
-          backdrop-filter: blur(20px) saturate(1.4);
-          -webkit-backdrop-filter: blur(20px) saturate(1.4);
+          backdrop-filter: blur(24px) saturate(1.2);
+          -webkit-backdrop-filter: blur(24px) saturate(1.2);
       }
 
       .logo {
@@ -87,7 +92,7 @@
           width: 60px;
           height: 2px;
           margin: 22px auto;
-          background: linear-gradient(to right, transparent, var(--accent), transparent);
+          background: linear-gradient(to right, transparent, var(--accent-line), transparent);
       }
 
       p {
@@ -107,15 +112,13 @@
           border: none;
           cursor: pointer;
           text-decoration: none;
-          background: var(--grad);
-          box-shadow: 0 10px 30px rgba(192, 132, 252, 0.4);
-          transition: transform 0.2s, box-shadow 0.2s;
+          background: var(--accent);
+          box-shadow: var(--shadow-accent);
+          transition: all 0.2s;
       }
 
-      .btn:hover {
-          transform: translateY(-2px) scale(1.03);
-          box-shadow: 0 14px 36px rgba(192, 132, 252, 0.55);
-      }
+      .btn:hover { background: var(--accent-deep); transform: translateY(-2px); }
+      .btn:active { transform: scale(0.97); }
 
       .footer {
           margin-top: 22px;

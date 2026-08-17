@@ -3,36 +3,45 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <meta name="theme-color" content="#c084fc">
+  <meta name="theme-color" content="#d65a7e">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="apple-touch-icon" href="./icons/icon-192.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
   <title>情感 AI 聊天 · 38 维情感体系</title>
   <style>
       * { box-sizing: border-box; margin: 0; padding: 0; }
 
-      /* ===== 二次元简约高级 · 设计系统 ===== */
+      /* ===== 二次元简约高级 · 设计系统 =====
+         设计标准（open-design redesign-skill 审计）：
+         - 单一强调色（降饱和），暖白中性底，无紫粉 AI 渐变
+         - 实色按钮 + tinted 阴影 + 噪点纹理
+         - 字体层次：Outfit(数字/英文) + 系统中文，tabular-nums */
       :root {
-          /* 主色调：柔和紫粉（二次元） */
-          --accent: #c084fc;            /* 主紫 */
-          --accent-2: #f472b6;          /* 粉 */
-          --accent-3: #a5b4fc;          /* 淡紫蓝 */
-          --gold: #fbbf24;              /* 点缀金 */
-          --ink: #3b2a5a;               /* 主文字（深紫灰） */
-          --ink-soft: #6b5f8e;          /* 次文字 */
-          --card: rgba(255, 255, 255, 0.82);       /* 卡片（奶白玻璃） */
-          --card-strong: rgba(255, 255, 255, 0.94);
-          --line: rgba(139, 92, 246, 0.16);         /* 描边 */
-          --grad: linear-gradient(135deg, #c084fc 0%, #f472b6 100%);  /* 主渐变 */
-          --grad-soft: linear-gradient(135deg, rgba(192,132,252,0.14), rgba(244,114,182,0.14));
-          --radius: 18px;
-          --radius-sm: 12px;
-          --shadow: 0 8px 32px rgba(120, 80, 180, 0.14);
-          --shadow-lg: 0 16px 48px rgba(120, 80, 180, 0.22);
+          --accent: #d65a7e;            /* 樱花莓粉（唯一强调色） */
+          --accent-deep: #b84567;       /* hover/按压深一度 */
+          --accent-soft: rgba(214, 90, 126, 0.10);
+          --accent-line: rgba(214, 90, 126, 0.24);
+          --ink: #2d2a32;               /* 深炭墨（暖黑） */
+          --ink-soft: #6e6a76;          /* 次文字 */
+          --ink-faint: #a39dab;         /* 弱文字 */
+          --card: rgba(255, 255, 255, 0.88);
+          --card-strong: #ffffff;
+          --bg: #faf7f4;                /* 暖白中性底 */
+          --line: rgba(45, 42, 50, 0.08);
+          --shadow: 0 6px 24px rgba(120, 80, 60, 0.10);        /* 暖褐 tinted 阴影 */
+          --shadow-lg: 0 16px 48px rgba(120, 80, 60, 0.16);
+          --shadow-accent: 0 6px 20px rgba(214, 90, 126, 0.28);
+          --radius-lg: 24px;
+          --radius-md: 14px;
+          --radius-sm: 8px;
+          --font-num: "Outfit", "PingFang SC", sans-serif;
       }
 
-      /* ===== 背景图 + 二次元柔光遮罩 ===== */
+      /* ===== 背景：暖白 + 樱花光晕 + 噪点 ===== */
       body {
           height: 100vh;
           overflow: hidden;
@@ -40,7 +49,7 @@
           background-size: cover;
           background-position: center;
           background-attachment: fixed;
-          font-family: "PingFang SC", "HarmonyOS Sans SC", "微软雅黑", "Noto Sans SC", sans-serif;
+          font-family: "PingFang SC", "HarmonyOS Sans SC", "MiSans", "微软雅黑", "Noto Sans SC", sans-serif;
           color: var(--ink);
       }
 
@@ -49,14 +58,24 @@
           position: fixed;
           inset: 0;
           background:
-              radial-gradient(1200px 600px at 20% -10%, rgba(192, 132, 252, 0.28), transparent 60%),
-              radial-gradient(1000px 500px at 100% 110%, rgba(244, 114, 182, 0.22), transparent 60%),
-              linear-gradient(to bottom right, rgba(255, 255, 255, 0.62), rgba(240, 230, 255, 0.72));
-          backdrop-filter: blur(6px);
-          z-index: -1;
+              radial-gradient(900px 520px at 12% -4%, rgba(214, 90, 126, 0.14), transparent 55%),
+              radial-gradient(760px 440px at 104% 110%, rgba(140, 150, 200, 0.12), transparent 55%),
+              linear-gradient(to bottom right, rgba(250, 247, 244, 0.88), rgba(243, 238, 233, 0.92));
+          backdrop-filter: blur(8px);
+          z-index: -2;
       }
 
-      /* ===== 聊天显示区（奶白玻璃卡片） ===== */
+      /* 噪点纹理：打破数字扁平感 */
+      body::after {
+          content: "";
+          position: fixed;
+          inset: 0;
+          background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+          pointer-events: none;
+          z-index: 0;
+      }
+
+      /* ===== 聊天显示区（暖白玻璃卡片） ===== */
       #chat-wrap {
           height: calc(100vh - 90px);
           margin: 12px 12px 12px 12px;
@@ -65,13 +84,15 @@
           flex-direction: column;
           gap: 12px;
 
-          background: rgba(255, 255, 255, 0.55);
-          backdrop-filter: blur(20px) saturate(1.4);
-          -webkit-backdrop-filter: blur(20px) saturate(1.4);
-          border: 1px solid var(--line);
-          border-radius: 24px;
+          background: var(--card);
+          backdrop-filter: blur(24px) saturate(1.2);
+          -webkit-backdrop-filter: blur(24px) saturate(1.2);
+          border: 1px solid rgba(255, 255, 255, 0.65);
+          border-radius: var(--radius-lg);
           box-shadow: var(--shadow);
           transition: margin-left 0.3s ease;
+          position: relative;
+          z-index: 1;
       }
 
       #chat-wrap.panel-open { margin-left: 330px; }
@@ -99,19 +120,19 @@
       .mini-btn {
           margin-left: 8px;
           padding: 5px 13px;
-          border: 1px solid var(--line);
+          border: 1px solid transparent;
           border-radius: 999px;
-          background: rgba(255, 255, 255, 0.6);
+          background: transparent;
           color: var(--ink-soft);
           font-size: 11px;
           cursor: pointer;
           letter-spacing: 1px;
-          transition: all 0.2s;
-          box-shadow: 0 2px 8px rgba(120, 80, 180, 0.08);
+          transition: all 0.2s ease;
       }
 
-      .mini-btn:hover { background: var(--card-strong); color: var(--accent); transform: translateY(-1px); box-shadow: var(--shadow); }
-      .mini-btn.active { background: var(--grad); color: #fff; border-color: transparent; }
+      .mini-btn:hover { background: var(--accent-soft); color: var(--accent); }
+      .mini-btn:active { transform: scale(0.96); }
+      .mini-btn.active { background: var(--accent); color: #fff; box-shadow: var(--shadow-accent); }
 
       #chat-messages {
           flex: 1;
@@ -120,6 +141,7 @@
           flex-direction: column;
           gap: 14px;
           padding: 4px;
+          scroll-behavior: smooth;
       }
 
       .msg {
@@ -134,39 +156,39 @@
 
       .msg.user {
           align-self: flex-end;
-          background: var(--grad);
+          background: var(--accent);
           color: #fff;
-          border-bottom-right-radius: 6px;
-          box-shadow: 0 4px 16px rgba(192, 132, 252, 0.3);
+          border-bottom-right-radius: var(--radius-sm);
+          box-shadow: var(--shadow-accent);
       }
 
       .msg.ai {
           align-self: flex-start;
-          background: var(--card-strong);
+          background: rgba(255, 255, 255, 0.94);
           color: var(--ink);
-          border-bottom-left-radius: 6px;
-          border: 1px solid var(--line);
-          box-shadow: var(--shadow);
+          border-bottom-left-radius: var(--radius-sm);
+          border: 1px solid rgba(255, 255, 255, 0.7);
+          box-shadow: 0 3px 14px rgba(120, 80, 60, 0.08);
       }
 
       .msg.ai .action {
-          display: block; font-size: 12px; color: var(--accent-3); font-style: italic; margin-top: 6px;
+          display: block; font-size: 12px; color: var(--accent); font-style: italic; margin-top: 6px;
       }
       .msg.ai .thoughts {
-          display: block; font-size: 12px; color: var(--accent); margin-top: 4px;
+          display: block; font-size: 12px; color: var(--accent-deep); margin-top: 4px;
       }
       .msg.ai .emotion-tag {
-          display: block; font-size: 10px; color: rgba(107, 95, 142, 0.65); margin-top: 6px;
+          display: block; font-size: 10px; color: var(--ink-faint); margin-top: 6px;
       }
 
       /* 支线 NPC 消息（世界里的其他人） */
       .msg.npc-msg {
           align-self: flex-start;
-          background: linear-gradient(135deg, rgba(196, 181, 253, 0.9), rgba(199, 210, 254, 0.9));
+          background: rgba(214, 90, 126, 0.08);
           color: var(--ink);
-          border-bottom-left-radius: 6px;
-          border: 1px solid rgba(139, 92, 246, 0.15);
-          box-shadow: var(--shadow);
+          border-bottom-left-radius: var(--radius-sm);
+          border: 1px solid var(--accent-line);
+          box-shadow: 0 3px 14px rgba(120, 80, 60, 0.08);
       }
       .msg.npc-msg .npc-name {
           font-size: 11px;
@@ -191,10 +213,12 @@
       .msg-ts {
           display: block;
           font-size: 10px;
-          color: rgba(107, 95, 142, 0.5);
+          color: var(--ink-faint);
           margin-top: 4px;
           text-align: right;
           user-select: none;
+          font-family: var(--font-num);
+          font-variant-numeric: tabular-nums;
       }
 
       /* 消息旁的重答按钮 */
@@ -230,8 +254,8 @@
           font-style: italic;
           text-align: center;
           max-width: 90%;
-          padding: 4px 14px;
-          background: rgba(255, 255, 255, 0.55);
+          padding: 5px 16px;
+          background: var(--bg);
           border: 1px solid var(--line);
           border-radius: 999px;
           line-height: 1.6;
@@ -248,11 +272,11 @@
           display: flex;
           flex-direction: column;
           overflow-y: auto;
-          border-radius: 22px;
-          background: rgba(255, 255, 255, 0.68);
-          backdrop-filter: blur(24px) saturate(1.4);
-          -webkit-backdrop-filter: blur(24px) saturate(1.4);
-          border: 1px solid var(--line);
+          border-radius: var(--radius-lg);
+          background: var(--card);
+          backdrop-filter: blur(24px) saturate(1.2);
+          -webkit-backdrop-filter: blur(24px) saturate(1.2);
+          border: 1px solid rgba(255, 255, 255, 0.65);
           box-shadow: var(--shadow-lg);
           transition: transform 0.3s ease, opacity 0.3s ease;
           z-index: 20;
@@ -309,17 +333,17 @@
           width: 100%;
           margin-top: 10px;
           padding: 9px 0;
-          border: 1px solid var(--line);
+          border: 1px solid var(--accent-line);
           border-radius: 999px;
-          background: var(--card);
+          background: transparent;
           color: var(--accent);
           font-size: 12px;
           cursor: pointer;
           transition: all 0.2s ease;
           font-weight: 600;
       }
-      #emotions-toggle:hover { background: var(--card-strong); box-shadow: var(--shadow); }
-      #emotions-toggle.open { background: var(--grad); color: #fff; border-color: transparent; }
+      #emotions-toggle:hover { background: var(--accent-soft); }
+      #emotions-toggle.open { background: var(--accent); color: #fff; border-color: transparent; box-shadow: var(--shadow-accent); }
 
       /* ===== 全屏情感明细浮层 ===== */
       #emotions-modal {
@@ -368,10 +392,9 @@
       .clock-card {
           margin-top: 10px;
           padding: 12px;
-          background: var(--card);
+          background: var(--bg);
           border: 1px solid var(--line);
-          border-radius: var(--radius-sm);
-          box-shadow: 0 4px 16px rgba(120, 80, 180, 0.08);
+          border-radius: var(--radius-md);
       }
 
       .clock-row {
@@ -383,7 +406,7 @@
       }
 
       .rate-btn.active {
-          background: linear-gradient(to right, #fbbf24, #f59e0b) !important;
+          background: var(--accent) !important;
           color: #fff !important;
           border-color: transparent !important;
           font-weight: 600;
@@ -393,10 +416,9 @@
       .story-card {
           margin-top: 10px;
           padding: 12px;
-          background: var(--card);
-          border: 1px solid rgba(251, 191, 36, 0.35);
-          border-radius: var(--radius-sm);
-          box-shadow: 0 4px 16px rgba(120, 80, 180, 0.08);
+          background: var(--bg);
+          border: 1px solid var(--line);
+          border-radius: var(--radius-md);
       }
 
       .story-head {
@@ -449,8 +471,8 @@
           opacity: 0.85;
       }
       .agenda-item.active {
-          border-left-color: var(--gold);
-          background: rgba(251, 191, 36, 0.12);
+          border-left-color: var(--accent);
+          background: var(--accent-soft);
           opacity: 1;
           font-weight: 600;
       }
@@ -534,15 +556,16 @@
           position: fixed;
           bottom: 0; left: 0;
           width: 100%;
-          background: rgba(255, 255, 255, 0.75);
-          backdrop-filter: blur(20px) saturate(1.4);
-          -webkit-backdrop-filter: blur(20px) saturate(1.4);
+          background: rgba(250, 247, 244, 0.88);
+          backdrop-filter: blur(20px);
+          -webkit-backdrop-filter: blur(20px);
           border-top: 1px solid var(--line);
           padding: 12px 14px;
           display: flex;
           justify-content: center;
           align-items: center;
           gap: 10px;
+          z-index: 5;
       }
 
       #chat-input {
@@ -556,26 +579,26 @@
           font-size: 15px;
           background: var(--card-strong);
           color: var(--ink);
-          box-shadow: 0 2px 12px rgba(120, 80, 180, 0.08);
           transition: border-color 0.2s, box-shadow 0.2s;
       }
-      #chat-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(192, 132, 252, 0.18); }
-      #chat-input::placeholder { color: rgba(107, 95, 142, 0.5); }
+      #chat-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+      #chat-input::placeholder { color: var(--ink-faint); }
 
       .icon-btn {
           width: 46px; height: 46px;
           border-radius: 50%;
           border: none;
-          background: var(--grad);
-          box-shadow: 0 4px 16px rgba(192, 132, 252, 0.4);
+          background: var(--accent);
+          box-shadow: var(--shadow-accent);
           display: flex;
           justify-content: center;
           align-items: center;
           cursor: pointer;
-          transition: 0.25s;
+          transition: all 0.2s ease;
       }
 
-      .icon-btn:hover { transform: scale(1.08) translateY(-1px); box-shadow: 0 6px 20px rgba(192, 132, 252, 0.5); }
+      .icon-btn:hover { background: var(--accent-deep); transform: scale(1.06); }
+      .icon-btn:active { transform: scale(0.94); }
       .icon-btn:disabled { opacity: 0.5; transform: none; }
       .icon-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
@@ -609,9 +632,9 @@
           max-height: 86vh;
           overflow-y: auto;
           padding: 26px 30px;
-          border-radius: 24px;
+          border-radius: var(--radius-lg);
           background: var(--card-strong);
-          border: 1px solid var(--line);
+          border: 1px solid rgba(255, 255, 255, 0.7);
           box-shadow: var(--shadow-lg);
       }
 
@@ -632,7 +655,7 @@
           transition: all 0.2s;
       }
 
-      .wiz-preset:hover { background: var(--grad-soft); border-color: var(--accent); transform: translateY(-1px); box-shadow: var(--shadow); }
+      .wiz-preset:hover { background: var(--accent-soft); border-color: var(--accent-line); transform: translateY(-1px); }
       .wiz-preset .p-name { font-size: 15px; font-weight: 700; color: var(--accent); }
       .wiz-preset .p-desc { font-size: 11px; color: var(--ink-soft); margin-top: 4px; line-height: 1.6; }
 
@@ -667,13 +690,13 @@
           user-select: none;
       }
 
-      .wiz-chip:hover { background: var(--grad-soft); color: var(--accent); }
+      .wiz-chip:hover { background: var(--accent-soft); color: var(--accent); }
       .wiz-chip.selected {
-          background: var(--grad);
+          background: var(--accent);
           color: #fff;
           border-color: transparent;
           font-weight: 600;
-          box-shadow: 0 3px 12px rgba(192, 132, 252, 0.35);
+          box-shadow: var(--shadow-accent);
       }
 
       .wiz-preview {
@@ -698,9 +721,9 @@
           font-weight: 600;
           transition: all 0.2s;
       }
-      .wiz-nav:hover { background: var(--grad-soft); color: var(--accent); }
-      .wiz-nav-primary { flex: 2; background: var(--grad); color: #fff; border-color: transparent; box-shadow: 0 4px 14px rgba(192,132,252,0.35); }
-      .wiz-nav-primary:hover { background: var(--grad); color: #fff; transform: translateY(-1px); }
+      .wiz-nav:hover { background: var(--accent-soft); color: var(--accent); }
+      .wiz-nav-primary { flex: 2; background: var(--accent); color: #fff; border-color: transparent; box-shadow: var(--shadow-accent); }
+      .wiz-nav-primary:hover { background: var(--accent-deep); color: #fff; transform: translateY(-1px); }
       .wiz-nav-danger { color: #e87979; border-color: rgba(232, 121, 121, 0.4); background: rgba(232, 121, 121, 0.06); }
       .wiz-nav-danger:hover { background: rgba(232, 121, 121, 0.14); color: #ef4444; }
 
@@ -757,9 +780,9 @@
           cursor: pointer;
           font-weight: 600;
       }
-      #char-save { background: var(--grad); color: #fff; box-shadow: 0 4px 14px rgba(192,132,252,0.35); }
+      #char-save { background: var(--accent); color: #fff; box-shadow: var(--shadow-accent); }
       #char-cancel { background: var(--card); color: var(--ink-soft); border: 1px solid var(--line) !important; }
-      #char-reset-preset { background: var(--grad-soft); color: var(--accent); }
+      #char-reset-preset { background: var(--accent-soft); color: var(--accent); }
 
       /* ===== 聊天记录 ===== */
       .history-divider {
@@ -968,13 +991,13 @@
       <div style="margin-top:4px;display:flex;gap:4px;align-items:center;">
         <input id="rate-custom" type="number" min="0.01" max="100000" step="0.5" placeholder="自定义倍率(0.01~100000)"
           style="flex:1;min-width:0;padding:4px 8px;border:1px solid rgba(255,255,255,0.25);border-radius:6px;background:var(--card);color:var(--ink);font-size:10px;outline:none;border:1px solid var(--line);">
-        <button id="rate-set" style="padding:4px 10px;border:1px solid rgba(255,255,255,0.3);border-radius:6px;background:var(--grad);color:#fff;font-size:10px;cursor:pointer;border:none;">设定</button>
+        <button id="rate-set" style="padding:4px 10px;border:1px solid rgba(255,255,255,0.3);border-radius:6px;background:var(--accent);color:#fff;font-size:10px;cursor:pointer;border:none;">设定</button>
       </div>
       <div style="margin-top:4px;display:flex;gap:4px;align-items:center;">
         <input id="day-input" type="number" min="1" placeholder="第几天" style="flex:1;min-width:0;padding:4px 8px;border:1px solid rgba(255,255,255,0.25);border-radius:6px;background:var(--card);color:var(--ink);font-size:10px;outline:none;border:1px solid var(--line);">
         <input id="time-input" type="time" value="07:30" style="flex:1;min-width:0;padding:4px 6px;border:1px solid rgba(255,255,255,0.25);border-radius:6px;background:var(--card);color:var(--ink);font-size:10px;outline:none;border:1px solid var(--line);">
         <button id="time-set" style="padding:4px 10px;border:1px solid rgba(250,216,49,0.5);border-radius:6px;background:rgba(250,216,49,0.15);color:#fad831;font-size:10px;cursor:pointer;">跳转</button>
-        <button id="today-btn" style="padding:4px 10px;border:1px solid rgba(255,255,255,0.3);border-radius:6px;background:var(--grad-soft);color:var(--accent);font-size:10px;cursor:pointer;border:1px solid var(--line);">今天</button>
+        <button id="today-btn" style="padding:4px 10px;border:1px solid rgba(255,255,255,0.3);border-radius:6px;background:var(--accent-soft);color:var(--accent);font-size:10px;cursor:pointer;border:1px solid var(--accent-line);">今天</button>
       </div>
       <div style="margin-top:4px;display:flex;gap:4px;align-items:center;">
         <input id="date-input" type="date" style="flex:1;min-width:0;padding:4px 8px;border:1px solid rgba(255,255,255,0.25);border-radius:6px;background:var(--card);color:var(--ink);font-size:10px;outline:none;border:1px solid var(--line);color-scheme:dark;">
