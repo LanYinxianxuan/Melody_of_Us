@@ -50,6 +50,7 @@ import {
     neglectLevel,
     neglectLine,
     setStoryMessageSender,
+    setStoryCharNameGetter,
 } from "./story";
 import { chatWithDeepSeek, demoReply, setCharacterGetter, SYSTEM_PROMPT, type ChatResult } from "./ai";
 import { npcContext, npcSpeak } from "./ai";
@@ -188,10 +189,31 @@ function logEmotion(who: "user" | "ai", text: string, extra?: string) {
     box.scrollTop = box.scrollHeight;
 }
 
+// 角色头像 emoji（从名字取，无则默认）
+function charAvatar(): string {
+    const name = CHARACTER_REF.name || "";
+    if (/桃|momo|Momo/i.test(name)) return "🍑";
+    if (/仁菜|nina|Nina/i.test(name)) return "🎀";
+    if (/鲸/.test(name)) return "🐳";
+    if (/洛|绫/.test(name)) return "🎸";
+    if (/影/.test(name)) return "🐱";
+    if (/熠/.test(name)) return "🩺";
+    if (/安黎/.test(name)) return "💼";
+    if (/苏|晚/.test(name)) return "🖌";
+    return "🌸";
+}
+
 function appendMessage(role: "user" | "ai"): HTMLElement {
     const container = document.getElementById("chat-messages")!;
     const div = document.createElement("div");
     div.className = `msg ${role}`;
+    // AI 消息带角色头像（NPC 消息会覆盖为自己的头像）
+    if (role === "ai") {
+        const avatar = document.createElement("div");
+        avatar.className = "msg-avatar";
+        avatar.textContent = charAvatar();
+        div.appendChild(avatar);
+    }
     container.appendChild(div);
     container.scrollTop = container.scrollHeight;
     return div;
@@ -274,11 +296,15 @@ function setBusyState(b: boolean) {
     busy = b;
     const dot = document.getElementById("status-dot")!;
     const title = document.getElementById("chat-title-text")!;
+    const sub = document.getElementById("chat-subtitle")!;
     dot.classList.toggle("busy", b);
     const thinking = (localStorage.getItem("deepseek-effort") ?? "high") !== "disabled";
-    title.textContent = b
-        ? `${CHARACTER_REF.name} · ${thinking ? "思考中…" : "回复中…"}`
-        : `${CHARACTER_REF.name} · ${demoMode ? "演示模式（不会思考）" : "在线"}`;
+    title.textContent = CHARACTER_REF.name || "情感 AI";
+    sub.textContent = b
+        ? `${thinking ? "思考中…" : "回复中…"}`
+        : demoMode
+            ? "演示模式（不会思考）"
+            : "在线 · 她正等着你";
 }
 
 // ============ 聊天流程 ============
@@ -444,7 +470,7 @@ async function sendMessage(text: string, opts?: { proactive?: boolean }): Promis
 
         return result;
     } catch (e) {
-        appendMessage("ai").textContent = `⚠️ ${(e as Error).message}`;
+        appendMessage("ai").classList.add("sys"); appendMessage("ai").textContent = `⚠️ ${(e as Error).message}`;
         return null;
     } finally {
         setBusyState(false);
@@ -737,6 +763,9 @@ async function runNpcIntervention(pick: InterventionCandidate) {
     const msgEl = appendMessage("ai");
     msgEl.classList.add("npc-msg");
     msgEl.dataset.npc = npc.profile.id;
+    // NPC 头像（覆盖默认角色头像）
+    const avEl = msgEl.querySelector(".msg-avatar");
+    if (avEl) avEl.textContent = npc.profile.avatar;
 
     const nameTag = document.createElement("div");
     nameTag.className = "npc-name";
@@ -850,7 +879,16 @@ function renderHistoryToChat() {
     for (const entry of store.chatHistory.slice(-20)) {
         const div = document.createElement("div");
         div.className = `msg ${entry.role === "user" ? "user" : "ai"}`;
-        div.textContent = entry.content;
+        if (entry.role === "assistant") {
+            const av = document.createElement("div");
+            av.className = "msg-avatar";
+            av.textContent = charAvatar();
+            div.appendChild(av);
+        }
+        const content = document.createElement("div");
+        content.className = "dialogue";
+        content.textContent = entry.content;
+        div.appendChild(content);
         container.appendChild(div);
     }
 
@@ -970,8 +1008,9 @@ demoBtn.addEventListener("click", () => {
     demoBtn.textContent = demoMode ? "🎭 演示中" : "🎭 演示";
     demoBtn.classList.toggle("active", demoMode);
     if (demoMode) {
-        appendMessage("ai").textContent =
-            "⚠️ 当前是演示模式——回复是预设模板，不会思考、不接上下文。想体验真正的她，请到菜单页设置 DeepSeek API Key 后关闭演示。";
+        const sysEl = appendMessage("ai");
+        sysEl.classList.add("sys");
+        sysEl.textContent = "⚠️ 当前是演示模式——回复是预设模板，不会思考、不接上下文。想体验真正的她，请到菜单页设置 DeepSeek API Key 后关闭演示。";
     } else {
         setBusyState(false); // 刷新标题状态
     }
@@ -992,7 +1031,7 @@ npcToggleBtn.addEventListener("click", () => {
     }
     saveState();
     refreshNpcToggle();
-    appendMessage("ai").textContent = store.npcEnabled
+    const npcSys = appendMessage("ai"); npcSys.classList.add("sys"); npcSys.textContent = store.npcEnabled
         ? "👥 已开启多人模式：支线 NPC 可能会在合适的时机自然地出现（小雨、小美…）。"
         : "👤 已关闭多人模式：现在是你们两个人的世界，支线角色不会出现。";
 });
@@ -1033,7 +1072,7 @@ document.getElementById("reset-state")!.addEventListener("click", () => {
         updateStoryUI();
         updateScheduleUI();
         saveState(); // 重置后立即保存（含新的 NPC 世界）
-        appendMessage("ai").textContent = "🔄 已重置。一切从零开始——新的开始。";
+        appendMessage("ai").classList.add("sys"); appendMessage("ai").textContent = "🔄 已重置。一切从零开始——新的开始。";
     }
 });
 
@@ -1133,7 +1172,7 @@ document.getElementById("char-save")!.addEventListener("click", () => {
     initStateForRelation(CHARACTER_REF.relation ?? "");
     updateStateUI();
     charModal.classList.add("hidden");
-    appendMessage("ai").textContent = `🔄 角色设定已更新。我是${CHARACTER_REF.name}，接下来也请多指教。`;
+    appendMessage("ai").classList.add("sys"); appendMessage("ai").textContent = `🔄 角色设定已更新。我是${CHARACTER_REF.name}，接下来也请多指教。`;
 });
 
 document.getElementById("char-reset-preset")!.addEventListener("click", () => {
@@ -1148,6 +1187,7 @@ document.getElementById("char-reset-preset")!.addEventListener("click", () => {
 
 setCharacterGetter(() => CHARACTER_REF);
 setRelationGetter(() => CHARACTER_REF.relation ?? ""); // 关系阶段判断（是否"第一次见面"）
+setStoryCharNameGetter(() => CHARACTER_REF.name); // 角色卡名字
 // 日程规划：注入角色信息（让 AI 规划贴合她的日程）
 setAgendaCharacterGetter(() => ({
     name: CHARACTER_REF.name,
@@ -1200,7 +1240,18 @@ setWizardSavedCallback(() => {
         : /最亲近|最重要|青梅竹马|挚友|最好的朋友|家人/.test(rel)
             ? `你来啦。见到你，心里踏实多了。`
             : `你好呀，我是${CHARACTER_REF.name}。设定已就位，接下来请多指教。`;
-    appendMessage("ai").textContent = greeting;
+    const greetEl = appendMessage("ai");
+    const greetText = document.createElement("div");
+    greetText.className = "dialogue";
+    greetText.textContent = greeting;
+    greetEl.appendChild(greetText); // 保留消息头像，不用 textContent 覆盖
+    // 刷新头像 + 角色卡 + 标题（角色已创建）
+    const avNew = charAvatar();
+    for (const el of document.querySelectorAll<HTMLElement>(".chat-avatar, .char-card-avatar")) {
+        el.textContent = avNew;
+    }
+    updateStoryUI();
+    setBusyState(false);
     // 重置"被冷落"基准：她刚和你在一起（防止创建过程耗时被误判为冷落）
     store.lastReplyRealAt = Date.now();
     store.lastReplyVirtualAt = store.virtualMs;
@@ -1244,6 +1295,12 @@ const hasChar = !!localStorage.getItem(CHAR_KEY);
 updateStateUI();
 updateStoryUI();
 refreshNpcToggle(); // 按存档的多人开关刷新按钮（loadState 后）
+
+// 初始化头像（头部 + 面板角色卡）
+const av0 = charAvatar();
+for (const el of document.querySelectorAll<HTMLElement>(".chat-avatar, .char-card-avatar")) {
+    el.textContent = av0;
+}
 
 // 没有存档（新游戏）：时间停在"开工"时段起点，初始化 NPC 世界
 // （刚认识 → 第一次相遇的情境由 currentSchedule 按关系判断，恋人/朋友则从普通的一天开始）

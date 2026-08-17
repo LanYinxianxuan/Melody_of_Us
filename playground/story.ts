@@ -5,6 +5,12 @@ import { aiState, clamp } from "./state";
 import { store, saveState, HistoryEntry } from "./storage";
 import { currentSchedule, currentDayIndex, fmtVirtualTime, isFirstMeeting, proactiveEnabled, setMessageSender, tryProactiveSpeak, tryProactiveSpeakForce } from "./time";
 
+// 角色名注入（chat.ts 注册，避免循环依赖）
+let charNameGetter: (() => string) | null = null;
+export function setStoryCharNameGetter(fn: () => string) {
+    charNameGetter = fn;
+}
+
 // ============ 世界观（通用框架 + 多人应变） ============
 
 export function worldSetting(characterName: string): string {
@@ -317,6 +323,21 @@ export function updateStoryUI() {
     (document.getElementById("story-stage-desc")!).textContent = stage.desc;
     (document.getElementById("story-progress-bar")!).style.width = `${store.storyProgress}%`;
     (document.getElementById("story-progress-val")!).textContent = `${store.storyProgress}%`;
+
+    // 角色卡：名字 + 阶段 + 进度环
+    const nameEl = document.getElementById("panel-char-name");
+    if (nameEl) nameEl.textContent = charNameGetter?.() || "角色";
+    const stageEl = document.getElementById("panel-char-stage");
+    if (stageEl) stageEl.textContent = `${stage.name} · ${stage.desc}`;
+    const ring = document.getElementById("stage-ring") as SVGCircleElement | null;
+    if (ring) {
+        const r = 18;
+        const circ = 2 * Math.PI * r;
+        ring.style.strokeDasharray = String(circ);
+        ring.style.strokeDashoffset = String(circ * (1 - store.storyProgress / 100));
+    }
+    const pctEl = document.getElementById("panel-char-pct");
+    if (pctEl) pctEl.textContent = `${store.storyProgress}%`;
 
     const box = document.getElementById("story-events")!;
     box.innerHTML = "";

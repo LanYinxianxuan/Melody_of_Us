@@ -892,6 +892,265 @@
           #chat-header a { font-size: 11px; }
           #chat-messages { padding: 10px; }
       }
+
+      /* ===== 新 UI 组件：角色卡 / 时间胶囊 / 图标按钮 / 输入胶囊 ===== */
+
+      /* 聊天头部：头像 + 身份 + 图标操作 */
+      #chat-header {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding: 2px 4px 10px;
+          border-bottom: 1px solid var(--line);
+          font-size: 13px;
+          color: var(--ink-soft);
+      }
+      .chat-avatar {
+          width: 42px; height: 42px;
+          border-radius: 50%;
+          background: linear-gradient(140deg, #f8c8d8, #f2a8c0);
+          box-shadow: 0 4px 14px rgba(214, 90, 126, 0.3), inset 0 0 0 2px rgba(255,255,255,0.6);
+          display: flex; align-items: center; justify-content: center;
+          font-size: 22px;
+          flex-shrink: 0;
+      }
+      .chat-identity { flex: 1; min-width: 0; }
+      .chat-name-row { display: flex; align-items: center; gap: 8px; }
+      .chat-name-row #chat-title-text { font-weight: 700; font-size: 15px; color: var(--ink); letter-spacing: 0.5px; }
+      .chat-sub { font-size: 11px; color: var(--ink-faint); margin-top: 1px; }
+      #chat-header .dot { width: 8px; height: 8px; border-radius: 50%; background: #4caf7d; box-shadow: 0 0 8px rgba(76,175,125,0.55); flex-shrink: 0; }
+      #chat-header .dot.busy { background: #e8a13c; box-shadow: 0 0 8px rgba(232,161,60,0.55); }
+      .chat-actions { display: flex; gap: 2px; align-items: center; flex-shrink: 0; }
+      .icon-mini {
+          width: 32px; height: 32px;
+          border: none; background: transparent;
+          border-radius: 10px;
+          font-size: 15px;
+          cursor: pointer;
+          display: flex; align-items: center; justify-content: center;
+          color: var(--ink-soft);
+          text-decoration: none;
+          transition: all 0.2s ease;
+      }
+      .icon-mini:hover { background: var(--accent-soft); transform: translateY(-1px); }
+      .icon-mini:active { transform: scale(0.92); }
+      .icon-mini.active { background: var(--accent); color: #fff; }
+
+      /* 左侧：角色卡 */
+      .char-card {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding: 14px;
+          background: var(--bg);
+          border: 1px solid var(--line);
+          border-radius: var(--radius-md);
+          margin-bottom: 10px;
+      }
+      .char-card-avatar {
+          width: 48px; height: 48px;
+          border-radius: 16px;
+          background: linear-gradient(140deg, #f8c8d8, #f2a8c0);
+          box-shadow: 0 4px 14px rgba(214, 90, 126, 0.25);
+          display: flex; align-items: center; justify-content: center;
+          font-size: 26px;
+          flex-shrink: 0;
+      }
+      .char-card-info { flex: 1; min-width: 0; }
+      .char-card-name { font-size: 15px; font-weight: 700; color: var(--ink); letter-spacing: 0.5px; }
+      .char-card-stage { font-size: 10px; color: var(--ink-faint); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .char-card-ring { position: relative; flex-shrink: 0; }
+      .char-card-pct {
+          position: absolute; inset: 0;
+          display: flex; align-items: center; justify-content: center;
+          font-size: 9px; font-weight: 700; color: var(--accent);
+          font-family: var(--font-num);
+      }
+
+      /* 时间胶囊 */
+      .time-capsule {
+          padding: 14px;
+          background: var(--bg);
+          border: 1px solid var(--line);
+          border-radius: var(--radius-md);
+          margin-bottom: 10px;
+      }
+      .time-capsule-time {
+          font-family: var(--font-num);
+          font-variant-numeric: tabular-nums;
+          font-size: 34px;
+          font-weight: 600;
+          color: var(--ink);
+          letter-spacing: 1px;
+          line-height: 1;
+      }
+      .time-capsule-meta { display: flex; align-items: center; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
+      .tc-label {
+          font-size: 11px; font-weight: 600; color: var(--accent);
+          background: var(--accent-soft);
+          padding: 2px 10px;
+          border-radius: 999px;
+      }
+      .tc-date { font-size: 11px; color: var(--ink-soft); }
+      .tc-day { font-size: 10px; color: var(--ink-faint); }
+      .tc-activity { font-size: 11px; color: var(--ink-soft); margin-top: 8px; line-height: 1.5; }
+      .tc-scene { font-size: 10px; color: var(--accent); margin-top: 4px; line-height: 1.5; }
+      .tc-actions { margin-top: 8px; }
+      .tc-btn {
+          padding: 5px 12px;
+          border: 1px solid var(--line);
+          border-radius: 999px;
+          background: var(--card-strong);
+          color: var(--ink-soft);
+          font-size: 10px;
+          cursor: pointer;
+          transition: all 0.2s;
+      }
+      .tc-btn:hover { color: var(--accent); border-color: var(--accent-line); }
+      .tc-btn-primary { background: var(--accent); color: #fff; border-color: transparent; }
+      .tc-btn-primary:hover { background: var(--accent-deep); color: #fff; }
+      .rate-btn.active { background: var(--accent) !important; color: #fff !important; border-color: transparent !important; font-weight: 600; }
+
+      /* 输入胶囊（悬浮） */
+      #chat-input-row {
+          position: fixed;
+          bottom: 0; left: 0;
+          width: 100%;
+          padding: 14px 16px calc(14px + env(safe-area-inset-bottom));
+          display: flex;
+          justify-content: center;
+          background: linear-gradient(to top, rgba(250,247,244,0.95) 60%, rgba(250,247,244,0));
+          z-index: 5;
+          pointer-events: none;
+      }
+      #chat-input-pill {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          max-width: 900px;
+          width: 100%;
+          padding: 6px 6px 6px 22px;
+          background: var(--card-strong);
+          border: 1px solid rgba(255,255,255,0.8);
+          border-radius: 999px;
+          box-shadow: 0 8px 32px rgba(120, 80, 60, 0.18);
+          pointer-events: auto;
+          transition: box-shadow 0.25s;
+      }
+      #chat-input-pill:focus-within { box-shadow: 0 10px 40px rgba(214, 90, 126, 0.22); }
+      #chat-input {
+          flex: 1;
+          height: 38px;
+          border: none;
+          outline: none;
+          font-size: 15px;
+          background: transparent;
+          color: var(--ink);
+      }
+      #chat-input::placeholder { color: var(--ink-faint); }
+      .icon-btn {
+          width: 44px; height: 44px;
+          border-radius: 50%;
+          border: none;
+          background: var(--accent);
+          box-shadow: var(--shadow-accent);
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          flex-shrink: 0;
+      }
+      .icon-btn:hover { background: var(--accent-deep); transform: scale(1.05); }
+      .icon-btn:active { transform: scale(0.93); }
+      .icon-btn:disabled { opacity: 0.5; transform: none; }
+
+      /* 消息：AI 带头像 */
+      .msg { position: relative; max-width: 78%; padding: 11px 16px; border-radius: 18px; font-size: 15px; line-height: 1.7; white-space: pre-wrap; word-break: break-word; letter-spacing: 0.3px; }
+      .msg.user {
+          align-self: flex-end;
+          background: var(--accent);
+          color: #fff;
+          border-bottom-right-radius: var(--radius-sm);
+          box-shadow: var(--shadow-accent);
+      }
+      .msg.ai {
+          align-self: flex-start;
+          background: var(--card-strong);
+          color: var(--ink);
+          border: 1px solid rgba(255,255,255,0.85);
+          border-bottom-left-radius: var(--radius-sm);
+          box-shadow: 0 3px 14px rgba(120, 80, 60, 0.08);
+          margin-left: 46px;
+      }
+      .msg.ai .msg-avatar {
+          position: absolute;
+          left: -46px;
+          top: 4px;
+          width: 36px; height: 36px;
+          border-radius: 50%;
+          background: linear-gradient(140deg, #f8c8d8, #f2a8c0);
+          box-shadow: 0 3px 10px rgba(214, 90, 126, 0.25);
+          display: flex; align-items: center; justify-content: center;
+          font-size: 18px;
+      }
+      .msg.npc-msg {
+          align-self: flex-start;
+          background: rgba(214, 90, 126, 0.08);
+          color: var(--ink);
+          border: 1px solid var(--accent-line);
+          border-bottom-left-radius: var(--radius-sm);
+          margin-left: 46px;
+      }
+      .msg.npc-msg .msg-avatar {
+          position: absolute;
+          left: -46px;
+          top: 4px;
+          width: 36px; height: 36px;
+          border-radius: 50%;
+          background: linear-gradient(140deg, #d8ccf5, #c4b5f0);
+          box-shadow: 0 3px 10px rgba(140, 110, 200, 0.22);
+          display: flex; align-items: center; justify-content: center;
+          font-size: 18px;
+      }
+
+      /* 系统提示消息（隐藏头像，居中弱化） */
+      .msg.sys { align-self: center; background: transparent; border: 1px dashed var(--line); color: var(--ink-faint); font-size: 12px; box-shadow: none; padding: 6px 16px; max-width: 92%; }
+      .msg.sys .msg-avatar { display: none; }
+      .msg.sys { margin-left: 0; }
+
+      /* 系统事件：居中胶囊 */
+      .story-line {
+          align-self: center;
+          font-size: 11px;
+          color: var(--ink-soft);
+          text-align: center;
+          max-width: 90%;
+          padding: 5px 18px;
+          background: var(--bg);
+          border: 1px solid var(--line);
+          border-radius: 999px;
+          line-height: 1.6;
+          font-style: italic;
+      }
+
+      /* 日程：竖向时间线 */
+      .agenda-item {
+          display: flex;
+          align-items: baseline;
+          gap: 8px;
+          font-size: 11px;
+          padding: 4px 8px;
+          border-radius: 8px;
+          background: transparent;
+          border-left: 2px solid var(--line);
+          color: var(--ink);
+          opacity: 0.8;
+      }
+      .agenda-item.active { border-left-color: var(--accent); background: var(--accent-soft); opacity: 1; font-weight: 600; }
+      .agenda-item.done { opacity: 0.4; border-left-color: #34d399; }
+      .agenda-item .agenda-time { font-family: var(--font-num); font-variant-numeric: tabular-nums; font-size: 10px; color: var(--ink-faint); flex-shrink: 0; }
+
   </style>
 </head>
 <body>
@@ -963,21 +1222,34 @@
 
 <!-- 左侧情感状态面板 -->
 <div id="state-panel">
-  <h1>🧠 38 维情感体系</h1>
-  <div class="hint">五层：人格（底色）→ 关系（积累）→ 情绪（波动）→ 状态（漂移）→ 阴影（潜伏）。</div>
-
-  <!-- 她的生活：时间 + 正在做的事 -->
-  <div class="clock-card">
-    <div class="clock-row">
-      <span id="clock-label" style="color:var(--gold);">早晨</span>
-      <span id="clock-time" style="color:var(--ink);font-family:Consolas,monospace;">07:30</span>
-      <span id="clock-day" style="color:var(--ink-soft);font-size:10px;">第 1 天</span>
+  <!-- 角色卡 -->
+  <div class="char-card">
+    <div class="char-card-avatar" id="panel-avatar">🎀</div>
+    <div class="char-card-info">
+      <div class="char-card-name" id="panel-char-name">角色</div>
+      <div class="char-card-stage" id="panel-char-stage">初识 · 开始你们的故事</div>
     </div>
-    <div id="clock-date" style="font-size:11px;color:var(--accent-3);margin-top:3px;">9月12日 周五</div>
-    <div id="clock-activity" style="font-size:10px;color:var(--ink-soft);margin-top:3px;">在上学路上</div>
-    <div id="clock-scene" style="font-size:10px;color:#ffb86b;margin-top:4px;line-height:1.5;">📍 你们在……</div>
-    <div style="margin-top:6px;display:flex;gap:4px;align-items:center;">
-      <button id="clock-more" style="flex:1;padding:4px 0;border:1px solid rgba(255,255,255,0.22);border-radius:6px;background:var(--card);color:var(--accent);font-size:10px;cursor:pointer;border:1px solid var(--line);">⏱ 调整时间 / 倍率</button>
+    <div class="char-card-ring">
+      <svg viewBox="0 0 44 44" width="44" height="44">
+        <circle cx="22" cy="22" r="18" fill="none" stroke="var(--accent-soft)" stroke-width="4"/>
+        <circle id="stage-ring" cx="22" cy="22" r="18" fill="none" stroke="var(--accent)" stroke-width="4" stroke-linecap="round" stroke-dasharray="113" stroke-dashoffset="113" transform="rotate(-90 22 22)"/>
+      </svg>
+      <span class="char-card-pct" id="panel-char-pct">0%</span>
+    </div>
+  </div>
+
+  <!-- 时间胶囊 -->
+  <div class="time-capsule">
+    <div class="time-capsule-time" id="clock-time">07:30</div>
+    <div class="time-capsule-meta">
+      <span id="clock-label" class="tc-label">早晨</span>
+      <span id="clock-date" class="tc-date">9月12日 周五</span>
+      <span id="clock-day" class="tc-day">第 1 天</span>
+    </div>
+    <div id="clock-activity" class="tc-activity">在上学路上</div>
+    <div id="clock-scene" class="tc-scene">📍 你们在……</div>
+    <div class="tc-actions">
+      <button id="clock-more" class="tc-btn">⏱ 调整时间 / 倍率</button>
     </div>
     <div id="clock-detail" style="display:none;">
       <div class="rate-row" style="margin-top:7px;display:flex;gap:4px;flex-wrap:wrap;">
@@ -990,18 +1262,18 @@
       </div>
       <div style="margin-top:4px;display:flex;gap:4px;align-items:center;">
         <input id="rate-custom" type="number" min="0.01" max="100000" step="0.5" placeholder="自定义倍率(0.01~100000)"
-          style="flex:1;min-width:0;padding:4px 8px;border:1px solid rgba(255,255,255,0.25);border-radius:6px;background:var(--card);color:var(--ink);font-size:10px;outline:none;border:1px solid var(--line);">
-        <button id="rate-set" style="padding:4px 10px;border:1px solid rgba(255,255,255,0.3);border-radius:6px;background:var(--accent);color:#fff;font-size:10px;cursor:pointer;border:none;">设定</button>
+          style="flex:1;min-width:0;padding:4px 8px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink);font-size:10px;outline:none;">
+        <button id="rate-set" class="tc-btn tc-btn-primary">设定</button>
       </div>
       <div style="margin-top:4px;display:flex;gap:4px;align-items:center;">
-        <input id="day-input" type="number" min="1" placeholder="第几天" style="flex:1;min-width:0;padding:4px 8px;border:1px solid rgba(255,255,255,0.25);border-radius:6px;background:var(--card);color:var(--ink);font-size:10px;outline:none;border:1px solid var(--line);">
-        <input id="time-input" type="time" value="07:30" style="flex:1;min-width:0;padding:4px 6px;border:1px solid rgba(255,255,255,0.25);border-radius:6px;background:var(--card);color:var(--ink);font-size:10px;outline:none;border:1px solid var(--line);">
-        <button id="time-set" style="padding:4px 10px;border:1px solid rgba(250,216,49,0.5);border-radius:6px;background:rgba(250,216,49,0.15);color:#fad831;font-size:10px;cursor:pointer;">跳转</button>
-        <button id="today-btn" style="padding:4px 10px;border:1px solid rgba(255,255,255,0.3);border-radius:6px;background:var(--accent-soft);color:var(--accent);font-size:10px;cursor:pointer;border:1px solid var(--accent-line);">今天</button>
+        <input id="day-input" type="number" min="1" placeholder="第几天" style="flex:1;min-width:0;padding:4px 8px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink);font-size:10px;outline:none;">
+        <input id="time-input" type="time" value="07:30" style="flex:1;min-width:0;padding:4px 6px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink);font-size:10px;outline:none;">
+        <button id="time-set" class="tc-btn">跳转</button>
+        <button id="today-btn" class="tc-btn">今天</button>
       </div>
       <div style="margin-top:4px;display:flex;gap:4px;align-items:center;">
-        <input id="date-input" type="date" style="flex:1;min-width:0;padding:4px 8px;border:1px solid rgba(255,255,255,0.25);border-radius:6px;background:var(--card);color:var(--ink);font-size:10px;outline:none;border:1px solid var(--line);color-scheme:dark;">
-        <button id="date-set" style="padding:4px 10px;border:1px solid rgba(156,203,255,0.5);border-radius:6px;background:rgba(156,203,255,0.15);color:#9ecbff;font-size:10px;cursor:pointer;">设为第1天</button>
+        <input id="date-input" type="date" style="flex:1;min-width:0;padding:4px 8px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink);font-size:10px;outline:none;">
+        <button id="date-set" class="tc-btn">设为第1天</button>
       </div>
     </div>
   </div>
@@ -1069,27 +1341,37 @@
 <!-- 聊天区 -->
 <div id="chat-wrap" class="panel-open">
   <div id="chat-header">
-    <div class="dot" id="status-dot"></div>
-    <span id="chat-title-text">情感 AI · 准备就绪</span>
-    <button id="npc-toggle" class="mini-btn" title="支线 NPC 动态介入（默认关闭）">👥 多人:关</button>
-    <button id="history-btn" class="mini-btn">📜 记录</button>
-    <button id="char-btn" class="mini-btn">👤 角色</button>
-    <button id="demo-btn" class="mini-btn">🎭 演示</button>
-    <button id="reset-state" class="mini-btn">↺ 重置</button>
-    <a href="./menu.html">☰ 菜单</a>
+    <div class="chat-avatar" id="chat-avatar">🎀</div>
+    <div class="chat-identity">
+      <div class="chat-name-row">
+        <span id="chat-title-text">情感 AI</span>
+        <span class="dot" id="status-dot"></span>
+      </div>
+      <div class="chat-sub" id="chat-subtitle">准备就绪</div>
+    </div>
+    <div class="chat-actions">
+      <button id="npc-toggle" class="icon-mini" title="支线 NPC 动态介入（默认关闭）">👥</button>
+      <button id="history-btn" class="icon-mini" title="聊天记录">📜</button>
+      <button id="char-btn" class="icon-mini" title="角色设定">👤</button>
+      <button id="demo-btn" class="icon-mini" title="演示模式">🎭</button>
+      <button id="reset-state" class="icon-mini" title="重置">↺</button>
+      <a href="./menu.html" class="icon-mini" title="菜单">☰</a>
+    </div>
   </div>
 
   <div id="chat-messages"></div>
 </div>
 
-<!-- 底部输入栏 -->
+<!-- 底部输入栏：悬浮胶囊 -->
 <div id="chat-input-row">
-  <input id="chat-input" type="text" placeholder="说点什么…（动作和话可以一起：如「我抱住她，说：想你」）">
-  <button id="chat-send" class="icon-btn">
-    <svg viewBox="0 0 1024 1024" width="22" height="22">
-      <path d="M925.6 559.2L152 145.6c-11.2-5.6-24.8 3.2-23.2 15.2l60 714.4c0.8 11.2 12 17.6 22.4 13.6L460.8 784l136.8 155.2c8.8 9.6 24 5.6 27.2-6.4l65.6-245.6 235.2-99.2c11.2-5.6 12-22.4 0-28.8z" fill="#ffffff"/>
-    </svg>
-  </button>
+  <div id="chat-input-pill">
+    <input id="chat-input" type="text" placeholder="说点什么…（动作和话可以一起：如「我抱住她，说：想你」）">
+    <button id="chat-send" class="icon-btn">
+      <svg viewBox="0 0 1024 1024" width="20" height="20">
+        <path d="M925.6 559.2L152 145.6c-11.2-5.6-24.8 3.2-23.2 15.2l60 714.4c0.8 11.2 12 17.6 22.4 13.6L460.8 784l136.8 155.2c8.8 9.6 24 5.6 27.2-6.4l65.6-245.6 235.2-99.2c11.2-5.6 12-22.4 0-28.8z" fill="#ffffff"/>
+      </svg>
+    </button>
+  </div>
 </div>
 
 <script type="module" src="./chat.ts"></script>
