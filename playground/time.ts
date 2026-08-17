@@ -54,6 +54,11 @@ let clockTimer = 0;
 
 export let proactiveEnabled = true;
 
+// 控制"主动开口"开关（新存档初始化/向导期间静默，避免角色抢话）
+export function setProactiveEnabled(v: boolean) {
+    proactiveEnabled = v;
+}
+
 // 外部回调（chat.ts 注册）
 let slotChangeHandler: (() => void) | null = null;
 let dayChangeHandler: ((oldDay: number) => void) | null = null;
@@ -250,6 +255,7 @@ export function fmtVirtualDate(): string {
 export function setTimeRate(rate: number) {
     store.timeRate = Math.max(RATE_MIN, Math.min(RATE_MAX, rate));
     saveState();
+    updateScheduleUI(); // 刷新倍率按钮 active 状态 + 时间显示
 }
 
 export function setVirtualTime(day: number, hhmm: string) {
@@ -310,6 +316,9 @@ export function tickClock() {
         slotChangeHandler?.();
     }
 
+    // 每秒刷新时间显示（虚拟时间随时在走，UI 必须跟着走）
+    updateScheduleUI();
+
     randomMomentHook?.();
 }
 
@@ -326,11 +335,34 @@ export function updateScheduleUI() {
     (document.getElementById("clock-label")!).textContent = slot.label;
     (document.getElementById("clock-activity")!).textContent = slot.activity;
     (document.getElementById("clock-day")!).textContent = `第 ${currentDayIndex()} 天`;
+    // 当前场景（具体地点 + 环境），供左侧面板显示
+    const sceneEl = document.getElementById("clock-scene");
+    if (sceneEl) sceneEl.textContent = `📍 ${sceneShort()}`;
 
     for (const btn of document.querySelectorAll<HTMLElement>(".rate-btn")) {
         const rate = parseFloat(btn.dataset.rate!);
         btn.classList.toggle("active", rate === store.timeRate);
     }
+}
+
+// 当前场景的精简描述（左侧面板"📍"行）：地点 + 周围环境
+export function sceneShort(): string {
+    const label = currentSchedule().label;
+    const s: SceneConfig = store.scene;
+    const act = currentSchedule().activity.replace(/^你/, "她").replace(/^正在/, "");
+
+    if (label === "深夜") return `她住的地方 · 卧室，夜很安静，她刚睡着`;
+    if (label === "清晨") return `她住的地方 · 清晨的光，刚醒`;
+    if (label === "出门") return `去${s.place}的路上，并排走着`;
+    if (label === "开工") return `${s.place} · 刚到，准备开始今天`;
+    if (label === s.busyLabel) return `${s.place} · ${act}，周围有${s.others}`;
+    if (label === s.restLabel) return `${s.place} · 休息时间，${s.others}来来往往`;
+    if (label === "午休") return `${s.place} · 休息吃饭，午后的阳光`;
+    if (label === "收工") return `${s.place} · 忙完了，周围安静下来`;
+    if (label === "傍晚") return `回家的路上 · 街上亮起灯`;
+    if (label === "晚上") return `她住的地方 · 只有你们两个人`;
+    if (label === "睡前") return `她住的地方 · 灯调暗了，轻声说话`;
+    return `${s.place} · ${act}`;
 }
 
 // 时段切换：她可能主动开口（由手头的事引发）

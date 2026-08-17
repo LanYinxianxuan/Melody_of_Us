@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <meta name="theme-color" content="#1e1e2e">
+  <meta name="theme-color" content="#c084fc">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="manifest" href="./manifest.webmanifest">
@@ -11,6 +11,19 @@
   <title>菜单 · MeloAI</title>
   <style>
       * { box-sizing: border-box; margin: 0; padding: 0; }
+
+      :root {
+          --accent: #c084fc;
+          --accent-2: #f472b6;
+          --ink: #3b2a5a;
+          --ink-soft: #6b5f8e;
+          --card: rgba(255, 255, 255, 0.82);
+          --card-strong: rgba(255, 255, 255, 0.94);
+          --line: rgba(139, 92, 246, 0.16);
+          --grad: linear-gradient(135deg, #c084fc 0%, #f472b6 100%);
+          --shadow: 0 8px 32px rgba(120, 80, 180, 0.14);
+          --radius: 18px;
+      }
 
       body {
           min-height: 100vh;
@@ -21,7 +34,8 @@
           background-size: cover;
           background-position: center;
           background-attachment: fixed;
-          font-family: "微软雅黑", "PingFang SC", sans-serif;
+          font-family: "PingFang SC", "HarmonyOS Sans SC", "微软雅黑", "Noto Sans SC", sans-serif;
+          color: var(--ink);
           padding: 30px 0;
       }
 
@@ -29,8 +43,11 @@
           content: "";
           position: fixed;
           inset: 0;
-          background: linear-gradient(to bottom right, rgba(10, 10, 18, 0.6), rgba(25, 12, 40, 0.6));
-          backdrop-filter: blur(4px);
+          background:
+              radial-gradient(1200px 600px at 20% -10%, rgba(192, 132, 252, 0.28), transparent 60%),
+              radial-gradient(1000px 500px at 100% 110%, rgba(244, 114, 182, 0.22), transparent 60%),
+              linear-gradient(to bottom right, rgba(255, 255, 255, 0.62), rgba(240, 230, 255, 0.72));
+          backdrop-filter: blur(6px);
           z-index: -1;
       }
 
@@ -43,16 +60,16 @@
 
       .card {
           padding: 22px 26px;
-          background: rgba(255, 255, 255, 0.1);
-          border: 1px solid rgba(255, 255, 255, 0.22);
-          border-radius: 20px;
-          box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
-          backdrop-filter: blur(10px);
-          -webkit-backdrop-filter: blur(10px);
+          background: var(--card);
+          border: 1px solid var(--line);
+          border-radius: 24px;
+          box-shadow: var(--shadow);
+          backdrop-filter: blur(20px) saturate(1.4);
+          -webkit-backdrop-filter: blur(20px) saturate(1.4);
       }
 
       .card-title {
-          color: #e8d5ff;
+          color: var(--accent);
           font-size: 13px;
           letter-spacing: 2px;
           margin-bottom: 14px;
@@ -65,26 +82,26 @@
           content: "";
           flex: 1;
           height: 1px;
-          background: linear-gradient(to right, rgba(255,255,255,0.3), transparent);
+          background: linear-gradient(to right, var(--line), transparent);
       }
 
       /* 存档摘要 */
-      #save-summary { color: rgba(255,255,255,0.85); font-size: 13px; line-height: 1.9; }
-      #save-summary b { color: #ffd08a; }
+      #save-summary { color: var(--ink); font-size: 13px; line-height: 1.9; }
+      #save-summary b { color: var(--accent-2); }
 
       /* 存档卡列表 */
       .save-card {
           padding: 12px 16px;
           border-radius: 14px;
-          border: 1px solid rgba(255,255,255,0.18);
-          background: rgba(255,255,255,0.07);
+          border: 1px solid var(--line);
+          background: var(--card);
           cursor: pointer;
           transition: background 0.2s, border-color 0.2s;
       }
 
-      .save-card:hover { background: rgba(255,255,255,0.13); border-color: rgba(250,216,49,0.5); }
+      .save-card:hover { background: var(--card-strong); border-color: var(--accent); box-shadow: var(--shadow); }
 
-      .save-card.active { border-color: #fad831; background: rgba(250,216,49,0.08); }
+      .save-card.active { border-color: var(--accent); background: var(--grad-soft, rgba(192,132,252,0.1)); }
 
       .save-card .s-head {
           display: flex;
@@ -93,12 +110,12 @@
           margin-bottom: 6px;
       }
 
-      .save-card .s-name { color: #fad831; font-size: 14px; font-weight: 600; }
-      .save-card .s-tag { color: rgba(255,255,255,0.5); font-size: 10px; }
+      .save-card .s-name { color: var(--accent); font-size: 14px; font-weight: 600; }
+      .save-card .s-tag { color: var(--ink-soft); font-size: 10px; }
 
-      .save-card .s-info { color: rgba(255,255,255,0.75); font-size: 12px; line-height: 1.7; }
-      .save-card .s-empty { color: rgba(255,255,255,0.4); font-size: 12px; }
-      .save-card .s-go { color: #7fdca0; font-size: 11px; margin-top: 6px; }
+      .save-card .s-info { color: var(--ink); font-size: 12px; line-height: 1.7; }
+      .save-card .s-empty { color: var(--ink-soft); font-size: 12px; }
+      .save-card .s-go { color: #34d399; font-size: 11px; margin-top: 6px; }
       .save-card .s-del {
           padding: 3px 10px;
           border-radius: 999px;
@@ -118,12 +135,12 @@
           text-align: center;
           font-size: 15px;
           letter-spacing: 3px;
-          color: #4a2c00;
+          color: #fff;
           border-radius: 999px;
           border: none;
           cursor: pointer;
           text-decoration: none;
-          background: linear-gradient(to right, #fad831, #eba345);
+          background: var(--grad);
           box-shadow: 0 8px 22px rgba(235, 163, 69, 0.3);
           transition: transform 0.2s;
       }
@@ -131,43 +148,43 @@
       .btn:hover { transform: translateY(-2px) scale(1.02); }
 
       .btn.ghost {
-          background: rgba(255, 255, 255, 0.15);
-          color: #fff;
+          background: var(--card);
+          color: var(--ink-soft);
           box-shadow: none;
-          border: 1px solid rgba(255,255,255,0.3);
+          border: 1px solid var(--line);
       }
 
-      .btn.ghost:hover { background: rgba(255, 255, 255, 0.25); }
+      .btn.ghost:hover { background: var(--grad-soft, rgba(192,132,252,0.12)); color: var(--accent); }
 
       /* 设置 */
       .setting { margin-bottom: 10px; }
-      .setting label { display: block; color: rgba(255,255,255,0.6); font-size: 11px; margin-bottom: 5px; letter-spacing: 1px; }
+      .setting label { display: block; color: var(--ink-soft); font-size: 11px; margin-bottom: 5px; letter-spacing: 1px; }
       .setting input, .setting select {
           width: 100%;
           padding: 10px 14px;
-          border: 1px solid rgba(255,255,255,0.2);
-          border-radius: 10px;
-          background: rgba(255, 255, 255, 0.12);
-          color: #fff;
+          border: 1px solid var(--line);
+          border-radius: 12px;
+          background: var(--card);
+          color: var(--ink);
           font-size: 13px;
           outline: none;
       }
       .setting select option { color: #333; }
-      #save-hint { color: #9ff0b8; font-size: 11px; margin-top: 8px; display: none; }
+      #save-hint { color: #34d399; font-size: 11px; margin-top: 8px; display: none; }
 
       .back {
-          color: rgba(255,255,255,0.6);
+          color: var(--ink-soft);
           font-size: 13px;
           text-decoration: none;
           align-self: flex-start;
           letter-spacing: 1px;
           padding: 6px 14px;
           border-radius: 999px;
-          border: 1px solid rgba(255,255,255,0.2);
-          background: rgba(255,255,255,0.08);
-          transition: background 0.2s, color 0.2s;
+          border: 1px solid var(--line);
+          background: var(--card);
+          transition: all 0.2s;
       }
-      .back:hover { background: rgba(255,255,255,0.18); color: #fff; }
+      .back:hover { background: var(--grad-soft, rgba(192,132,252,0.12)); color: var(--accent); }
 
       /* ===== 移动端适配 ===== */
       @media (max-width: 767px) {

@@ -3,7 +3,7 @@
 
 import { aiState, clamp } from "./state";
 import { store, saveState, HistoryEntry } from "./storage";
-import { currentSchedule, currentDayIndex, fmtVirtualTime, isFirstMeeting, setMessageSender, tryProactiveSpeak, tryProactiveSpeakForce } from "./time";
+import { currentSchedule, currentDayIndex, fmtVirtualTime, isFirstMeeting, proactiveEnabled, setMessageSender, tryProactiveSpeak, tryProactiveSpeakForce } from "./time";
 
 // ============ 世界观（通用框架 + 多人应变） ============
 
@@ -178,10 +178,22 @@ function liveSituationText(): string {
 
 export function maybeRandomMoment() {
     if (userIsTyping()) return;
+    // 静默期（新存档/向导期间）：不随机开口，避免角色抢话
+    if (!proactiveEnabled) return;
 
-    // 先检查"被冷落"：用户很久没回复时，触发情感反应（强制通道，突破等待）
-    const neglect = neglectLevel();
-    if (neglect.level > 0 && triggerNeglectReaction(neglect)) return;
+    // 新存档保护期：刚创建（还没聊过任何一轮）不触发"被冷落"
+    // （避免创建完成就被说"你为什么不回我"）
+    if (store.turnCount === 0) {
+        // 但仍允许真实的主动开口（打招呼/分享）——只是不触发被冷落
+        if (neglectLevel().level > 0) {
+            store.lastReplyRealAt = Date.now();
+            store.lastReplyVirtualAt = store.virtualMs;
+        }
+    } else {
+        // 先检查"被冷落"：用户很久没回复时，触发情感反应（强制通道，突破等待）
+        const neglect = neglectLevel();
+        if (neglect.level > 0 && triggerNeglectReaction(neglect)) return;
+    }
 
     if (currentSchedule().label === "深夜") return;
 

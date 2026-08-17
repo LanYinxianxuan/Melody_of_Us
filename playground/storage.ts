@@ -15,6 +15,10 @@ export const currentSlot = Math.max(
 
 if (slotParams.get("new") === "1") {
     localStorage.removeItem(`melai-state-${currentSlot}`);
+    // 清空后立即从 URL 移除 new=1，防止刷新页面再次清空存档
+    const url = new URL(location.href);
+    url.searchParams.delete("new");
+    history.replaceState(null, "", url.toString());
 }
 
 localStorage.setItem("melai-current-slot", String(currentSlot));
@@ -50,6 +54,21 @@ export interface HistoryEntry {
 export interface DayJournal {
     day: number;
     summary: string;
+}
+
+// 日程事件：AI 规划的一天流程 / 对话中用户创建的事件
+export interface AgendaItem {
+    time: string;         // "HH:MM" 虚拟时间起点
+    title: string;        // 事件标题（如"上午第一节课"）
+    desc?: string;        // 事件描述
+    status: "todo" | "active" | "done"; // 待进行/进行中/已完成
+    source: "ai" | "user"; // AI 规划 / 用户在对话中创建
+}
+
+// 一天的日程（按天分组；day=第几天）
+export interface AgendaDay {
+    day: number;
+    items: AgendaItem[];
 }
 
 // 场景配置：角色创建向导时询问"你们在哪里生活/她平时做什么"
@@ -103,6 +122,8 @@ export const store = {
     npcEnabled: false,
     // 场景配置（创建角色时询问；默认校园兼容旧存档）
     scene: { ...DEFAULT_SCENE } as SceneConfig,
+    // 日程时间线（AI 规划的一天流程 + 对话中用户创建的事件）
+    agenda: [] as AgendaDay[],
     // 用户当前方位（家 / 学校 / 路上 / 打工处）——决定面对面还是手机聊天
     userLocation: "家",
     // 深夜发出去、她睡着没看到的消息（等她醒来再送达）
@@ -189,6 +210,10 @@ export function loadState(): boolean {
             ? data.userLocation
             : "家";
         store.pendingOvernight = Array.isArray(data.pendingOvernight) ? data.pendingOvernight : [];
+        // 日程时间线：旧存档没有 → 空数组（首次跨天时由 AI 生成当天日程）
+        store.agenda = Array.isArray(data.agenda)
+            ? data.agenda.map((d: any) => ({ day: d?.day ?? 1, items: Array.isArray(d?.items) ? d.items : [] }))
+            : [];
 
         return true;
     } catch {

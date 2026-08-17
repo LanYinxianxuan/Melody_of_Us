@@ -44,7 +44,7 @@ function renderSaves() {
                   </span>
                 </div>
                 <div class="s-info">
-                  好感 <b style="color:#ffd08a;">${aff}/100</b> ｜ ${moodLine(s)} ｜ 对话 ${save.turnCount ?? 0} 轮 ｜ 剧情 ${save.storyProgress ?? 0}%
+                  好感 <b style="color:#f472b6;">${aff}/100</b> ｜ ${moodLine(s)} ｜ 对话 ${save.turnCount ?? 0} 轮 ｜ 剧情 ${save.storyProgress ?? 0}%
                   <br><span style="color:rgba(255,255,255,0.4);">${fmtTime((save.savedAt as number) ?? Date.now())}</span>
                 </div>
                 <div class="s-go">▶ 继续这个存档</div>`;

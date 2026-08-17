@@ -80,7 +80,8 @@ export function initStateForRelation(relation: string): void {
     resetState();
     const rel = relation.toLowerCase();
 
-    if (/恋人|女朋友|男朋友|对象|老婆|老公|结婚|已婚/.test(rel)) {
+    // 恋人 / 最爱 / 热恋 / 在一起很久
+    if (/恋人|女朋友|男朋友|对象|老婆|老公|结婚|已婚|热恋|最爱的人|喜欢的人|在一起很久|相恋|恋爱|我们的爱/.test(rel)) {
         // 恋人：高好感/信任/亲密
         aiState.affection = 78;
         aiState.trust = 68;
@@ -101,12 +102,32 @@ export function initStateForRelation(relation: string): void {
         aiState.dependence = 25;
         return;
     }
+    // 最亲近 / 最重要 / 唯一认真听她说话 → 高度亲密（但未必恋人）
+    if (/最亲近|最重要|最在乎|唯一|最依赖|心里最重要/.test(rel)) {
+        aiState.affection = 62;
+        aiState.trust = 60;
+        aiState.intimacy = 42;
+        aiState.familiarity = 72;
+        aiState.loyalty = 52;
+        aiState.dependence = 30;
+        return;
+    }
     if (/最好的朋友|挚友|好朋友|闺蜜|死党/.test(rel)) {
         aiState.affection = 45;
         aiState.trust = 50;
         aiState.intimacy = 20;
         aiState.familiarity = 60;
         aiState.loyalty = 40;
+        return;
+    }
+    // 常客 / 熟人 / 被照顾 / 同事：认识但不深，对方主动（店主对常客、护士对病人、助理对上司、同事）
+    // 排除"刚认识/初识/陌生"（那些保持陌生人基线）
+    if (/常客|熟客|熟|认识|照顾|病人|助理|下属|同事|乐迷|观众|读者/.test(rel) && !/刚认识|初识|陌生|刚见面|不了解/.test(rel)) {
+        aiState.affection = 32;
+        aiState.trust = 28;
+        aiState.intimacy = 8;
+        aiState.familiarity = 30;
+        aiState.loyalty = 15;
         return;
     }
     if (/朋友/.test(rel)) {

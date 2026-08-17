@@ -35,6 +35,7 @@ import {
     setDayChangeHandler,
     setMessageSender as setTimeMessageSender,
     setRelationGetter,
+    setProactiveEnabled,
     setRandomMomentHook,
     herLocation,
 } from "./time";
@@ -52,6 +53,15 @@ import {
 } from "./story";
 import { chatWithDeepSeek, demoReply, setCharacterGetter, SYSTEM_PROMPT, type ChatResult } from "./ai";
 import { npcContext, npcSpeak } from "./ai";
+import {
+    applyAgendaFromAI,
+    tickAgenda,
+    renderAgendaUI,
+    planTodayAgenda,
+    todayHasNoAgenda,
+    agendaContext,
+    setAgendaCharacterGetter,
+} from "./agenda";
 import {
     detectTrigger,
     callDirector,
@@ -274,8 +284,36 @@ function setBusyState(b: boolean) {
 // ============ 聊天流程 ============
 
 let demoMode = false;
+
+// 每轮对话的检查点（每条主角回复一个，重答按钮定位用）
+interface RedoCheckpoint {
+    domStart: Node | null;                       // 该轮开始前的最后一个消息节点
+    userText: string;                            // 该轮用户输入（重答时重发）
+    aiStateSnap: Record<string, number | undefined>; // 情感快照
+    historyLen: number;                          // 聊天历史长度
+    storyLen: number;                            // 剧情事件数
+    memLen: number;                              // 记忆数
+    thread: string | null;                       // 剧情线
+    agendaSnap: typeof store.agenda;             // 日程快照
+}
+let turnCheckpoints: RedoCheckpoint[] = [];
+
 async function sendMessage(text: string, opts?: { proactive?: boolean }): Promise<ChatResult | null> {
     const proactive = opts?.proactive ?? false;
+
+    // 记录本轮检查点（每条主角回复一个，重答时回滚到该轮之前）
+    const container = document.getElementById("chat-messages")!;
+    const cpIdx = turnCheckpoints.length;
+    turnCheckpoints.push({
+        domStart: container.lastChild,
+        userText: proactive ? "（她主动找你说话）" : text,
+        aiStateSnap: { ...aiState },
+        historyLen: store.chatHistory.length,
+        storyLen: store.storyEvents.length,
+        memLen: store.memories.length,
+        thread: store.activeThread,
+        agendaSnap: JSON.parse(JSON.stringify(store.agenda)),
+    });
 
     if (!proactive) {
         bumpTurnsSinceEvent();
@@ -339,6 +377,10 @@ async function sendMessage(text: string, opts?: { proactive?: boolean }): Promis
 
         updateStoryUI();
 
+        // 日程：对话中产生了新约定 → 加入时间线
+        applyAgendaFromAI(result.agenda);
+        renderAgendaUI();
+
         // 写入聊天历史（AI 的记忆）
         if (proactive) {
             // 她主动开口：历史里 user 侧用说明性占位，避免 AI 把情境指令当用户的话
@@ -375,6 +417,9 @@ async function sendMessage(text: string, opts?: { proactive?: boolean }): Promis
         if (proactive) {
             msgEl.classList.add("proactive");
         }
+
+        // 消息旁的重答按钮（定位到本轮检查点）
+        addReanswerBtn(msgEl, cpIdx);
 
         typeReply(msgEl, result);
         attachTimeStamp(msgEl);
@@ -417,9 +462,61 @@ async function handleSend() {
     sendBtn.disabled = true;
 
     try {
+        // 动作和话一起发出（如"我抱住她，说：想你"）→ 原文直发，
+        // AI 自行区分哪些是动作、哪些是语言（见 SYSTEM_PROMPT）
         await sendMessage(text);
     } finally {
         sendBtn.disabled = false;
+    }
+}
+
+// 重新回答：回滚到上一轮开始前（删除旧回复，只保留新回复），再重新生成
+// 消息旁"重答"按钮：点击回滚到该条回复之前，重新生成
+function addReanswerBtn(msgEl: HTMLElement, cpIdx: number) {
+    const btn = document.createElement("button");
+    btn.className = "msg-reanswer";
+    btn.textContent = "↺";
+    btn.title = "重新回答这条（之后的内容也会重来）";
+    btn.addEventListener("click", () => void reAnswerAt(cpIdx));
+    msgEl.appendChild(btn);
+}
+
+// 重答指定轮：回滚到该轮开始前（删除该条回复及其后所有内容），再重新生成
+async function reAnswerAt(cpIdx: number) {
+    if (busy) return;
+    if (cpIdx < 0 || cpIdx >= turnCheckpoints.length) return;
+    const cp = turnCheckpoints[cpIdx];
+    if (!cp) return;
+
+    // 1. 删除该轮之后的所有 DOM（该回复、之后的剧情旁白/NPC消息…）
+    const container = document.getElementById("chat-messages")!;
+    let node = cp.domStart ? cp.domStart.nextSibling : container.firstChild;
+    while (node) {
+        const next = node.nextSibling;
+        node.remove();
+        node = next;
+    }
+
+    // 2. 回滚状态（情感/历史/事件/记忆/剧情线/日程）到该轮开始前
+    Object.assign(aiState, cp.aiStateSnap);
+    store.chatHistory.length = cp.historyLen;
+    store.storyEvents.length = cp.storyLen;
+    store.memories.length = cp.memLen;
+    store.activeThread = cp.thread;
+    store.agenda = JSON.parse(JSON.stringify(cp.agendaSnap));
+    updateStateUI();
+    updateStoryUI();
+    renderAgendaUI();
+
+    // 3. 丢弃该轮及其后的检查点（之后 sendMessage 会重推）
+    turnCheckpoints.length = cpIdx;
+
+    // 4. 重新生成
+    setBusyState(true);
+    try {
+        await sendMessage(cp.userText);
+    } finally {
+        setBusyState(false);
     }
 }
 
@@ -728,6 +825,8 @@ async function mainReplyToNpc(npc: { profile: { name: string; id: string } }, np
         // 渲染主角回复（标记为回应 NPC）
         const msgEl = appendMessage("ai");
         msgEl.classList.add("proactive");
+        // 主角回应 NPC：回滚到该轮检查点（NPC 介入轮）
+        addReanswerBtn(msgEl, turnCheckpoints.length - 1);
         typeReply(msgEl, result);
         attachTimeStamp(msgEl);
     } catch (e) {
@@ -987,9 +1086,41 @@ document.getElementById("history-clear")!.addEventListener("click", () => {
 
 // 角色弹层
 document.getElementById("char-btn")!.addEventListener("click", () => {
+    // 动态填充预设下拉（含所有预设 + 自定义）
+    const presetSel = document.getElementById("char-preset") as HTMLSelectElement;
+    if (presetSel) {
+        // 每次重建，保证选项最新
+        presetSel.innerHTML = "";
+        const customOpt = document.createElement("option");
+        customOpt.value = "";
+        customOpt.style.color = "#333";
+        customOpt.textContent = "🎨 自定义（非预设）";
+        presetSel.appendChild(customOpt);
+        for (const [key, p] of Object.entries(PRESETS)) {
+            const o = document.createElement("option");
+            o.value = key;
+            o.style.color = "#333";
+            o.textContent = `${p.name}${p.scene ? ` · ${p.scene.name}` : ""}`;
+            presetSel.appendChild(o);
+        }
+        // 按当前角色匹配预设（名字+背景一致才算匹配）
+        presetSel.value = matchCurrentPreset();
+    }
     fillCharForm();
     charModal.classList.remove("hidden");
 });
+
+// 当前角色属于哪个预设（匹配 name + 关键背景）；不匹配 → 自定义
+function matchCurrentPreset(): string {
+    const name = (CHARACTER_REF.name ?? "").trim();
+    const bg = (CHARACTER_REF.background ?? "").trim().slice(0, 20);
+    for (const [key, p] of Object.entries(PRESETS)) {
+        if ((p.name ?? "").trim() === name && (p.background ?? "").trim().slice(0, 20) === bg) {
+            return key;
+        }
+    }
+    return ""; // 自定义/已修改
+}
 
 document.getElementById("char-cancel")!.addEventListener("click", () => {
     charModal.classList.add("hidden");
@@ -1017,6 +1148,13 @@ document.getElementById("char-reset-preset")!.addEventListener("click", () => {
 
 setCharacterGetter(() => CHARACTER_REF);
 setRelationGetter(() => CHARACTER_REF.relation ?? ""); // 关系阶段判断（是否"第一次见面"）
+// 日程规划：注入角色信息（让 AI 规划贴合她的日程）
+setAgendaCharacterGetter(() => ({
+    name: CHARACTER_REF.name,
+    personality: CHARACTER_REF.personality,
+    background: CHARACTER_REF.background,
+    relation: CHARACTER_REF.relation,
+}));
 
 setTimeMessageSender((text, opts) => {
     if (busy || userIsTyping()) return; // AI 回复中或用户正在输入，不打扰
@@ -1036,15 +1174,55 @@ setSlotChangeHandler(() => {
 setDayChangeHandler((oldDay) => {
     finalizeDay(oldDay);
     directorOnDayChange(oldDay, store.dayIndex);
+    // 跨天 → AI 规划新一天的日程（无 key 时用作息表兜底）
+    void planTodayAgenda(async (text) => {
+        if (demoMode || !localStorage.getItem("deepseek-key")) return {};
+        try {
+            return await chatWithDeepSeek(text);
+        } catch {
+            return {};
+        }
+    });
 });
 
 setRandomMomentHook(() => {
     tickNpcWorld(); // NPC 自己的时间也在走
+    tickAgenda(); // 日程状态随虚拟时间推进
+    renderAgendaUI();
     maybeRandomMoment();
 });
 
 setWizardSavedCallback(() => {
-    appendMessage("ai").textContent = `你好呀，我是${CHARACTER_REF.name}。设定已就位，接下来请多指教。`;
+    // 问候语按关系变化：恋人不该像陌生人一样客套
+    const rel = CHARACTER_REF.relation ?? "";
+    const greeting = /恋人|女朋友|男朋友|对象|老婆|老公|最爱|热恋|相恋/.test(rel)
+        ? `（看见你，她眼睛亮了一下）回来了？真是的，怎么感觉好久没见到你了。`
+        : /最亲近|最重要|青梅竹马|挚友|最好的朋友|家人/.test(rel)
+            ? `你来啦。见到你，心里踏实多了。`
+            : `你好呀，我是${CHARACTER_REF.name}。设定已就位，接下来请多指教。`;
+    appendMessage("ai").textContent = greeting;
+    // 重置"被冷落"基准：她刚和你在一起（防止创建过程耗时被误判为冷落）
+    store.lastReplyRealAt = Date.now();
+    store.lastReplyVirtualAt = store.virtualMs;
+    saveState();
+    // 向导完成：静默期结束，允许她主动开口；并把焦点还给输入框
+    setProactiveEnabled(true);
+    // 角色创建完成：清掉初始化时（空角色）生成的泛化日程，重新规划贴合她的日程
+    const today = currentDayIndex();
+    store.agenda = store.agenda.filter((d) => d.day !== today);
+    saveState();
+    void planTodayAgenda(async (text) => {
+        if (demoMode || !localStorage.getItem("deepseek-key")) return {};
+        try {
+            return await chatWithDeepSeek(text);
+        } catch {
+            return {};
+        }
+    });
+    setTimeout(() => {
+        const input = document.getElementById("chat-input") as HTMLInputElement | null;
+        input?.focus();
+    }, 300);
 });
 
 // ============ 初始化 ============
@@ -1073,6 +1251,9 @@ if (!hadSave) {
     store.virtualMs = store.dayBaseMs + slotMinutes(FIRST_MEETING_HHMM) * 60000;
     store.scheduleIndex = scheduleIndexFor(store.virtualMs);
     store.dayIndex = currentDayIndex();
+    // 重置"被冷落"基准：她刚和你在一起（虚拟时间=上次回复时间，避免时间错位误判）
+    store.lastReplyRealAt = Date.now();
+    store.lastReplyVirtualAt = store.virtualMs;
     updateScheduleUI();
     initNpcWorld();
 }
@@ -1080,6 +1261,20 @@ if (!hadSave) {
 // NPC 世界随虚拟时间推进（她们有自己的生活，0 成本）
 tickNpcWorld();
 saveState(); // 更新 NPC 作息后落盘
+
+// 日程：今天还没有安排 → 首次进入时规划当天日程（AI 或作息兜底），并渲染左侧时间线
+tickAgenda();
+if (todayHasNoAgenda()) {
+    void planTodayAgenda(async (text) => {
+        if (demoMode || !localStorage.getItem("deepseek-key")) return {};
+        try {
+            return await chatWithDeepSeek(text);
+        } catch {
+            return {};
+        }
+    });
+}
+renderAgendaUI();
 
 // 已有角色：显示欢迎语（欢迎回来 / 你好呀）
 // 没有角色（新建档）：不显示欢迎语——等角色向导完成后，由 savedCallback 打招呼
@@ -1134,7 +1329,9 @@ if (hadSave) {
 };
 
 // 首次进入（无角色设定）：打开角色创建向导
+// 向导期间静默（她先不主动说话，等创建完成、聚焦输入框后再说）
 if (!localStorage.getItem(CHAR_KEY)) {
+    setProactiveEnabled(false);
     setTimeout(openWizard, 800);
 }
 

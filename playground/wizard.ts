@@ -3,8 +3,9 @@
 
 import { CHARACTER, PRESETS, saveCharacter, setCharacter, type CharacterProfile } from "./character";
 import { interviewWithAI, type InterviewTurn } from "./ai";
-import { CHAR_KEY, store, DEFAULT_SCENE, type SceneConfig } from "./storage";
+import { CHAR_KEY, store, saveState, DEFAULT_SCENE, type SceneConfig } from "./storage";
 import { aiState, initStateForRelation } from "./state";
+import { setProactiveEnabled } from "./time";
 
 // ============ 场景解析 ============
 // 用户自由描述"在哪生活/她平时做什么" → 场景配置（驱动作息/地点/世界观）
@@ -173,13 +174,16 @@ export function closeWizard() {
 }
 
 function applyPreset(key: string) {
-    if (PRESETS[key]) {
-        Object.assign(CHARACTER, { ...PRESETS[key]! });
+    const preset = PRESETS[key];
+    if (preset) {
+        Object.assign(CHARACTER, { ...preset });
+        delete (CHARACTER as any).scene; // scene 不进角色卡存档（属场景系统）
         saveCharacter();
-        // 预设默认场景（校园）；用户可在"自定义创建"里改成任何地方
-        store.scene = { ...DEFAULT_SCENE };
-        // 按预设关系初始化情感（如小鲸"最亲近的人"→ 高好感）
+        // 预设自带场景（咖啡店/公司/Livehouse/诊所/画室…）；没有则默认校园
+        store.scene = preset.scene ? { ...preset.scene } : { ...DEFAULT_SCENE };
+        // 按预设关系初始化情感（如恋人→高好感）
         initStateForRelation(CHARACTER.relation ?? "");
+        saveState();
         closeWizard();
         savedCallback?.();
     }
@@ -237,15 +241,19 @@ function renderWizard() {
     wizardModal.querySelector(".sub")!.textContent = subText;
 
     if (wizardStep === 0) {
+        // 动态渲染所有预设（每个预设自带场景：咖啡店/公司/Livehouse/诊所/画室…）
+        const presetBtns = Object.entries(PRESETS)
+            .map(([key, p]) => {
+                const sceneTag = p.scene ? ` · ${p.scene.name}` : "";
+                const desc = (p.background ?? "").slice(0, 22) + (p.background && p.background.length > 22 ? "…" : "");
+                return `<button class="wiz-preset" data-preset="${key}">
+                  <span class="p-name">${p.name}${sceneTag}</span>
+                  <span class="p-desc">${desc}</span>
+                </button>`;
+            })
+            .join("");
         wizardBody.innerHTML = `
-            <button class="wiz-preset" data-preset="nina">
-              <span class="p-name">仁菜（Nina）</span>
-              <span class="p-desc">倔强嘴硬心软的少女 · 平行 if 线 · 完整设定（家庭/音乐/秘密）</span>
-            </button>
-            <button class="wiz-preset" data-preset="xiaojing">
-              <span class="p-name">小鲸</span>
-              <span class="p-desc">海边小镇的温柔少女 · 慢热天然呆 · 怕黑</span>
-            </button>
+            ${presetBtns}
             <button class="wiz-preset" data-custom="1">
               <span class="p-name">🎨 自定义创建</span>
               <span class="p-desc">写一段介绍，让 AI 访谈追问，生成完整角色</span>
@@ -494,6 +502,7 @@ function finishWizard(draft: CharacterProfile) {
     saveCharacter();
     // 关系 → 初始情感（恋人高好感/信任/亲密；朋友中等；刚认识保持默认）
     initStateForRelation(draft.relation ?? "");
+    saveState(); // 把关系初始化后的情感数值落盘（否则刷新后回到默认）
     closeWizard();
     savedCallback?.();
 }
@@ -531,7 +540,8 @@ wizardBody.addEventListener("click", async (e) => {
 });
 
 document.getElementById("wizard-cancel")!.addEventListener("click", () => {
-    // 取消 = 什么都不做：关闭向导，不随机角色、不打招呼
+    // 取消 = 什么都不做：关闭向导，不随机角色、不打招呼；恢复主动开口
+    setProactiveEnabled(true);
     closeWizard();
 });
 
