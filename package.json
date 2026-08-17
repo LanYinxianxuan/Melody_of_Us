@@ -1,0 +1,19 @@
+{
+  "name": "melody-ai",
+  "version": "1.0.0",
+  "description": "情感 AI 聊天：38 维情感状态机 · 剧情 · 时间系统 · 角色创建向导",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port 5173",
+    "build": "vite build && cp -r public/* dist/playground/ && cp dist/playground/home.html dist/playground/index.html && cp -r dist/assets dist/playground/assets && sed -i 's|\\.\\./assets/|./assets/|g' dist/playground/*.html"
+  },
+  "devDependencies": {
+    "vite": "^5.0.0"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.5.0",
+    "@capacitor/cli": "^8.5.0",
+    "@capacitor/core": "^8.5.0"
+  }
+}
