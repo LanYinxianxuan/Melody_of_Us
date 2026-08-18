@@ -86,6 +86,11 @@ import {
 
 // ============ 角色弹层数据流 ============
 
+// 检查当前槽位是否有 API Key（per-slot 存储）
+function hasApiKey(): boolean {
+    return !!localStorage.getItem(`apikey-${currentSlot}`);
+}
+
 let CHARACTER_REF: CharacterProfile = CHARACTER;
 
 setCharacterGetter(() => CHARACTER_REF);
@@ -666,7 +671,7 @@ async function executeDirectorDecision(decision: DirectorDecision) {
 // 主入口：用户消息后调用（主角回复完成后）
 async function maybeDirector(userText: string) {
     if (directorBusy || demoMode) return;
-    if (!localStorage.getItem("deepseek-key")) return;
+    if (!hasApiKey()) return;
 
     // 代码层 trigger：普通聊天 → null → 完全不调用 Director
     const trigger = detectTrigger(userText);
@@ -679,7 +684,7 @@ async function maybeDirector(userText: string) {
 // 通用执行（消息 trigger / 跨天 / 离线共用）
 async function runDirector(trigger: DirectorTrigger) {
     if (directorBusy || demoMode) return;
-    if (!localStorage.getItem("deepseek-key")) return;
+    if (!hasApiKey()) return;
 
     directorBusy = true;
     try {
@@ -707,7 +712,7 @@ let npcBusy = false;
 
 async function maybeNpcIntervention() {
     if (npcBusy || demoMode) return;
-    if (!localStorage.getItem("deepseek-key")) return;
+    if (!hasApiKey()) return;
     // 多人模式默认关闭：不启用 NPC 动态介入
     if (!store.npcEnabled) return;
 
@@ -841,7 +846,7 @@ async function runNpcIntervention(pick: InterventionCandidate) {
 // 主角回应 NPC：调用主角 AI（非 proactive 通道，但禁止再触发 NPC/Director 递归）
 async function mainReplyToNpc(npc: { profile: { name: string; id: string } }, npcDialogue: string) {
     if (busy || demoMode) return;
-    if (!localStorage.getItem("deepseek-key")) return;
+    if (!hasApiKey()) return;
 
     setBusyState(true);
     try {
@@ -1254,7 +1259,7 @@ setDayChangeHandler((oldDay) => {
     directorOnDayChange(oldDay, store.dayIndex);
     // 跨天 → AI 规划新一天的日程（无 key 时用作息表兜底）
     void planTodayAgenda(async (text) => {
-        if (demoMode || !localStorage.getItem("deepseek-key")) return {};
+        if (demoMode || !hasApiKey()) return {};
         try {
             return await chatWithDeepSeek(text);
         } catch {
@@ -1303,7 +1308,7 @@ setWizardSavedCallback(() => {
     store.agenda = store.agenda.filter((d) => d.day !== today);
     saveState();
     void planTodayAgenda(async (text) => {
-        if (demoMode || !localStorage.getItem("deepseek-key")) return {};
+        if (demoMode || !hasApiKey()) return {};
         try {
             return await chatWithDeepSeek(text);
         } catch {
@@ -1319,7 +1324,7 @@ setWizardSavedCallback(() => {
 // ============ 初始化 ============
 
 // 无 API Key：自动进入演示模式并明确提示（避免用户误以为是真实 AI）
-if (!localStorage.getItem("deepseek-key")) {
+if (!hasApiKey()) {
     demoMode = true;
     demoBtn.textContent = "🎭 演示中";
     demoBtn.classList.add("active");
@@ -1360,11 +1365,14 @@ if (!hadSave) {
 tickNpcWorld();
 saveState(); // 更新 NPC 作息后落盘
 
-// 日程：今天还没有安排 → 首次进入时规划当天日程（AI 或作息兜底），并渲染左侧时间线
+// 日程：有角色且今天还没有安排 → 首次进入时规划当天日程（AI 或作息兜底），并渲染左侧时间线
 tickAgenda();
-if (todayHasNoAgenda()) {
+if (hasChar && todayHasNoAgenda()) {
     void planTodayAgenda(async (text) => {
-        if (demoMode || !localStorage.getItem("deepseek-key")) return {};
+        // 检查当前槽位的 API Key（per-slot）
+        const slot = currentSlot;
+        const key = localStorage.getItem(`apikey-${slot}`);
+        if (demoMode || !key) return {};
         try {
             return await chatWithDeepSeek(text);
         } catch {
