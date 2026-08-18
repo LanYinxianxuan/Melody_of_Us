@@ -250,9 +250,10 @@ export function thinkingParams() {
 }
 
 // 获取当前供应商配置
-function getProviderConfig(): { baseUrl: string; headers: Record<string, string> } {
-    const provider = localStorage.getItem("deepseek-provider") ?? "deepseek";
-    const key = localStorage.getItem("deepseek-key")?.trim() ?? "";
+function getProviderConfig(): { baseUrl: string; headers: Record<string, string>; key: string; model: string } {
+    const provider = localStorage.getItem("melai-provider") ?? "deepseek";
+    const key = localStorage.getItem(`apikey-${provider}`)?.trim() ?? "";
+    const model = localStorage.getItem(`melai-model-${provider}`) ?? "deepseek-chat";
 
     const PROVIDERS: Record<string, { baseUrl: string; headerFn?: (key: string) => Record<string, string> }> = {
         deepseek: { baseUrl: "https://api.deepseek.com" },
@@ -270,7 +271,7 @@ function getProviderConfig(): { baseUrl: string; headers: Record<string, string>
         qwen: { baseUrl: "https://dashscope.aliyuncs.com/compatible-mode/v1" },
         zhipu: { baseUrl: "https://open.bigmodel.cn/api/paas/v4" },
         xiaomi: { baseUrl: "https://api.xiaomimimo.com/v1" },
-        custom: { baseUrl: localStorage.getItem("deepseek-custom-url")?.trim() ?? "" },
+        custom: { baseUrl: localStorage.getItem("melai-custom-url")?.trim() ?? "" },
     };
 
     const p = PROVIDERS[provider] ?? PROVIDERS["deepseek"]!;
@@ -279,21 +280,18 @@ function getProviderConfig(): { baseUrl: string; headers: Record<string, string>
         Authorization: `Bearer ${key}`,
     };
 
-    return { baseUrl: p.baseUrl, headers };
+    return { baseUrl: p.baseUrl, headers, key, model };
 }
 
 // DeepSeek 官方 API 基础地址（保留兼容）
 export const API_BASE = "https://api.deepseek.com";
 
 export async function chatWithDeepSeek(userText: string, retry = 1): Promise<ChatResult> {
-    const key = localStorage.getItem("deepseek-key")?.trim() ?? "";
-    const model = localStorage.getItem("deepseek-model") ?? "deepseek-chat";
+    const { baseUrl, headers, key, model } = getProviderConfig();
 
     if (!key) {
         throw new Error("请先在菜单页设置 API Key（或点「演示」免 Key 体验）");
     }
-
-    const { baseUrl, headers } = getProviderConfig();
 
     const messages = [
         { role: "system", content: SYSTEM_PROMPT(await getCharacter()) },
@@ -502,8 +500,9 @@ export interface InterviewResult {
 }
 
 export async function interviewWithAI(intro: string, turns: InterviewTurn[]): Promise<InterviewResult> {
-    const key = localStorage.getItem("deepseek-key")?.trim() ?? "";
-    const model = localStorage.getItem("deepseek-model") ?? "deepseek-v4-flash";
+    const { baseUrl, headers, key, model } = getProviderConfig();
+
+    if (!key) throw new Error("请先设置 API Key");
 
     const messages: { role: "user" | "assistant" | "system"; content: string }[] = [
         { role: "system", content: INTERVIEW_PROMPT },
@@ -515,8 +514,6 @@ export async function interviewWithAI(intro: string, turns: InterviewTurn[]): Pr
         messages.push({ role: "user", content: t.a || "（没想好，你定吧）" });
     }
 
-    // 直连所选 API 端点（访谈也用直连，App 内可用）
-    const { baseUrl, headers } = getProviderConfig();
     const resp = await fetch(`${baseUrl}/chat/completions`, {
         method: "POST",
         headers,
@@ -585,8 +582,7 @@ export interface NpcSpeakResult {
 
 // NPC 发言：独立一次调用（低频）
 export async function npcSpeak(npc: NpcState, context: string): Promise<NpcSpeakResult> {
-    const key = localStorage.getItem("deepseek-key")?.trim() ?? "";
-    const model = localStorage.getItem("deepseek-model") ?? "deepseek-v4-flash";
+    const { baseUrl, headers, key, model } = getProviderConfig();
 
     if (!key) {
         throw new Error("NPC 需要 API Key");
@@ -603,7 +599,6 @@ export async function npcSpeak(npc: NpcState, context: string): Promise<NpcSpeak
         },
     ];
 
-    const { baseUrl, headers } = getProviderConfig();
     const resp = await fetch(`${baseUrl}/chat/completions`, {
         method: "POST",
         headers,

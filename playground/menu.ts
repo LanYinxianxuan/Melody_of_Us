@@ -2,29 +2,25 @@
 
 import { loadSlotRaw, loadSlotCharacterName, clearSlot } from "./storage";
 
-const KEY_STORE = "deepseek-key";
-const MODEL_STORE = "deepseek-model";
-const EFFORT_STORE = "deepseek-effort";
-const PROVIDER_STORE = "deepseek-provider";
-const CUSTOM_URL_STORE = "deepseek-custom-url";
+const PROVIDER_STORE = "melai-provider";
+const MODEL_STORE = "melai-model";
+const EFFORT_STORE = "melai-effort";
+const CUSTOM_URL_STORE = "melai-custom-url";
 const TOTAL_SLOTS = 5;
 
-// 供应商配置
-const PROVIDERS: Record<string, { name: string; baseUrl: string; models: string[]; headerFn?: (key: string) => Record<string, string> }> = {
+// 供应商配置（models 为空数组，通过 API 获取）
+const PROVIDERS: Record<string, { name: string; baseUrl: string; headerFn?: (key: string) => Record<string, string> }> = {
     deepseek: {
         name: "DeepSeek",
         baseUrl: "https://api.deepseek.com",
-        models: ["deepseek-chat", "deepseek-reasoner"],
     },
     openai: {
         name: "OpenAI",
         baseUrl: "https://api.openai.com/v1",
-        models: ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo", "gpt-4", "gpt-3.5-turbo", "o1-preview", "o1-mini"],
     },
     claude: {
         name: "Claude",
         baseUrl: "https://api.anthropic.com/v1",
-        models: ["claude-sonnet-4-20250514", "claude-3-5-sonnet-20241022", "claude-3-5-haiku-20241022", "claude-3-opus-20240229"],
         headerFn: (key) => ({
             "x-api-key": key,
             "anthropic-version": "2023-06-01",
@@ -34,34 +30,33 @@ const PROVIDERS: Record<string, { name: string; baseUrl: string; models: string[
     gemini: {
         name: "Gemini",
         baseUrl: "https://generativelanguage.googleapis.com/v1beta",
-        models: ["gemini-2.0-flash", "gemini-2.0-flash-lite", "gemini-1.5-pro", "gemini-1.5-flash"],
     },
     moonshot: {
         name: "Moonshot",
         baseUrl: "https://api.moonshot.cn/v1",
-        models: ["moonshot-v1-8k", "moonshot-v1-32k", "moonshot-v1-128k"],
     },
     qwen: {
         name: "通义千问",
         baseUrl: "https://dashscope.aliyuncs.com/compatible-mode/v1",
-        models: ["qwen-turbo", "qwen-plus", "qwen-max", "qwen-long"],
     },
     zhipu: {
         name: "智谱",
         baseUrl: "https://open.bigmodel.cn/api/paas/v4",
-        models: ["glm-4-flash", "glm-4-air", "glm-4", "glm-4-long"],
     },
     xiaomi: {
         name: "小米 MiMo",
         baseUrl: "https://api.xiaomimimo.com/v1",
-        models: ["mimo-v2.5-pro", "mimo-v2.5"],
     },
     custom: {
         name: "自定义",
         baseUrl: "",
-        models: [],
     },
 };
+
+// 每个供应商独立的 API Key 存储键
+function getKeyStore(provider: string): string {
+    return `apikey-${provider}`;
+}
 
 function fmtTime(ts: number): string {
     const d = new Date(ts);
@@ -117,16 +112,10 @@ function renderSaves() {
         card.addEventListener("click", (e) => {
             const delBtn = (e.target as HTMLElement).closest(".s-del") as HTMLElement | null;
 
-            // 单独删除存档
             if (delBtn) {
                 e.stopPropagation();
                 const delSlot = parseInt(delBtn.dataset.del ?? "0", 10);
-
-                if (
-                    confirm(
-                        `删除存档 ${delSlot}？\n将删除该存档的情感、剧情、聊天记录、时间线和角色设定。此操作无法恢复！`,
-                    )
-                ) {
+                if (confirm(`删除存档 ${delSlot}？\n此操作无法恢复！`)) {
                     clearSlot(delSlot);
                     renderSaves();
                 }
@@ -152,41 +141,60 @@ const customUrlInput = document.getElementById("custom-url") as HTMLInputElement
 const customUrlSetting = document.getElementById("custom-url-setting")!;
 const saveHint = document.getElementById("save-hint")!;
 
-// 初始化设置值
-const savedProvider = localStorage.getItem(PROVIDER_STORE) ?? "deepseek";
-providerSelect.value = savedProvider;
-keyInput.value = localStorage.getItem(KEY_STORE) ?? "";
-effortSelect.value = localStorage.getItem(EFFORT_STORE) ?? "high";
-customUrlInput.value = localStorage.getItem(CUSTOM_URL_STORE) ?? "";
+let currentProvider = localStorage.getItem(PROVIDER_STORE) ?? "deepseek";
 
-// 根据供应商更新模型列表
-function updateModelList(provider: string, selectedModel?: string) {
-    const p = PROVIDERS[provider];
-    if (!p) return;
-
-    modelSelect.innerHTML = "";
-    const models = p.models.length ? p.models : ["（请先测试获取模型列表）"];
-    for (const m of models) {
-        const opt = document.createElement("option");
-        opt.value = m;
-        opt.textContent = m;
-        modelSelect.appendChild(opt);
+// 切换供应商时：保存当前供应商的 key → 加载新供应商的 key
+function switchProvider(newProvider: string) {
+    // 保存当前供应商的 key
+    localStorage.setItem(getKeyStore(currentProvider), keyInput.value.trim());
+    // 切换
+    currentProvider = newProvider;
+    localStorage.setItem(PROVIDER_STORE, currentProvider);
+    // 加载新供应商的 key
+    keyInput.value = localStorage.getItem(getKeyStore(currentProvider)) ?? "";
+    // 更新 UI
+    customUrlSetting.style.display = currentProvider === "custom" ? "" : "none";
+    if (currentProvider === "custom") {
+        customUrlInput.value = localStorage.getItem(CUSTOM_URL_STORE) ?? "";
     }
-
-    // 恢复之前选中的模型
-    const saved = selectedModel ?? localStorage.getItem(MODEL_STORE);
-    if (saved && models.includes(saved)) {
-        modelSelect.value = saved;
-    } else {
-        modelSelect.value = models[0]!;
-        localStorage.setItem(MODEL_STORE, modelSelect.value);
-    }
-
-    // 自定义供应商显示 URL 输入框
-    customUrlSetting.style.display = provider === "custom" ? "" : "none";
+    // 加载该供应商已缓存的模型列表
+    loadCachedModels(currentProvider);
 }
 
-updateModelList(savedProvider);
+// 加载已缓存的模型列表
+function loadCachedModels(provider: string) {
+    const cached = localStorage.getItem(`models-${provider}`);
+    const savedModel = localStorage.getItem(`${MODEL_STORE}-${provider}`);
+    modelSelect.innerHTML = "";
+
+    if (cached) {
+        const models: string[] = JSON.parse(cached);
+        for (const m of models) {
+            const opt = document.createElement("option");
+            opt.value = m;
+            opt.textContent = m;
+            modelSelect.appendChild(opt);
+        }
+        if (savedModel && models.includes(savedModel)) {
+            modelSelect.value = savedModel;
+        }
+    } else {
+        const opt = document.createElement("option");
+        opt.value = "";
+        opt.textContent = "（点击「测试」获取模型列表）";
+        modelSelect.appendChild(opt);
+    }
+}
+
+// 初始化
+providerSelect.value = currentProvider;
+keyInput.value = localStorage.getItem(getKeyStore(currentProvider)) ?? "";
+effortSelect.value = localStorage.getItem(EFFORT_STORE) ?? "high";
+customUrlSetting.style.display = currentProvider === "custom" ? "" : "none";
+if (currentProvider === "custom") {
+    customUrlInput.value = localStorage.getItem(CUSTOM_URL_STORE) ?? "";
+}
+loadCachedModels(currentProvider);
 
 function showHint() {
     saveHint.style.display = "block";
@@ -194,18 +202,19 @@ function showHint() {
 }
 
 providerSelect.addEventListener("change", () => {
-    localStorage.setItem(PROVIDER_STORE, providerSelect.value);
-    updateModelList(providerSelect.value);
+    switchProvider(providerSelect.value);
     showHint();
 });
 
 keyInput.addEventListener("change", () => {
-    localStorage.setItem(KEY_STORE, keyInput.value.trim());
+    localStorage.setItem(getKeyStore(currentProvider), keyInput.value.trim());
     showHint();
 });
 
 modelSelect.addEventListener("change", () => {
-    localStorage.setItem(MODEL_STORE, modelSelect.value);
+    if (modelSelect.value) {
+        localStorage.setItem(`${MODEL_STORE}-${currentProvider}`, modelSelect.value);
+    }
     showHint();
 });
 
@@ -221,13 +230,9 @@ customUrlInput.addEventListener("change", () => {
 
 // 清空所有数据
 document.getElementById("clear-data")!.addEventListener("click", () => {
-    if (
-        confirm(
-            "确定清空所有数据？\n这会删除：全部存档（1~9 槽）、所有角色设定、API Key、模型设置。\n此操作无法恢复！",
-        )
-    ) {
+    if (confirm("确定清空所有数据？\n此操作无法恢复！")) {
         localStorage.clear();
-        alert("已清空全部数据。页面即将刷新，重新开始。");
+        alert("已清空全部数据。页面即将刷新。");
         location.reload();
     }
 });
@@ -238,16 +243,14 @@ const apiTestBtn = document.getElementById("api-test") as HTMLButtonElement;
 const apiStatus = document.getElementById("api-status")!;
 
 function getApiBase(): string {
-    const provider = providerSelect.value;
-    if (provider === "custom") {
+    if (currentProvider === "custom") {
         return customUrlInput.value.trim().replace(/\/+$/, "");
     }
-    return PROVIDERS[provider]?.baseUrl ?? "";
+    return PROVIDERS[currentProvider]?.baseUrl ?? "";
 }
 
 function getHeaders(key: string): Record<string, string> {
-    const provider = providerSelect.value;
-    const p = PROVIDERS[provider];
+    const p = PROVIDERS[currentProvider];
     if (p?.headerFn) return p.headerFn(key);
     return {
         "Content-Type": "application/json",
@@ -257,7 +260,6 @@ function getHeaders(key: string): Record<string, string> {
 
 async function testApi() {
     const key = keyInput.value.trim();
-    const provider = providerSelect.value;
 
     if (!key) {
         apiStatus.style.display = "block";
@@ -274,14 +276,16 @@ async function testApi() {
         return;
     }
 
+    // 保存 key
+    localStorage.setItem(getKeyStore(currentProvider), key);
+
     apiTestBtn.disabled = true;
     apiTestBtn.textContent = "⏳ 测试中…";
     apiStatus.style.display = "block";
     apiStatus.style.color = "var(--ink-soft)";
-    apiStatus.textContent = `正在连接 ${PROVIDERS[provider]?.name ?? provider} API…`;
+    apiStatus.textContent = `正在连接 ${PROVIDERS[currentProvider]?.name ?? currentProvider} API…`;
 
     try {
-        // 获取模型列表
         const resp = await fetch(`${baseUrl}/models`, {
             headers: getHeaders(key),
         });
@@ -298,7 +302,10 @@ async function testApi() {
             throw new Error("未获取到模型列表");
         }
 
-        // 更新模型下拉框
+        // 缓存模型列表
+        localStorage.setItem(`models-${currentProvider}`, JSON.stringify(models));
+
+        // 更新下拉框
         modelSelect.innerHTML = "";
         for (const m of models.sort()) {
             const opt = document.createElement("option");
@@ -307,10 +314,10 @@ async function testApi() {
             modelSelect.appendChild(opt);
         }
         modelSelect.value = models[0]!;
-        localStorage.setItem(MODEL_STORE, modelSelect.value);
+        localStorage.setItem(`${MODEL_STORE}-${currentProvider}`, modelSelect.value);
 
         apiStatus.style.color = "#34d399";
-        apiStatus.textContent = `✅ Key 有效！已获取 ${models.length} 个模型：${models.join("、")}`;
+        apiStatus.textContent = `✅ Key 有效！已获取 ${models.length} 个模型`;
     } catch (e) {
         apiStatus.style.color = "#ffb0b0";
         apiStatus.textContent = `❌ 测试失败：${(e as Error).message}`;
