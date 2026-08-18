@@ -1,12 +1,11 @@
-// Melody AI Service Worker v3：网络优先 + 离线回退
+// Melody AI Service Worker v4：网络优先 + 离线回退
 // 版本号变更 → 浏览器检测到 SW 更新 → 重装并清旧缓存（修复 UI 不更新的根因）
 // 路径用相对路径（兼容 GitHub Pages 子路径部署）
-const CACHE = "melody-ai-v3";
+const CACHE = "melody-ai-v4";
 const CORE = [
     "./home.html",
     "./menu.html",
     "./chat.html",
-    "./assets/img/bg.jpg",
     "./manifest.webmanifest",
     "./icons/icon-192.png",
     "./icons/icon-512.png",
