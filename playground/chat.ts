@@ -1004,11 +1004,12 @@ document.getElementById("chat-input")!.addEventListener("keydown", (e) => {
 document.getElementById("chat-input")!.addEventListener("input", markUserInput);
 document.getElementById("chat-input")!.addEventListener("focus", markUserInput);
 
-// 菜单链接：加时间戳防止浏览器缓存，确保菜单页读到最新存档
+// 菜单链接：强制刷新菜单页，确保读到最新存档
 document.getElementById("menu-link")!.addEventListener("click", (e) => {
     e.preventDefault();
     saveState(); // 确保当前状态已保存
-    location.href = `./menu.html?t=${Date.now()}`;
+    // 用 replace 强制加载，不走缓存
+    window.location.replace(`./menu.html?_=${Date.now()}`);
 });
 
 // 状态面板开关
