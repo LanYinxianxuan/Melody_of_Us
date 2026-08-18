@@ -11,6 +11,8 @@ import {
     fmtVirtualDate,
     fmtVirtualTime,
     sceneDescription,
+    getSchedule,
+    slotMinutes,
 } from "./time";
 import { fallbackStory, journalText, storyStage, worldSetting } from "./story";
 import type { CharacterProfile } from "./character";
@@ -76,7 +78,13 @@ export const SYSTEM_PROMPT = (character: CharacterProfile) =>
     "如果是普通寒暄/闲聊/问答，event 写空字符串，progress 写 0——不要为了填而硬编事件。事件要承接当前对话，不能和对话无关。有进行中的剧情线时，event 优先推进那条线。" +
     "【agenda 填写要求】当对话中**产生了新的约定或事件**时才写（你们约好明天一起做什么、她要做某件事、一个待办的日程），例如：『明天陪我去买书』→ agenda.add=[{time:'10:00',title:'一起去书店买书'}]。" +
     "普通聊天没有新约定 → agenda 字段省略或 add 为空。这些事件会进入你们的时间线，之后由你自然地推动它发生。" +
-    "【重要】①memory 和 story.event 都可以是空字符串，宁缺毋滥；②有进行中的剧情线时，要记得在后续轮次推进、收尾，不要断头。";
+    "【重要】①memory 和 story.event 都可以是空字符串，宁缺毋滥；②有进行中的剧情线时，要记得在后续轮次推进、收尾，不要断头。\n\n" +
+    "【时间与场景感知：关键】你活在一个连续的时间里，不是每次对话都重新开始！\n" +
+    "- 对话历史里每条消息都有时间标签如 `[第3天 09:30](课间)`，括号里是当时的时段标签；\n" +
+    "- 你要根据时间变化来调整说话内容：如果之前是「课间」现在是「午休」，说明已经过了好几个小时，不要还说「课间」的事；\n" +
+    "- 如果时间跳跃很大（跨时段/跨天），要自然地体现时间流逝：「都中午了啊」「下午过得好快」「昨天那件事…」；\n" +
+    "- 你现在在做什么、在哪、周围有谁——这些以【你此刻的情境】为准，不要被历史消息里的旧场景误导；\n" +
+    "- 如果对方说的话和当前场景矛盾（比如深夜问你上课的事），要自然地回应而不是无视时间。";
 
 // 她的长期记忆：优先最近的，最多 8 条
 function memoriesText(): string {
@@ -178,9 +186,10 @@ export function parseAIResponse(content: string): ChatResult {
     return parsed as ChatResult;
 }
 
-// 构建上下文：最近对话（带时间标签）+ 跨天摘要，让 AI 有连续记忆
+// 构建上下文：最近对话（带时间标签 + 当时场景）+ 跨天摘要，让 AI 有连续记忆
 function buildHistoryContext(): { role: "user" | "assistant"; content: string }[] {
     const ctx: { role: "user" | "assistant"; content: string }[] = [];
+    const schedule = getSchedule(); // 导入作息表
 
     const recent = store.chatHistory.slice(-16);
     for (const e of recent) {
@@ -189,7 +198,21 @@ function buildHistoryContext(): { role: "user" | "assistant"; content: string }[
         const tag = day >= 1 && d
             ? `[第${day}天 ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}]`
             : "";
-        ctx.push({ role: e.role, content: `${tag}${e.content}` });
+
+        // 添加当时所在的场景标签（让 AI 知道之前说话时她在做什么）
+        let sceneTag = "";
+        if (e.ts) {
+            const mins = d!.getHours() * 60 + d!.getMinutes();
+            let slotIdx = 0;
+            for (let i = 1; i < schedule.length; i++) {
+                if (mins >= slotMinutes(schedule[i]!.time)) slotIdx = i;
+                else break;
+            }
+            const slot = schedule[slotIdx];
+            if (slot) sceneTag = `(${slot.label})`;
+        }
+
+        ctx.push({ role: e.role, content: `${tag}${sceneTag}${e.content}` });
     }
 
     return ctx;
