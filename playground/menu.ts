@@ -51,6 +51,11 @@ const PROVIDERS: Record<string, { name: string; baseUrl: string; models: string[
         baseUrl: "https://open.bigmodel.cn/api/paas/v4",
         models: ["glm-4-flash", "glm-4-air", "glm-4", "glm-4-long"],
     },
+    xiaomi: {
+        name: "小米",
+        baseUrl: "https://api.xiaomi.com/v1",
+        models: ["MiLM-6B", "MiLM-13B"],
+    },
     custom: {
         name: "自定义",
         baseUrl: "",
