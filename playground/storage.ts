@@ -266,5 +266,5 @@ export function loadSlotCharacterName(slot: number): string {
     } catch {
         /* ignore */
     }
-    return "仁菜（Nina）";
+    return "未命名";
 }
