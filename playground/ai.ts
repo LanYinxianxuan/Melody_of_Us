@@ -280,7 +280,7 @@ function buildHistoryContext(): { role: "user" | "assistant"; content: string }[
 
 // 思考模式：官方默认开启（effort 默认 high），我们按用户选择传参
 export function thinkingParams() {
-    const effort = localStorage.getItem("deepseek-effort") ?? "high";
+    const effort = localStorage.getItem("melai-effort") ?? "high";
 
     if (effort === "disabled") {
         return { thinking: { type: "disabled" } };
@@ -293,11 +293,12 @@ export function thinkingParams() {
     };
 }
 
-// 获取当前供应商配置
+// 获取当前供应商配置（按存档槽位独立读取）
 function getProviderConfig(): { baseUrl: string; headers: Record<string, string>; key: string; model: string } {
-    const provider = localStorage.getItem("melai-provider") ?? "deepseek";
-    const key = localStorage.getItem(`apikey-${provider}`)?.trim() ?? "";
-    const model = localStorage.getItem(`melai-model-${provider}`) ?? "deepseek-chat";
+    const slot = parseInt(localStorage.getItem("melai-current-slot") ?? "1", 10) || 1;
+    const provider = localStorage.getItem(`provider-${slot}`) ?? "deepseek";
+    const key = localStorage.getItem(`apikey-${slot}`)?.trim() ?? "";
+    const model = localStorage.getItem(`model-${slot}`) ?? "deepseek-chat";
 
     const PROVIDERS: Record<string, { baseUrl: string; headerFn?: (key: string) => Record<string, string> }> = {
         deepseek: { baseUrl: "https://api.deepseek.com" },
@@ -315,7 +316,7 @@ function getProviderConfig(): { baseUrl: string; headers: Record<string, string>
         qwen: { baseUrl: "https://dashscope.aliyuncs.com/compatible-mode/v1" },
         zhipu: { baseUrl: "https://open.bigmodel.cn/api/paas/v4" },
         xiaomi: { baseUrl: "https://api.xiaomimimo.com/v1" },
-        custom: { baseUrl: localStorage.getItem("melai-custom-url")?.trim() ?? "" },
+        custom: { baseUrl: localStorage.getItem(`custom-url-${slot}`)?.trim() ?? "" },
     };
 
     const p = PROVIDERS[provider] ?? PROVIDERS["deepseek"]!;

@@ -1,14 +1,11 @@
 // menu.ts —— 菜单页：多存档列表 + 设置（复用 storage 模块）
+// 每个存档槽位独立的 API 设置
 
-import { loadSlotRaw, loadSlotCharacterName, clearSlot } from "./storage";
+import { loadSlotRaw, loadSlotCharacterName, clearSlot, currentSlot } from "./storage";
 
-const PROVIDER_STORE = "melai-provider";
-const MODEL_STORE = "melai-model";
-const EFFORT_STORE = "melai-effort";
-const CUSTOM_URL_STORE = "melai-custom-url";
 const TOTAL_SLOTS = 5;
 
-// 供应商配置（models 为空数组，通过 API 获取）
+// 供应商配置
 const PROVIDERS: Record<string, { name: string; baseUrl: string; headerFn?: (key: string) => Record<string, string> }> = {
     deepseek: {
         name: "DeepSeek",
@@ -53,10 +50,13 @@ const PROVIDERS: Record<string, { name: string; baseUrl: string; headerFn?: (key
     },
 };
 
-// 每个供应商独立的 API Key 存储键
-function getKeyStore(provider: string): string {
-    return `apikey-${provider}`;
+// 每个存档槽位独立的存储键（格式：设置项-槽位号）
+function slotKey(setting: string, slot: number): string {
+    return `${setting}-${slot}`;
 }
+
+// 当前选中的存档槽位（用于设置页面）
+let activeSlot = currentSlot;
 
 function fmtTime(ts: number): string {
     const d = new Date(ts);
@@ -73,15 +73,20 @@ function moodLine(s: Record<string, number>): string {
         (s.fatigue ?? 0) > 50 ? "疲惫" : "心情平稳";
 }
 
+// 渲染存档列表
 function renderSaves() {
     const list = document.getElementById("save-list")!;
-    const current = parseInt(localStorage.getItem("melai-current-slot") ?? "1", 10) || 1;
     list.innerHTML = "";
 
     for (let slot = 1; slot <= TOTAL_SLOTS; slot++) {
         const save = loadSlotRaw(slot);
         const card = document.createElement("div");
-        card.className = `save-card${slot === current ? " active" : ""}`;
+        card.className = `save-card${slot === activeSlot ? " active" : ""}`;
+
+        // 读取该槽位的 API 设置
+        const provider = localStorage.getItem(slotKey("provider", slot)) ?? "deepseek";
+        const providerName = PROVIDERS[provider]?.name ?? provider;
+        const hasKey = !!localStorage.getItem(slotKey("apikey", slot));
 
         if (save) {
             const s = save.aiState as Record<string, number>;
@@ -90,7 +95,7 @@ function renderSaves() {
                 <div class="s-head">
                   <span class="s-name">存档 ${slot} · ${loadSlotCharacterName(slot)}</span>
                   <span style="display:flex;gap:6px;align-items:center;">
-                    <span class="s-tag">${slot === current ? "当前" : ""}</span>
+                    <span class="s-tag">${providerName}${hasKey ? " ✓" : " ✗"}</span>
                     <button class="s-del" data-del="${slot}">🗑 删除</button>
                   </span>
                 </div>
@@ -103,7 +108,9 @@ function renderSaves() {
             card.innerHTML = `
                 <div class="s-head">
                   <span class="s-name">存档 ${slot}</span>
-                  <span class="s-tag">空</span>
+                  <span style="display:flex;gap:6px;align-items:center;">
+                    <span class="s-tag">${providerName}${hasKey ? " ✓" : " ✗"}</span>
+                  </span>
                 </div>
                 <div class="s-empty">还没有记录。</div>
                 <div class="s-go">＋ 从这里开始一段新故事</div>`;
@@ -117,14 +124,22 @@ function renderSaves() {
                 const delSlot = parseInt(delBtn.dataset.del ?? "0", 10);
                 if (confirm(`删除存档 ${delSlot}？\n此操作无法恢复！`)) {
                     clearSlot(delSlot);
+                    // 也清除该槽位的 API 设置
+                    localStorage.removeItem(slotKey("provider", delSlot));
+                    localStorage.removeItem(slotKey("apikey", delSlot));
+                    localStorage.removeItem(slotKey("model", delSlot));
+                    localStorage.removeItem(slotKey("custom-url", delSlot));
+                    localStorage.removeItem(slotKey("models-cache", delSlot));
                     renderSaves();
                 }
                 return;
             }
 
+            // 切换到该槽位
+            activeSlot = slot;
             localStorage.setItem("melai-current-slot", String(slot));
-            const isNew = !save;
-            location.href = `./chat.html?slot=${slot}${isNew ? "&new=1" : ""}`;
+            loadSlotSettings(slot);
+            renderSaves();
         });
 
         list.appendChild(card);
@@ -140,31 +155,40 @@ const providerSelect = document.getElementById("provider-select") as HTMLSelectE
 const customUrlInput = document.getElementById("custom-url") as HTMLInputElement;
 const customUrlSetting = document.getElementById("custom-url-setting")!;
 const saveHint = document.getElementById("save-hint")!;
+const slotLabel = document.getElementById("slot-label")!;
 
-let currentProvider = localStorage.getItem(PROVIDER_STORE) ?? "deepseek";
+// 加载指定槽位的设置到 UI
+function loadSlotSettings(slot: number) {
+    const provider = localStorage.getItem(slotKey("provider", slot)) ?? "deepseek";
+    const key = localStorage.getItem(slotKey("apikey", slot)) ?? "";
+    const model = localStorage.getItem(slotKey("model", slot)) ?? "";
+    const customUrl = localStorage.getItem(slotKey("custom-url", slot)) ?? "";
+    const effort = localStorage.getItem("melai-effort") ?? "high"; // effort 全局共享
 
-// 切换供应商时：保存当前供应商的 key → 加载新供应商的 key
-function switchProvider(newProvider: string) {
-    // 保存当前供应商的 key
-    localStorage.setItem(getKeyStore(currentProvider), keyInput.value.trim());
-    // 切换
-    currentProvider = newProvider;
-    localStorage.setItem(PROVIDER_STORE, currentProvider);
-    // 加载新供应商的 key
-    keyInput.value = localStorage.getItem(getKeyStore(currentProvider)) ?? "";
-    // 更新 UI
-    customUrlSetting.style.display = currentProvider === "custom" ? "" : "none";
-    if (currentProvider === "custom") {
-        customUrlInput.value = localStorage.getItem(CUSTOM_URL_STORE) ?? "";
+    providerSelect.value = provider;
+    keyInput.value = key;
+    effortSelect.value = effort;
+    customUrlInput.value = customUrl;
+    customUrlSetting.style.display = provider === "custom" ? "" : "none";
+
+    slotLabel.textContent = `存档 ${slot} 的 API 设置`;
+    loadCachedModels(slot);
+}
+
+// 保存当前槽位的设置
+function saveCurrentSettings() {
+    localStorage.setItem(slotKey("provider", activeSlot), providerSelect.value);
+    localStorage.setItem(slotKey("apikey", activeSlot), keyInput.value.trim());
+    localStorage.setItem(slotKey("custom-url", activeSlot), customUrlInput.value.trim());
+    if (modelSelect.value) {
+        localStorage.setItem(slotKey("model", activeSlot), modelSelect.value);
     }
-    // 加载该供应商已缓存的模型列表
-    loadCachedModels(currentProvider);
 }
 
 // 加载已缓存的模型列表
-function loadCachedModels(provider: string) {
-    const cached = localStorage.getItem(`models-${provider}`);
-    const savedModel = localStorage.getItem(`${MODEL_STORE}-${provider}`);
+function loadCachedModels(slot: number) {
+    const cached = localStorage.getItem(slotKey("models-cache", slot));
+    const savedModel = localStorage.getItem(slotKey("model", slot));
     modelSelect.innerHTML = "";
 
     if (cached) {
@@ -187,14 +211,7 @@ function loadCachedModels(provider: string) {
 }
 
 // 初始化
-providerSelect.value = currentProvider;
-keyInput.value = localStorage.getItem(getKeyStore(currentProvider)) ?? "";
-effortSelect.value = localStorage.getItem(EFFORT_STORE) ?? "high";
-customUrlSetting.style.display = currentProvider === "custom" ? "" : "none";
-if (currentProvider === "custom") {
-    customUrlInput.value = localStorage.getItem(CUSTOM_URL_STORE) ?? "";
-}
-loadCachedModels(currentProvider);
+loadSlotSettings(activeSlot);
 
 function showHint() {
     saveHint.style.display = "block";
@@ -202,29 +219,28 @@ function showHint() {
 }
 
 providerSelect.addEventListener("change", () => {
-    switchProvider(providerSelect.value);
+    customUrlSetting.style.display = providerSelect.value === "custom" ? "" : "none";
+    saveCurrentSettings();
     showHint();
 });
 
 keyInput.addEventListener("change", () => {
-    localStorage.setItem(getKeyStore(currentProvider), keyInput.value.trim());
+    saveCurrentSettings();
     showHint();
 });
 
 modelSelect.addEventListener("change", () => {
-    if (modelSelect.value) {
-        localStorage.setItem(`${MODEL_STORE}-${currentProvider}`, modelSelect.value);
-    }
+    saveCurrentSettings();
     showHint();
 });
 
 effortSelect.addEventListener("change", () => {
-    localStorage.setItem(EFFORT_STORE, effortSelect.value);
+    localStorage.setItem("melai-effort", effortSelect.value);
     showHint();
 });
 
 customUrlInput.addEventListener("change", () => {
-    localStorage.setItem(CUSTOM_URL_STORE, customUrlInput.value.trim());
+    saveCurrentSettings();
     showHint();
 });
 
@@ -243,14 +259,16 @@ const apiTestBtn = document.getElementById("api-test") as HTMLButtonElement;
 const apiStatus = document.getElementById("api-status")!;
 
 function getApiBase(): string {
-    if (currentProvider === "custom") {
+    const provider = providerSelect.value;
+    if (provider === "custom") {
         return customUrlInput.value.trim().replace(/\/+$/, "");
     }
-    return PROVIDERS[currentProvider]?.baseUrl ?? "";
+    return PROVIDERS[provider]?.baseUrl ?? "";
 }
 
 function getHeaders(key: string): Record<string, string> {
-    const p = PROVIDERS[currentProvider];
+    const provider = providerSelect.value;
+    const p = PROVIDERS[provider];
     if (p?.headerFn) return p.headerFn(key);
     return {
         "Content-Type": "application/json",
@@ -260,6 +278,7 @@ function getHeaders(key: string): Record<string, string> {
 
 async function testApi() {
     const key = keyInput.value.trim();
+    const provider = providerSelect.value;
 
     if (!key) {
         apiStatus.style.display = "block";
@@ -277,13 +296,13 @@ async function testApi() {
     }
 
     // 保存 key
-    localStorage.setItem(getKeyStore(currentProvider), key);
+    saveCurrentSettings();
 
     apiTestBtn.disabled = true;
     apiTestBtn.textContent = "⏳ 测试中…";
     apiStatus.style.display = "block";
     apiStatus.style.color = "var(--ink-soft)";
-    apiStatus.textContent = `正在连接 ${PROVIDERS[currentProvider]?.name ?? currentProvider} API…`;
+    apiStatus.textContent = `正在连接 ${PROVIDERS[provider]?.name ?? provider} API…`;
 
     try {
         const resp = await fetch(`${baseUrl}/models`, {
@@ -302,8 +321,8 @@ async function testApi() {
             throw new Error("未获取到模型列表");
         }
 
-        // 缓存模型列表
-        localStorage.setItem(`models-${currentProvider}`, JSON.stringify(models));
+        // 缓存模型列表到当前槽位
+        localStorage.setItem(slotKey("models-cache", activeSlot), JSON.stringify(models));
 
         // 更新下拉框
         modelSelect.innerHTML = "";
@@ -314,7 +333,7 @@ async function testApi() {
             modelSelect.appendChild(opt);
         }
         modelSelect.value = models[0]!;
-        localStorage.setItem(`${MODEL_STORE}-${currentProvider}`, modelSelect.value);
+        localStorage.setItem(slotKey("model", activeSlot), modelSelect.value);
 
         apiStatus.style.color = "#34d399";
         apiStatus.textContent = `✅ Key 有效！已获取 ${models.length} 个模型`;
