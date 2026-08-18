@@ -1383,6 +1383,26 @@ if (hadSave) {
     }
 }
 
+// ===== 可折叠分组交互 =====
+document.querySelectorAll<HTMLElement>(".panel-section-toggle").forEach((btn) => {
+    const section = btn.dataset.section;
+    const content = document.getElementById(`section-${section}`);
+    if (!content) return;
+
+    // 从 localStorage 恢复折叠状态
+    const saved = localStorage.getItem(`panel.section.${section}`);
+    if (saved === "collapsed") {
+        btn.classList.add("collapsed");
+        content.classList.add("collapsed");
+    }
+
+    btn.addEventListener("click", () => {
+        const isCollapsed = btn.classList.toggle("collapsed");
+        content.classList.toggle("collapsed", isCollapsed);
+        localStorage.setItem(`panel.section.${section}`, isCollapsed ? "collapsed" : "expanded");
+    });
+});
+
 // 调试钩子
 (window as any).__debug = {
     next: () => {

@@ -521,6 +521,45 @@
           padding: 6px 2px;
       }
 
+      /* ===== 可折叠分组 ===== */
+      .panel-section {
+          border-radius: var(--radius-md);
+          margin-bottom: 6px;
+          overflow: hidden;
+      }
+      .panel-section-toggle {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          width: 100%;
+          padding: 8px 10px;
+          background: rgba(255, 255, 255, 0.3);
+          border: 1px solid rgba(255, 255, 255, 0.4);
+          border-radius: var(--radius-sm);
+          color: var(--ink-soft);
+          font-size: 12px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s;
+          user-select: none;
+      }
+      .panel-section-toggle:hover { background: rgba(255, 255, 255, 0.5); }
+      .panel-section-toggle .toggle-arrow {
+          transition: transform 0.25s;
+          font-size: 10px;
+      }
+      .panel-section-toggle.collapsed .toggle-arrow { transform: rotate(-90deg); }
+      .panel-section-content {
+          padding-top: 4px;
+          overflow: hidden;
+          transition: max-height 0.3s ease, opacity 0.2s ease;
+      }
+      .panel-section-content.collapsed {
+          max-height: 0 !important;
+          opacity: 0;
+          padding: 0;
+      }
+
       #mood-history {
           font-size: 10px; color: var(--ink-soft); line-height: 1.6;
           border-top: 1px solid rgba(255,255,255,0.15); padding-top: 8px; margin-top: 8px;
@@ -1161,8 +1200,9 @@
       /* 日程：竖向时间线 */
       .agenda-item {
           display: flex;
+          flex-wrap: wrap;
           align-items: baseline;
-          gap: 8px;
+          gap: 6px 8px;
           font-size: 11px;
           padding: 4px 8px;
           border-radius: 8px;
@@ -1174,6 +1214,14 @@
       .agenda-item.active { border-left-color: var(--accent); background: var(--accent-soft); opacity: 1; font-weight: 600; }
       .agenda-item.done { opacity: 0.4; border-left-color: #34d399; }
       .agenda-item .agenda-time { font-family: var(--font-num); font-variant-numeric: tabular-nums; font-size: 10px; color: var(--ink-faint); flex-shrink: 0; }
+      .agenda-item .agenda-title { flex: 1; min-width: 0; white-space: normal; word-break: break-word; }
+      .agenda-item .agenda-desc {
+          width: 100%;
+          font-size: 9px;
+          color: var(--ink-soft);
+          padding-left: 30px;
+          line-height: 1.4;
+      }
 
   </style>
 </head>
@@ -1304,33 +1352,57 @@
 
   <div id="mood-text">—</div>
 
-  <!-- 剧情卡 -->
-  <div class="story-card">
-    <div class="story-head">
-      <span>📖 剧情</span>
-      <span id="story-stage-name" style="color:var(--gold);">初识</span>
+  <!-- 剧情卡（可折叠） -->
+  <div class="panel-section">
+    <button class="panel-section-toggle" data-section="story">
+      <span>📖 剧情进展</span>
+      <span class="toggle-arrow">▼</span>
+    </button>
+    <div class="panel-section-content" id="section-story">
+      <div class="story-card">
+        <div class="story-head">
+          <span>📖 剧情</span>
+          <span id="story-stage-name" style="color:var(--gold);">初识</span>
+        </div>
+        <div class="story-desc" id="story-stage-desc">转学第一周</div>
+        <div class="story-bar"><div class="story-fill" id="story-progress-bar" style="width:0%"></div></div>
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--ink-soft);margin-top:3px;">
+          <span>这段日子</span><span id="story-progress-val">0%</span>
+        </div>
+        <div id="story-events"></div>
+      </div>
     </div>
-    <div class="story-desc" id="story-stage-desc">转学第一周</div>
-    <div class="story-bar"><div class="story-fill" id="story-progress-bar" style="width:0%"></div></div>
-    <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--ink-soft);margin-top:3px;">
-      <span>这段日子</span><span id="story-progress-val">0%</span>
-    </div>
-    <div id="story-events"></div>
   </div>
 
-  <!-- 今日日程：AI 规划的一天流程 + 对话中产生的约定 -->
-  <div class="clock-card" style="margin-top:10px;">
-    <div class="clock-row" style="justify-content:space-between;">
-      <span style="color:#fad831;font-size:12px;">📅 今日日程</span>
-      <span id="agenda-day" style="color:var(--ink-soft);font-size:10px;">第 1 天</span>
+  <!-- 今日日程（可折叠） -->
+  <div class="panel-section">
+    <button class="panel-section-toggle" data-section="agenda">
+      <span>📅 今日日程</span>
+      <span class="toggle-arrow">▼</span>
+    </button>
+    <div class="panel-section-content" id="section-agenda">
+      <div class="clock-card" style="margin-top:4px;">
+        <div class="clock-row" style="justify-content:flex-end;">
+          <span id="agenda-day" style="color:var(--ink-soft);font-size:10px;">第 1 天</span>
+        </div>
+        <div id="agenda-list" style="display:flex;flex-direction:column;gap:4px;margin-top:6px;"></div>
+      </div>
     </div>
-    <div id="agenda-list" style="display:flex;flex-direction:column;gap:4px;margin-top:6px;"></div>
   </div>
 
   <!-- 查看全部情感：打开全屏浮层 -->
   <button id="emotions-toggle">🧠 查看全部情感（38 维）</button>
 
-  <div id="mood-history"><b>情绪日志</b><br></div>
+  <!-- 情绪日志（可折叠） -->
+  <div class="panel-section">
+    <button class="panel-section-toggle" data-section="mood">
+      <span>📊 情绪日志</span>
+      <span class="toggle-arrow">▼</span>
+    </button>
+    <div class="panel-section-content" id="section-mood">
+      <div id="mood-history"><b>情绪日志</b><br></div>
+    </div>
+  </div>
 </div>
 
 <!-- 全屏情感明细浮层 -->
