@@ -2,7 +2,6 @@
 // 依赖 storage（时间变量 + saveState）；跨天/时段切换通过回调通知外部。
 // 作息表由【场景配置】驱动（创建角色时询问），不再写死学校
 
-import { aiState } from "./state";
 import { store, saveState, type SceneConfig } from "./storage";
 
 // ============ 作息表（场景驱动） ============
@@ -66,12 +65,15 @@ let messageSender: ((text: string, opts?: { proactive?: boolean }) => void) | nu
 let randomMomentHook: (() => void) | null = null;
 // 角色关系回调（chat.ts 注入，避免 time ↔ character 循环依赖）
 let relationGetter: (() => string) | null = null;
+// 主动开口频率的“情绪/剧情动态系数”（chat.ts 注入 story.ts 的计算结果，避免 time ↔ story 循环依赖）
+let proactiveDriveGetter: (() => number) | null = null;
 
 export function setSlotChangeHandler(fn: () => void) { slotChangeHandler = fn; }
 export function setDayChangeHandler(fn: (oldDay: number) => void) { dayChangeHandler = fn; }
 export function setMessageSender(fn: (text: string, opts?: { proactive?: boolean }) => void) { messageSender = fn; }
 export function setRandomMomentHook(fn: () => void) { randomMomentHook = fn; }
 export function setRelationGetter(fn: () => string) { relationGetter = fn; }
+export function setProactiveDriveGetter(fn: () => number) { proactiveDriveGetter = fn; }
 
 // 关系阶段判断：是否"刚认识"（只有这时才说"第一次见面"）
 // 恋人/青梅竹马/家人/朋友等已有关系 → 不是第一次见面
@@ -366,11 +368,12 @@ export function sceneShort(): string {
 }
 
 // 时段切换：她可能主动开口（由手头的事引发）
+// 概率会随“情绪 + 剧情”动态调整：心情好/想你/剧情正热 → 更爱开口；疲惫/害羞/初识 → 更安静
 export function onSlotChanged() {
     const slot = currentSchedule();
 
-    let chance = slot.speakChance;
-    if (aiState.joy > 65 || aiState.sadness > 65 || aiState.anger > 55) chance = Math.min(1, chance + 0.3);
+    const drive = proactiveDriveGetter?.() ?? 1;
+    const chance = Math.max(0, Math.min(1, slot.speakChance * drive));
 
     const hasChatCapability = !!localStorage.getItem("deepseek-key");
 

@@ -45,6 +45,49 @@ export function storyStage(): { name: string; pct: number; desc: string } {
     return { name: "初识", pct: 10, desc: "刚认识，对彼此还很陌生" };
 }
 
+// ============ 主动开口频率 ============
+// 动态系数由“情绪 + 剧情”共同决定：
+// - 关系越亲近、剧情越深入、有进行中的剧情线 → 越愿意主动开口
+// - 开心/孤单/依赖/低落/吃醋 → 更想说话；疲惫/害羞/焦虑 → 更安静
+// 返回 0.4 ~ 1.6 的倍率，供时段切换和随机事件统一使用。
+export function proactiveDrive(): number {
+    const relationAvg = (
+        aiState.affection +
+        aiState.trust +
+        aiState.intimacy +
+        aiState.familiarity +
+        aiState.dependence
+    ) / 5;
+
+    // 基础：熟络程度（关系层）
+    let factor = 0.65 + (relationAvg - 25) / 100;
+
+    // 剧情阶段：越深入越愿意推进/分享
+    factor += (storyStage().pct - 50) / 100;
+    // 剧情总进度：故事走得越远，越主动制造/接住剧情
+    factor += (store.storyProgress - 50) / 200;
+
+    // 有正在推进的剧情线 → 更主动推进剧情
+    if (store.activeThread) factor += 0.2;
+
+    // 情绪层
+    if (aiState.joy > 60) factor += 0.2;                                   // 开心想分享
+    if (aiState.loneliness > 45) factor += 0.2;                            // 孤单想找你
+    if (aiState.dependence > 45) factor += 0.15;                           // 依赖你
+    if (aiState.sadness > 50) factor += 0.15;                              // 低落时想倾诉
+    if (aiState.anger > 50 || aiState.jealousy > 45) factor += 0.15;       // 有情绪憋不住
+    if (aiState.anxiety > 55 || aiState.nervousness > 55) factor -= 0.1;   // 不安时话变少
+    if (aiState.fatigue > 55 || aiState.energy < 35) factor -= 0.2;        // 累了少说
+    if (aiState.shyness > 55 || aiState.embarrassment > 50) factor -= 0.1; // 害羞/尴尬
+
+    // 人格层：外向/自信的人本来就更主动；敏感的人会更犹豫
+    factor += (aiState.extraversion - 50) / 200;
+    factor += (aiState.confidence - 50) / 200;
+    factor -= (aiState.neuroticism - 50) / 300;
+
+    return clamp(factor, 0.4, 1.6);
+}
+
 // ============ 剧情档案（按天归档） ============
 
 export function dayKey(ms: number): number {
@@ -206,8 +249,11 @@ export function maybeRandomMoment() {
     const forced = turnsSinceEvent >= 4;
     if (!forced && Date.now() < nextRandomAt) return;
 
-    nextRandomAt = Date.now() + 30000 + Math.random() * 40000;
-    if (!forced && Math.random() > 0.45) return;
+    // 频率随情绪/剧情动态变化：越主动的时候，等待间隔越短、尝试概率越高
+    const drive = proactiveDrive();
+    const intervalMs = Math.max(15000, Math.min(180000, (30000 + Math.random() * 40000) / Math.max(0.4, drive)));
+    nextRandomAt = Date.now() + intervalMs;
+    if (!forced && Math.random() > Math.min(0.9, 0.45 * drive)) return;
 
     turnsSinceEvent = 0;
 

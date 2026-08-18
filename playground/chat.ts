@@ -36,6 +36,7 @@ import {
     setMessageSender as setTimeMessageSender,
     setRelationGetter,
     setProactiveEnabled,
+    setProactiveDriveGetter,
     setRandomMomentHook,
     herLocation,
 } from "./time";
@@ -44,6 +45,7 @@ import {
     updateStoryUI,
     finalizeDay,
     maybeRandomMoment,
+    proactiveDrive,
     bumpTurnsSinceEvent,
     markUserInput,
     userIsTyping,
@@ -311,10 +313,15 @@ function setBusyState(b: boolean) {
 
 let demoMode = false;
 
+// 她主动开口时，历史里 user 侧用这个占位符喂给 AI，避免把情境指令当用户的话；
+// UI 渲染历史时要把这个占位符隐藏，避免刷新后出现“（她主动找你说话）”的伪用户消息。
+const PROACTIVE_PLACEHOLDER = "（她主动找你说话）";
+
 // 每轮对话的检查点（每条主角回复一个，重答按钮定位用）
 interface RedoCheckpoint {
     domStart: Node | null;                       // 该轮开始前的最后一个消息节点
     userText: string;                            // 该轮用户输入（重答时重发）
+    proactive: boolean;                          // 是否为“她主动开口”（重答时保持同样的主动通道）
     aiStateSnap: Record<string, number | undefined>; // 情感快照
     historyLen: number;                          // 聊天历史长度
     storyLen: number;                            // 剧情事件数
@@ -332,7 +339,8 @@ async function sendMessage(text: string, opts?: { proactive?: boolean }): Promis
     const cpIdx = turnCheckpoints.length;
     turnCheckpoints.push({
         domStart: container.lastChild,
-        userText: proactive ? "（她主动找你说话）" : text,
+        userText: proactive ? PROACTIVE_PLACEHOLDER : text,
+        proactive,
         aiStateSnap: { ...aiState },
         historyLen: store.chatHistory.length,
         storyLen: store.storyEvents.length,
@@ -410,7 +418,7 @@ async function sendMessage(text: string, opts?: { proactive?: boolean }): Promis
         // 写入聊天历史（AI 的记忆）
         if (proactive) {
             // 她主动开口：历史里 user 侧用说明性占位，避免 AI 把情境指令当用户的话
-            store.chatHistory.push({ role: "user", content: "（她主动找你说话）", ts: store.virtualMs });
+            store.chatHistory.push({ role: "user", content: PROACTIVE_PLACEHOLDER, ts: store.virtualMs });
         } else {
             store.chatHistory.push({ role: "user", content: text, ts: store.virtualMs });
         }
@@ -540,7 +548,7 @@ async function reAnswerAt(cpIdx: number) {
     // 4. 重新生成
     setBusyState(true);
     try {
-        await sendMessage(cp.userText);
+        await sendMessage(cp.userText, cp.proactive ? { proactive: true } : undefined);
     } finally {
         setBusyState(false);
     }
@@ -868,15 +876,19 @@ async function mainReplyToNpc(npc: { profile: { name: string; id: string } }, np
 // ============ 聊天历史面板 ============
 
 function renderHistoryToChat() {
-    if (!store.chatHistory.length) return;
+    // 过滤掉“她主动开口”的 user 侧占位符，避免刷新后把它渲染成伪用户消息
+    const visibleHistory = store.chatHistory.filter(
+        (e) => !(e.role === "user" && e.content === PROACTIVE_PLACEHOLDER),
+    );
+    if (!visibleHistory.length) return;
 
     const container = document.getElementById("chat-messages")!;
     const divider = document.createElement("div");
     divider.className = "history-divider";
-    divider.textContent = `—— 上次的聊天记录（共 ${store.chatHistory.length} 条）——`;
+    divider.textContent = `—— 上次的聊天记录（共 ${visibleHistory.length} 条）——`;
     container.appendChild(divider);
 
-    for (const entry of store.chatHistory.slice(-20)) {
+    for (const entry of visibleHistory.slice(-20)) {
         const div = document.createElement("div");
         div.className = `msg ${entry.role === "user" ? "user" : "ai"}`;
         if (entry.role === "assistant") {
@@ -900,12 +912,17 @@ function openHistory() {
     const list = document.getElementById("history-list")!;
     list.innerHTML = "";
 
-    if (!store.chatHistory.length) {
+    // 和聊天区一样，不显示“她主动开口”的 user 侧占位符
+    const visibleHistory = store.chatHistory.filter(
+        (e) => !(e.role === "user" && e.content === PROACTIVE_PLACEHOLDER),
+    );
+
+    if (!visibleHistory.length) {
         list.innerHTML = '<div style="color:rgba(255,255,255,0.5);font-size:12px;text-align:center;padding:20px;">还没有聊天记录。</div>';
     } else {
-        const groups = new Map<string, typeof store.chatHistory>();
+        const groups = new Map<string, typeof visibleHistory>();
 
-        for (const e of store.chatHistory) {
+        for (const e of visibleHistory) {
             const key = e.ts
                 ? `第 ${Math.floor((e.ts - store.dayBaseMs) / 86400000) + 1} 天`
                 : "过去";
@@ -1188,6 +1205,8 @@ document.getElementById("char-reset-preset")!.addEventListener("click", () => {
 setCharacterGetter(() => CHARACTER_REF);
 setRelationGetter(() => CHARACTER_REF.relation ?? ""); // 关系阶段判断（是否"第一次见面"）
 setStoryCharNameGetter(() => CHARACTER_REF.name); // 角色卡名字
+// 主动开口频率：统一使用“情绪 + 剧情”动态系数（story.ts 计算，time.ts 的时段切换共用）
+setProactiveDriveGetter(() => proactiveDrive());
 // 日程规划：注入角色信息（让 AI 规划贴合她的日程）
 setAgendaCharacterGetter(() => ({
     name: CHARACTER_REF.name,
