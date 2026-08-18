@@ -13,9 +13,15 @@ export const currentSlot = Math.max(
     Math.min(9, parseInt(slotParams.get("slot") ?? localStorage.getItem("melai-current-slot") ?? "1", 10) || 1),
 );
 
-if (slotParams.get("new") === "1") {
+// new=1 只清空一次：用 localStorage 标记防止刷新重复清空
+const newKey = `melai-did-new-${currentSlot}`;
+if (slotParams.get("new") === "1" && !localStorage.getItem(newKey)) {
     localStorage.removeItem(`melai-state-${currentSlot}`);
-    // 清空后立即从 URL 移除 new=1，防止刷新页面再次清空存档
+    localStorage.removeItem(`melai-character-${currentSlot}`);
+    localStorage.setItem(newKey, "1");
+}
+// 无论是否命中 new=1，都从 URL 移除该参数，防止刷新再次触发
+if (slotParams.has("new")) {
     const url = new URL(location.href);
     url.searchParams.delete("new");
     history.replaceState(null, "", url.toString());

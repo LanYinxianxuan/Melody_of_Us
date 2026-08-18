@@ -13,7 +13,7 @@ import {
     USER_EMOTION_FIX,
     EMOTION_NAMES,
 } from "./state";
-import { store, saveState, loadState, SAVE_KEY, CHAR_KEY, initNpcWorld } from "./storage";
+import { store, saveState, loadState, SAVE_KEY, CHAR_KEY, currentSlot, initNpcWorld } from "./storage";
 import { CHARACTER, PRESETS, loadCharacter, saveCharacter, type CharacterProfile } from "./character";
 import {
     FIRST_MEETING_HHMM,
@@ -1285,6 +1285,8 @@ setWizardSavedCallback(() => {
     // 重置"被冷落"基准：她刚和你在一起（防止创建过程耗时被误判为冷落）
     store.lastReplyRealAt = Date.now();
     store.lastReplyVirtualAt = store.virtualMs;
+    // 清除 new=1 标记，允许该槽位被正常加载
+    localStorage.removeItem(`melai-did-new-${currentSlot}`);
     saveState();
     // 向导完成：静默期结束，允许她主动开口；并把焦点还给输入框
     setProactiveEnabled(true);
