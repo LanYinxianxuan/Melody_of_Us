@@ -341,10 +341,145 @@ export function updateScheduleUI() {
     const sceneEl = document.getElementById("clock-scene");
     if (sceneEl) sceneEl.textContent = `📍 ${sceneShort()}`;
 
+    // 更新详细场景描述
+    updateSceneUI();
+
     for (const btn of document.querySelectorAll<HTMLElement>(".rate-btn")) {
         const rate = parseFloat(btn.dataset.rate!);
         btn.classList.toggle("active", rate === store.timeRate);
     }
+}
+
+// 更新详细场景描述 UI
+export function updateSceneUI() {
+    const slot = currentSchedule();
+    const label = slot.label;
+    const s: SceneConfig = store.scene;
+    const hour = new Date(store.virtualMs).getHours();
+
+    // 场景标题
+    const titleEl = document.getElementById("scene-title");
+    if (titleEl) titleEl.textContent = getSceneTitle(label, s);
+
+    // 地点
+    const locationEl = document.getElementById("scene-location");
+    if (locationEl) locationEl.textContent = getSceneLocation(label, s);
+
+    // 氛围描述
+    const atmosphereEl = document.getElementById("scene-atmosphere");
+    if (atmosphereEl) atmosphereEl.textContent = getSceneAtmosphere(label, hour, s);
+
+    // 天气
+    const weatherEl = document.getElementById("scene-weather");
+    if (weatherEl) {
+        const textEl = weatherEl.querySelector(".scene-detail-text");
+        if (textEl) textEl.textContent = getWeatherDescription(label, hour);
+    }
+
+    // 周围的人
+    const peopleEl = document.getElementById("scene-people");
+    if (peopleEl) {
+        const textEl = peopleEl.querySelector(".scene-detail-text");
+        if (textEl) textEl.textContent = getPeopleDescription(label, s);
+    }
+
+    // 环境声音
+    const soundEl = document.getElementById("scene-sound");
+    if (soundEl) {
+        const textEl = soundEl.querySelector(".scene-detail-text");
+        if (textEl) textEl.textContent = getSoundDescription(label, s);
+    }
+
+    // 光线
+    const lightEl = document.getElementById("scene-light");
+    if (lightEl) {
+        const textEl = lightEl.querySelector(".scene-detail-text");
+        if (textEl) textEl.textContent = getLightDescription(label, hour);
+    }
+
+    // 她正在做的事
+    const activityEl = document.getElementById("scene-activity");
+    if (activityEl) activityEl.textContent = `她正在${slot.activity.replace(/^你/, "").replace(/^正在/, "")}`;
+}
+
+function getSceneTitle(label: string, s: SceneConfig): string {
+    if (label === "深夜") return "深夜·卧室";
+    if (label === "清晨") return "清晨·起床";
+    if (label === "出门") return "出门·路上";
+    if (label === "开工") return `到达·${s.place}`;
+    if (label === s.busyLabel) return `${label}·${s.place}`;
+    if (label === s.restLabel) return `${label}·休息`;
+    if (label === "午休") return "午休·用餐";
+    if (label === "收工") return "收工·放松";
+    if (label === "傍晚") return "傍晚·归途";
+    if (label === "晚上") return "晚上·独处";
+    if (label === "睡前") return "睡前·安静";
+    return label;
+}
+
+function getSceneLocation(label: string, s: SceneConfig): string {
+    if (label === "深夜" || label === "清晨" || label === "晚上" || label === "睡前") return "🏠 她住的地方";
+    if (label === "出门" || label === "傍晚") return `🚶 去${s.place}的路上`;
+    return `📍 ${s.place}`;
+}
+
+function getSceneAtmosphere(label: string, hour: number, s: SceneConfig): string {
+    if (label === "深夜") return "万籁俱寂，只有窗外偶尔传来的虫鸣。月光透过窗帘洒在地上，房间里弥漫着淡淡的薰衣草香。";
+    if (label === "清晨") return "晨光熹微，空气中带着一丝凉意。鸟儿在窗外啁啾，新的一天开始了。";
+    if (label === "出门") return "街道上行人渐多，早餐店飘来阵阵香气。微风拂面，带着城市的气息。";
+    if (label === "开工") return `${s.place}里渐渐热闹起来，大家都在准备开始新的一天。`;
+    if (label === s.busyLabel) return `${s.place}里秩序井然，偶尔传来低声的交谈和翻书声。`;
+    if (label === s.restLabel) return "短暂的休息时光，走廊里有人走动，教室里三三两两聚在一起聊天。";
+    if (label === "午休") return "午后的阳光温暖而慵懒，食堂里飘来饭菜的香气。";
+    if (label === "收工") return "一天的忙碌终于结束，${s.place}里渐渐安静下来。";
+    if (label === "傍晚") return "夕阳西下，天边染上橙红色的晚霞。街灯次第亮起，城市披上温柔的光。";
+    if (label === "晚上") return "夜幕降临，房间里灯光柔和。窗外是城市的万家灯火，宁静而温馨。";
+    if (label === "睡前") return "夜深了，灯光调暗。整个世界都安静下来，只剩下彼此的呼吸声。";
+    return "此刻的氛围刚刚好。";
+}
+
+function getWeatherDescription(label: string, hour: number): string {
+    // 简单的天气模拟（可以根据实际需求扩展）
+    if (label === "深夜") return "🌙 夜空晴朗，星光点点";
+    if (label === "清晨") return "🌤 晨光温暖，微风轻拂";
+    if (hour >= 6 && hour < 12) return "☀️ 上午阳光明媚";
+    if (hour >= 12 && hour < 14) return "🌞 正午阳光强烈";
+    if (hour >= 14 && hour < 18) return "⛅ 午后多云间晴";
+    if (hour >= 18 && hour < 20) return "🌅 傍晚霞光满天";
+    return "🌙 夜色已深";
+}
+
+function getPeopleDescription(label: string, s: SceneConfig): string {
+    if (label === "深夜" || label === "晚上" || label === "睡前") return "只有你们两个人";
+    if (label === "清晨") return "刚起床，周围很安静";
+    if (label === "出门" || label === "傍晚") return "路上有零星行人";
+    if (label === "开工" || label === s.busyLabel) return `周围有${s.others}`;
+    if (label === s.restLabel) return `${s.others}来来往往`;
+    if (label === "午休") return "食堂里人来人往";
+    if (label === "收工") return "人渐渐散去";
+    return "周围有人经过";
+}
+
+function getSoundDescription(label: string, s: SceneConfig): string {
+    if (label === "深夜") return "寂静，偶尔的虫鸣和远处车辆声";
+    if (label === "清晨") return "鸟鸣声，远处的车流声";
+    if (label === "出门" || label === "傍晚") return "脚步声，车辆行驶声";
+    if (label === "开工" || label === s.busyLabel) return "翻书声，低声交谈";
+    if (label === s.restLabel) return "欢笑声，聊天声";
+    if (label === "午休") return "餐具碰撞声，交谈声";
+    if (label === "收工") return "收拾东西的声音";
+    if (label === "晚上" || label === "睡前") return "轻柔的音乐，空调的低鸣";
+    return "周围的环境音";
+}
+
+function getLightDescription(label: string, hour: number): string {
+    if (label === "深夜") return "月光透过窗帘，房间昏暗";
+    if (label === "清晨") return "晨光从窗户洒入，柔和温暖";
+    if (label === "出门" || label === "傍晚") return "自然光，街灯渐亮";
+    if (hour >= 6 && hour < 18) return "明亮的自然光";
+    if (label === "晚上") return "室内灯光，柔和温馨";
+    if (label === "睡前") return "调暗的台灯，昏黄温暖";
+    return "光线适中";
 }
 
 // 当前场景的精简描述（左侧面板"📍"行）：地点 + 周围环境
