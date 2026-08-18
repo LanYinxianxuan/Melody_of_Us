@@ -64,8 +64,8 @@ export const SYSTEM_PROMPT = (character: CharacterProfile) =>
     "- 如果只有动作没有话，你也自然回应动作（不必强行说一句话，可以有动作+心声）；\n" +
     "- 动作和话可以并存，你的回应要同时覆盖两者，但以语言为主、动作为辅。\n\n" +
     '严格输出 JSON（不要任何其他文字）：' +
-    '{"dialogue":"说的话：分1~2段(用\\n分隔)；这是对话不是独白：先承接对方的话(一两句)，再说自己的，最后以提问或邀请收尾(『你呢？』/『你觉得呢？』)；每段20~40字，总长60字左右",' +
-    '"action":"动作/表情描写(20字内)","thoughts":"内心想法(20字内)",' +
+    '{"dialogue":"**只放她说的话**，不要放动作/表情/时间标签；分1~2段(用\\n分隔)；先承接对方的话(一两句)，再说自己的，最后以提问或邀请收尾；每段20~40字，总长60字左右",' +
+    '"action":"**只放动作/表情描写**(如：低头笑了笑、别过脸去)，20字内，不要放对话内容","thoughts":"内心想法(20字内)",' +
     '"stats":{38个维度的当前值},' +
     '"delta":{38个维度的变化量，受对话影响，每维-15~15，人格维度通常为0},' +
     '"user_emotion":"用户消息情绪，只能是 joy/anger/sad/shy/surprised/neutral 之一",' +
@@ -84,7 +84,8 @@ export const SYSTEM_PROMPT = (character: CharacterProfile) =>
     "- 你要根据时间变化来调整说话内容：如果之前是「课间」现在是「午休」，说明已经过了好几个小时，不要还说「课间」的事；\n" +
     "- 如果时间跳跃很大（跨时段/跨天），要自然地体现时间流逝：「都中午了啊」「下午过得好快」「昨天那件事…」；\n" +
     "- 你现在在做什么、在哪、周围有谁——这些以【你此刻的情境】为准，不要被历史消息里的旧场景误导；\n" +
-    "- 如果对方说的话和当前场景矛盾（比如深夜问你上课的事），要自然地回应而不是无视时间。";
+    "- 如果对方说的话和当前场景矛盾（比如深夜问你上课的事），要自然地回应而不是无视时间。\n" +
+    "【严禁】不要在 dialogue 里重复时间标签（如[第X天 XX:XX]）！时间信息是给你参考的，不是让你说出来的。";
 
 // 她的长期记忆：优先最近的，最多 8 条
 function memoriesText(): string {
@@ -150,6 +151,18 @@ function fmtIdle(mins: number): string {
     return m > 0 ? `${h} 小时 ${m} 分` : `${h} 小时`;
 }
 
+// 清理 dialogue 字段：移除时间标签和动作描述
+function cleanDialogue(text: string): string {
+    // 移除时间标签如 [第1天 21:55](晚上)
+    let cleaned = text.replace(/\[第\d+天\s+\d{1,2}:\d{2}\]\([^)]*\)\s*/g, "");
+    // 移除开头的动作描述（如：（目送她走到门口，犹豫一下，又开口））
+    // 匹配以（开头，以）结尾，后面跟着实际对话内容的情况
+    cleaned = cleaned.replace(/^（[^）]{5,}）\s*/g, "");
+    // 移除残留的时间标签格式
+    cleaned = cleaned.replace(/\[\d{1,2}:\d{2}\]\s*/g, "");
+    return cleaned.trim() || text; // 如果清理后为空，返回原文
+}
+
 // 容错解析：直接解析 → 提取 {...} 块 → dialogue 字段兜底
 export function parseAIResponse(content: string): ChatResult {
     let parsed: any = null;
@@ -182,6 +195,9 @@ export function parseAIResponse(content: string): ChatResult {
                 ? alt
                 : "（她张了张嘴，最后只是轻轻叹了口气。）";
     }
+
+    // 清理 dialogue 字段：移除时间标签和动作描述（这些应该在 action 字段）
+    parsed.dialogue = cleanDialogue(parsed.dialogue);
 
     return parsed as ChatResult;
 }
