@@ -135,11 +135,10 @@ function renderSaves() {
                 return;
             }
 
-            // 切换到该槽位
-            activeSlot = slot;
+            // 切换到该槽位并进入聊天
             localStorage.setItem("melai-current-slot", String(slot));
-            loadSlotSettings(slot);
-            renderSaves();
+            const isNew = !save;
+            location.href = `./chat.html?slot=${slot}${isNew ? "&new=1" : ""}`;
         });
 
         list.appendChild(card);
