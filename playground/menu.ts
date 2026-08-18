@@ -52,9 +52,9 @@ const PROVIDERS: Record<string, { name: string; baseUrl: string; models: string[
         models: ["glm-4-flash", "glm-4-air", "glm-4", "glm-4-long"],
     },
     xiaomi: {
-        name: "小米",
-        baseUrl: "https://api.xiaomi.com/v1",
-        models: ["MiLM-6B", "MiLM-13B"],
+        name: "小米 MiMo",
+        baseUrl: "https://api.xiaomimimo.com/v1",
+        models: ["mimo-v2.5-pro", "mimo-v2.5"],
     },
     custom: {
         name: "自定义",

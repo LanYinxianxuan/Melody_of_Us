@@ -269,7 +269,7 @@ function getProviderConfig(): { baseUrl: string; headers: Record<string, string>
         moonshot: { baseUrl: "https://api.moonshot.cn/v1" },
         qwen: { baseUrl: "https://dashscope.aliyuncs.com/compatible-mode/v1" },
         zhipu: { baseUrl: "https://open.bigmodel.cn/api/paas/v4" },
-        xiaomi: { baseUrl: "https://api.xiaomi.com/v1" },
+        xiaomi: { baseUrl: "https://api.xiaomimimo.com/v1" },
         custom: { baseUrl: localStorage.getItem("deepseek-custom-url")?.trim() ?? "" },
     };
 
