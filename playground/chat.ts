@@ -1324,6 +1324,7 @@ const hadSave = loadState();
 const hasChar = !!localStorage.getItem(CHAR_KEY);
 updateStateUI();
 updateStoryUI();
+updateScheduleUI(); // 确保场景描述卡片立即加载正确场景
 refreshNpcToggle(); // 按存档的多人开关刷新按钮（loadState 后）
 
 // 初始化头像（头部 + 面板角色卡）
