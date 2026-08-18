@@ -228,7 +228,10 @@ function liveSituationText(): string {
 export function maybeRandomMoment() {
     if (userIsTyping()) return;
     // 静默期（新存档/向导期间）：不随机开口，避免角色抢话
-    if (!proactiveEnabled) return;
+    if (!proactiveEnabled) {
+        console.log("[随机事件] 跳过：proactiveEnabled=false");
+        return;
+    }
 
     // 新存档保护期：刚创建（还没聊过任何一轮）不触发"被冷落"
     // （避免创建完成就被说"你为什么不回我"）
@@ -244,7 +247,10 @@ export function maybeRandomMoment() {
         if (neglect.level > 0 && triggerNeglectReaction(neglect)) return;
     }
 
-    if (currentSchedule().label === "深夜") return;
+    if (currentSchedule().label === "深夜") {
+        console.log("[随机事件] 跳过：深夜");
+        return;
+    }
 
     const forced = turnsSinceEvent >= 4;
     if (!forced && Date.now() < nextRandomAt) return;
@@ -253,9 +259,13 @@ export function maybeRandomMoment() {
     const drive = proactiveDrive();
     const intervalMs = Math.max(15000, Math.min(180000, (30000 + Math.random() * 40000) / Math.max(0.4, drive)));
     nextRandomAt = Date.now() + intervalMs;
-    if (!forced && Math.random() > Math.min(0.9, 0.45 * drive)) return;
+    if (!forced && Math.random() > Math.min(0.9, 0.45 * drive)) {
+        console.log(`[随机事件] 跳过：随机概率 (drive=${drive.toFixed(2)})`);
+        return;
+    }
 
     turnsSinceEvent = 0;
+    console.log("[随机事件] ✅ 触发主动开口");
 
     // 统一收口：正在等用户回复时不再开口（防止连续自言自语）
     tryProactiveSpeak(liveSituationText());

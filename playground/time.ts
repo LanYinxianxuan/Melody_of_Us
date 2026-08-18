@@ -99,10 +99,17 @@ export function markUserReplied() {
 
 export function tryProactiveSpeak(text: string): boolean {
     const now = Date.now();
-    if (awaitingReply) return false;
-    if (now - lastProactiveAt < PROACTIVE_COOLDOWN_MS) return false;
+    if (awaitingReply) {
+        console.log("[主动开口] 跳过：awaitingReply=true");
+        return false;
+    }
+    if (now - lastProactiveAt < PROACTIVE_COOLDOWN_MS) {
+        console.log(`[主动开口] 跳过：冷却中 (${Math.round((PROACTIVE_COOLDOWN_MS - (now - lastProactiveAt)) / 1000)}s)`);
+        return false;
+    }
     lastProactiveAt = now;
     awaitingReply = true;
+    console.log("[主动开口] ✅ 发送消息");
     messageSender?.(text, { proactive: true });
     return true;
 }
