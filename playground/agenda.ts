@@ -5,6 +5,8 @@
 
 import { store, saveState, type AgendaDay, type AgendaItem } from "./storage";
 import { currentDayIndex, currentSchedule, getSchedule, fmtVirtualTime, slotMinutes } from "./time";
+import { aiState, describeMood } from "./state";
+import { storyStage } from "./story";
 
 // ============ 日程读写 ============
 
@@ -181,6 +183,59 @@ export function setAgendaCharacterGetter(fn: () => { name: string; personality: 
     characterGetter = fn;
 }
 
+// 历史里的内部说明性占位符（她主动开口 / NPC 转述）不应被当作真实用户消息喂给日程规划
+function isInternalHistoryPlaceholder(e: { role: string; content: string }): boolean {
+    return e.role === "user" && (
+        e.content === "（她主动找你说话）" ||
+        /^（.+对你说）$/.test(e.content) ||
+        /^（.+和她说了话）$/.test(e.content)
+    );
+}
+
+// 构建“当前故事/情绪上下文”，让 AI 排日程时不是凭空生成，而是承接最近发生过的事
+function scheduleContextText(): string {
+    const parts: string[] = [];
+
+    const recent = store.chatHistory.slice(-6).filter((e) => !isInternalHistoryPlaceholder(e));
+    if (recent.length) {
+        parts.push(
+            "最近对话：" + recent.map((e) =>
+                `${e.role === "user" ? "对方" : "她"}：${e.content.slice(0, 40)}`,
+            ).join(" ｜ "),
+        );
+    }
+
+    if (store.memories.length) {
+        parts.push("她记得的事：" + store.memories.slice(-4).join("；"));
+    }
+
+    if (store.activeThread) {
+        parts.push(`进行中的剧情线：${store.activeThread}`);
+    }
+
+    const recentEvents = store.storyEvents.slice(-4).map((e) => e.text);
+    if (recentEvents.length) {
+        parts.push("最近发生：" + recentEvents.join("；"));
+    }
+
+    const stage = storyStage();
+    parts.push(`当前剧情阶段：${stage.name}（${stage.desc}）`);
+    if (store.storyProgress > 0) parts.push(`剧情总进度：${store.storyProgress}%`);
+
+    // 用几个关键情绪维度简要描述，避免把整段 describeMood 塞进去太长
+    const moodBits: string[] = [];
+    if (aiState.joy > 55) moodBits.push("心情不错");
+    if (aiState.sadness > 45) moodBits.push("有点低落");
+    if (aiState.anger > 40) moodBits.push("在闹别扭");
+    if (aiState.loneliness > 40) moodBits.push("有点孤单");
+    if (aiState.anxiety > 45) moodBits.push("有些不安");
+    if (aiState.fatigue > 50) moodBits.push("有点累");
+    if (aiState.anticipation > 50) moodBits.push("有些期待");
+    parts.push(`她现在的状态：${moodBits.join("，") || "情绪平稳"}（${describeMood()}）`);
+
+    return parts.join("\n");
+}
+
 // 跨天时由 AI 规划当天日程（走主角 AI 一次调用；无 key 时用作息表兜底）
 export async function planTodayAgenda(chatFn: (text: string) => Promise<{ agenda?: { add?: { time?: string; title: string; desc?: string }[] } }>): Promise<void> {
     const today = currentDayIndex();
@@ -197,12 +252,18 @@ export async function planTodayAgenda(chatFn: (text: string) => Promise<{ agenda
     ].filter(Boolean).join("；");
 
     try {
+        const context = scheduleContextText();
         const result = await chatFn(
             `（请以${ch.name || "她"}的视角，为今天规划一份贴合她本人的日程。\n` +
             `关于她：${charBrief}\n` +
-            `你们此刻在${store.scene.name}。今天是第 ${today} 天。\n` +
-            `要求：从早到晚 5~8 件事，要符合她的身份、性格、正在做的事；可以包含她自己的安排（工作/爱好/心事）、和你的相处（见面、一起做的事）、以及可能发生的小插曲。\n` +
-            `不要写通用模板，要像她真实的一天。直接输出 JSON 的 agenda.add 数组：每项 time 用 HH:MM（按当天时间顺序），title 一句话事件（20字内），desc 可选补充。）`,
+            `你们此刻在${store.scene.name}。今天是第 ${today} 天，当前虚拟时间 ${fmtVirtualTime()}。\n` +
+            `【必须参考的上下文】\n${context}\n` +
+            `要求：\n` +
+            `1. 从早到晚排 8~12 个具体时段，时间粒度要细（每段建议 15~40 分钟），不要只写"上午/中午/晚上"这种大块概括；\n` +
+            `2. 时间精确到 HH:MM，并且严格按当天时间顺序；可以精确到 07:15、08:40、12:20、18:35 这种程度；\n` +
+            `3. 要承接上面的上下文：最近聊过的事、她记得的事、进行中的剧情线、最近发生的事件、当前情绪，都会影响她今天想做什么、和你怎么相处；\n` +
+            `4. 可以包含她自己的安排（工作/爱好/心事）、和你的相处（见面、一起做的事）、以及可能发生的小插曲，但都要具体到某个时间段；\n` +
+            `5. 不要写通用模板，要像她真实的一天。直接输出完整 JSON 中的 agenda.add 数组：每项 time 用 HH:MM，title 一句话事件（20字内），desc 可选补充具体细节。）`,
         );
         if (result?.agenda?.add?.length) {
             for (const a of result.agenda.add) {
