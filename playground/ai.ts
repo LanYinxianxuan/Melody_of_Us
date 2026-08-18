@@ -299,22 +299,39 @@ export async function chatWithDeepSeek(userText: string, retry = 1): Promise<Cha
         { role: "user", content: userText },
     ];
 
+    // ===== DEBUG: 打印发送给模型的完整请求 =====
+    const requestBody = {
+        model,
+        messages,
+        ...thinkingParams(),
+        max_tokens: 16384,
+    };
+    console.group(`%c📤 [DEBUG] 发送请求 → ${model}`, "color: #d65a7e; font-weight: bold;");
+    console.log(`%c供应商: ${localStorage.getItem("melai-provider") ?? "deepseek"} | 地址: ${baseUrl}/chat/completions`, "color: #888;");
+    console.log(`%c消息数量: ${messages.length}`, "color: #888;");
+    console.log(`%c完整请求体:`, "color: #34d399;", JSON.parse(JSON.stringify(requestBody)));
+    console.groupEnd();
+
     // 直连 API（支持 CORS 的供应商均可）
     const resp = await fetch(`${baseUrl}/chat/completions`, {
         method: "POST",
         headers,
-        body: JSON.stringify({
-            model,
-            messages,
-            ...thinkingParams(),
-            max_tokens: 16384,
-        }),
+        body: JSON.stringify(requestBody),
     });
 
     const data = await resp.json();
 
+    // ===== DEBUG: 打印模型返回的原始数据 =====
+    console.group(`%c📥 [DEBUG] 收到响应 ← ${model}`, "color: #d65a7e; font-weight: bold;");
+    console.log(`%c状态码: ${resp.status}`, "color: #888;");
+    console.log(`%c完整响应:`, "color: #34d399;", JSON.parse(JSON.stringify(data)));
+    if (data.choices?.[0]?.message) {
+        console.log(`%c模型回复内容:`, "color: #ffd08a;", data.choices[0].message.content ?? "(空)");
+    }
+    console.groupEnd();
+
     if (data.error) {
-        throw new Error(`DeepSeek API 错误：${data.error.message ?? JSON.stringify(data.error)}`);
+        throw new Error(`API 错误：${data.error.message ?? JSON.stringify(data.error)}`);
     }
 
     const choice = data.choices?.[0];
