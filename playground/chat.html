@@ -525,7 +525,6 @@
       .panel-section {
           border-radius: var(--radius-md);
           margin-bottom: 6px;
-          overflow: hidden;
       }
       .panel-section-toggle {
           display: flex;
@@ -542,6 +541,9 @@
           cursor: pointer;
           transition: all 0.2s;
           user-select: none;
+          position: sticky;
+          top: 0;
+          z-index: 2;
       }
       .panel-section-toggle:hover { background: rgba(255, 255, 255, 0.5); }
       .panel-section-toggle .toggle-arrow {
@@ -551,13 +553,10 @@
       .panel-section-toggle.collapsed .toggle-arrow { transform: rotate(-90deg); }
       .panel-section-content {
           padding-top: 4px;
-          overflow: hidden;
-          transition: max-height 0.3s ease, opacity 0.2s ease;
+          display: block;
       }
       .panel-section-content.collapsed {
-          max-height: 0 !important;
-          opacity: 0;
-          padding: 0;
+          display: none;
       }
 
       #mood-history {
