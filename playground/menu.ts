@@ -130,6 +130,75 @@ document.getElementById("clear-data")!.addEventListener("click", () => {
     }
 });
 
+// ============ API 测试 & 模型列表 ============
+
+const apiTestBtn = document.getElementById("api-test") as HTMLButtonElement;
+const apiStatus = document.getElementById("api-status")!;
+const API_BASE = "https://api.deepseek.com";
+
+async function testApi() {
+    const key = keyInput.value.trim();
+    if (!key) {
+        apiStatus.style.display = "block";
+        apiStatus.style.color = "#ffb0b0";
+        apiStatus.textContent = "⚠️ 请先输入 API Key";
+        return;
+    }
+
+    apiTestBtn.disabled = true;
+    apiTestBtn.textContent = "⏳ 测试中…";
+    apiStatus.style.display = "block";
+    apiStatus.style.color = "var(--ink-soft)";
+    apiStatus.textContent = "正在连接 DeepSeek API…";
+
+    try {
+        // 获取模型列表
+        const resp = await fetch(`${API_BASE}/models`, {
+            headers: { Authorization: `Bearer ${key}` },
+        });
+
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({}));
+            throw new Error(err.error?.message ?? `HTTP ${resp.status}`);
+        }
+
+        const data = await resp.json();
+        const models: string[] = (data.data ?? []).map((m: any) => m.id).filter(Boolean);
+
+        if (!models.length) {
+            throw new Error("未获取到模型列表");
+        }
+
+        // 更新模型下拉框
+        const currentVal = modelSelect.value;
+        modelSelect.innerHTML = "";
+        for (const m of models.sort()) {
+            const opt = document.createElement("option");
+            opt.value = m;
+            opt.textContent = m;
+            modelSelect.appendChild(opt);
+        }
+        // 保持之前选中的模型（如果还在列表中）
+        if (models.includes(currentVal)) {
+            modelSelect.value = currentVal;
+        } else {
+            modelSelect.value = models[0]!;
+            localStorage.setItem(MODEL_STORE, modelSelect.value);
+        }
+
+        apiStatus.style.color = "#34d399";
+        apiStatus.textContent = `✅ Key 有效！已获取 ${models.length} 个模型：${models.join("、")}`;
+    } catch (e) {
+        apiStatus.style.color = "#ffb0b0";
+        apiStatus.textContent = `❌ 测试失败：${(e as Error).message}`;
+    } finally {
+        apiTestBtn.disabled = false;
+        apiTestBtn.textContent = "🔍 测试";
+    }
+}
+
+apiTestBtn.addEventListener("click", testApi);
+
 // ============ 初始化 ============
 
 renderSaves();
