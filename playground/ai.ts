@@ -17,6 +17,7 @@ import {
 import { fallbackStory, journalText, storyStage, worldSetting } from "./story";
 import type { CharacterProfile } from "./character";
 import { agendaContext } from "./agenda";
+import { FORMAT_INSTRUCTION, NPC_FORMAT_INSTRUCTION } from "./response-template";
 
 // ============ 聊天接口 ============
 
@@ -107,17 +108,7 @@ export const SYSTEM_PROMPT = (character: CharacterProfile) =>
     "- **语言**（他说出的话、'说：…'引号里的内容）→ 你**听到**它，据此回应；\n" +
     "- 如果只有动作没有话，你也自然回应动作（不必强行说一句话，可以有动作+心声）；\n" +
     "- 动作和话可以并存，你的回应要同时覆盖两者，但以语言为主、动作为辅。\n\n" +
-    '严格输出 JSON（不要任何其他文字）：' +
-    '{"dialogue":"**只放她说的话**，不要放动作/表情/时间标签；分1~2段(用\\n分隔)；先承接对方的话(一两句)，再说自己的，最后以提问或邀请收尾；每段20~40字，总长60字左右",' +
-    '"action":"**只放动作/表情描写**(如：低头笑了笑、别过脸去)，20字内，不要放对话内容","thoughts":"内心想法(20字内)",' +
-    '"stats":{38个维度的当前值},' +
-    '"delta":{38个维度的变化量，受对话影响，每维-15~15，人格维度通常为0},' +
-    '"user_emotion":"用户消息情绪，只能是 joy/anger/sad/shy/surprised/neutral 之一",' +
-    '"memory":"本轮对话中值得长期记住的事（新约定、重要的事、对方告诉你的秘密等，30字内）；没有就写空字符串",' +
-    '"story":{"event":"本轮是否发生了值得记录的小事？有就写一句话（15~30字）；只是普通聊天没有特别的事，就写空字符串",' +
-    '"progress":0~5(只有发生了推动剧情的事才给>0，普通聊天给0),"thread":"new|continue|end——有进行中的剧情线就continue；这轮收尾了结就用end；没开新线就new"},' +
-    '"agenda":{"add":[{"time":"HH:MM(可选,默认当前时段)","title":"事件标题(20字内)","desc":"补充(可选)"}]或省略}' +
-    '}' +
+    FORMAT_INSTRUCTION + "\n" +
     "【story.event 填写要求】**可填可不填**：基于当前时间、地点、你正在做的事、你的心情、剧情阶段，只有在真的发生了一件具体鲜活的小事时才写（窗外下雨、注意到对方的细节、路过的熟人说的话、心里冒出的小念头）。" +
     "如果是普通寒暄/闲聊/问答，event 写空字符串，progress 写 0——不要为了填而硬编事件。事件要承接当前对话，不能和对话无关。有进行中的剧情线时，event 优先推进那条线。" +
     "【agenda 填写要求】当对话中**产生了新的约定或事件**时才写（你们约好明天一起做什么、她要做某件事、一个待办的日程），例如：『明天陪我去买书』→ agenda.add=[{time:'10:00',title:'一起去书店买书'}]。" +
@@ -654,10 +645,7 @@ export async function npcSpeak(npc: NpcState, context: string): Promise<NpcSpeak
         { role: "system", content: context },
         {
             role: "user",
-            content:
-                `现在轮到${npc.profile.name}说话。严格输出 JSON：` +
-                `{"dialogue":"她说的话(1~2句，20~50字，符合她的性格和处境)","action":"动作/表情(15字内)","thoughts":"内心想法(15字内)",` +
-                `"delta":{"joy":0,"sadness":0,"anger":0,"shyness":0,"jealousy":0,"loneliness":0,"anxiety":0,"fatigue":0,"relToMain":0,"relToUser":0}（她这轮的情绪/关系变化，-15~15）,"learn":"她这轮新知道的一件事，没有就写空字符串","leave":false}`,
+            content: `现在轮到${npc.profile.name}说话。${NPC_FORMAT_INSTRUCTION}`,
         },
     ];
 
