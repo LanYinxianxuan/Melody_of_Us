@@ -1004,6 +1004,13 @@ document.getElementById("chat-input")!.addEventListener("keydown", (e) => {
 document.getElementById("chat-input")!.addEventListener("input", markUserInput);
 document.getElementById("chat-input")!.addEventListener("focus", markUserInput);
 
+// 菜单链接：加时间戳防止浏览器缓存，确保菜单页读到最新存档
+document.getElementById("menu-link")!.addEventListener("click", (e) => {
+    e.preventDefault();
+    saveState(); // 确保当前状态已保存
+    location.href = `./menu.html?t=${Date.now()}`;
+});
+
 // 状态面板开关
 document.getElementById("panel-toggle")!.addEventListener("click", () => {
     const panel = document.getElementById("state-panel")!;
