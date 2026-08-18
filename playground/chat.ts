@@ -245,6 +245,14 @@ function typeReply(el: HTMLElement, full: { dialogue: string; action?: string; t
     let i = 0;
     let timer = 0;
 
+    // 自动滚动到底部的辅助函数
+    const scrollToBottom = () => {
+        const container = document.getElementById("chat-messages");
+        if (container) {
+            container.scrollTop = container.scrollHeight;
+        }
+    };
+
     const finish = () => {
         dialogue.textContent = finalText;
 
@@ -262,6 +270,7 @@ function typeReply(el: HTMLElement, full: { dialogue: string; action?: string; t
             el.appendChild(thoughts);
         }
 
+        scrollToBottom();
         setBusyState(false);
     };
 
@@ -275,12 +284,14 @@ function typeReply(el: HTMLElement, full: { dialogue: string; action?: string; t
         timer = window.setInterval(() => {
             i += 3;
             dialogue.textContent = segments.slice(0, segIdx).join("\n") + (segIdx > 0 ? "\n" : "") + seg.slice(0, i);
+            scrollToBottom(); // 每次更新文字后自动滚动
 
             if (i >= seg.length) {
                 clearInterval(timer);
                 segIdx++;
                 i = 0;
                 dialogue.textContent += "…";
+                scrollToBottom();
                 setTimeout(() => {
                     dialogue.textContent = finalText.slice(0, finalText.length);
                     window.setTimeout(playSegment, 0);
