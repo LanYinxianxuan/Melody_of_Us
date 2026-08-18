@@ -5,7 +5,58 @@ import { loadSlotRaw, loadSlotCharacterName, clearSlot } from "./storage";
 const KEY_STORE = "deepseek-key";
 const MODEL_STORE = "deepseek-model";
 const EFFORT_STORE = "deepseek-effort";
+const PROVIDER_STORE = "deepseek-provider";
+const CUSTOM_URL_STORE = "deepseek-custom-url";
 const TOTAL_SLOTS = 5;
+
+// 供应商配置
+const PROVIDERS: Record<string, { name: string; baseUrl: string; models: string[]; headerFn?: (key: string) => Record<string, string> }> = {
+    deepseek: {
+        name: "DeepSeek",
+        baseUrl: "https://api.deepseek.com",
+        models: ["deepseek-chat", "deepseek-reasoner"],
+    },
+    openai: {
+        name: "OpenAI",
+        baseUrl: "https://api.openai.com/v1",
+        models: ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo", "gpt-4", "gpt-3.5-turbo", "o1-preview", "o1-mini"],
+    },
+    claude: {
+        name: "Claude",
+        baseUrl: "https://api.anthropic.com/v1",
+        models: ["claude-sonnet-4-20250514", "claude-3-5-sonnet-20241022", "claude-3-5-haiku-20241022", "claude-3-opus-20240229"],
+        headerFn: (key) => ({
+            "x-api-key": key,
+            "anthropic-version": "2023-06-01",
+            "Content-Type": "application/json",
+        }),
+    },
+    gemini: {
+        name: "Gemini",
+        baseUrl: "https://generativelanguage.googleapis.com/v1beta",
+        models: ["gemini-2.0-flash", "gemini-2.0-flash-lite", "gemini-1.5-pro", "gemini-1.5-flash"],
+    },
+    moonshot: {
+        name: "Moonshot",
+        baseUrl: "https://api.moonshot.cn/v1",
+        models: ["moonshot-v1-8k", "moonshot-v1-32k", "moonshot-v1-128k"],
+    },
+    qwen: {
+        name: "通义千问",
+        baseUrl: "https://dashscope.aliyuncs.com/compatible-mode/v1",
+        models: ["qwen-turbo", "qwen-plus", "qwen-max", "qwen-long"],
+    },
+    zhipu: {
+        name: "智谱",
+        baseUrl: "https://open.bigmodel.cn/api/paas/v4",
+        models: ["glm-4-flash", "glm-4-air", "glm-4", "glm-4-long"],
+    },
+    custom: {
+        name: "自定义",
+        baseUrl: "",
+        models: [],
+    },
+};
 
 function fmtTime(ts: number): string {
     const d = new Date(ts);
@@ -91,16 +142,57 @@ function renderSaves() {
 const keyInput = document.getElementById("api-key") as HTMLInputElement;
 const modelSelect = document.getElementById("model-select") as HTMLSelectElement;
 const effortSelect = document.getElementById("effort-select") as HTMLSelectElement;
+const providerSelect = document.getElementById("provider-select") as HTMLSelectElement;
+const customUrlInput = document.getElementById("custom-url") as HTMLInputElement;
+const customUrlSetting = document.getElementById("custom-url-setting")!;
 const saveHint = document.getElementById("save-hint")!;
 
+// 初始化设置值
+const savedProvider = localStorage.getItem(PROVIDER_STORE) ?? "deepseek";
+providerSelect.value = savedProvider;
 keyInput.value = localStorage.getItem(KEY_STORE) ?? "";
-modelSelect.value = localStorage.getItem(MODEL_STORE) ?? "deepseek-v4-flash";
 effortSelect.value = localStorage.getItem(EFFORT_STORE) ?? "high";
+customUrlInput.value = localStorage.getItem(CUSTOM_URL_STORE) ?? "";
+
+// 根据供应商更新模型列表
+function updateModelList(provider: string, selectedModel?: string) {
+    const p = PROVIDERS[provider];
+    if (!p) return;
+
+    modelSelect.innerHTML = "";
+    const models = p.models.length ? p.models : ["（请先测试获取模型列表）"];
+    for (const m of models) {
+        const opt = document.createElement("option");
+        opt.value = m;
+        opt.textContent = m;
+        modelSelect.appendChild(opt);
+    }
+
+    // 恢复之前选中的模型
+    const saved = selectedModel ?? localStorage.getItem(MODEL_STORE);
+    if (saved && models.includes(saved)) {
+        modelSelect.value = saved;
+    } else {
+        modelSelect.value = models[0]!;
+        localStorage.setItem(MODEL_STORE, modelSelect.value);
+    }
+
+    // 自定义供应商显示 URL 输入框
+    customUrlSetting.style.display = provider === "custom" ? "" : "none";
+}
+
+updateModelList(savedProvider);
 
 function showHint() {
     saveHint.style.display = "block";
     setTimeout(() => (saveHint.style.display = "none"), 1500);
 }
+
+providerSelect.addEventListener("change", () => {
+    localStorage.setItem(PROVIDER_STORE, providerSelect.value);
+    updateModelList(providerSelect.value);
+    showHint();
+});
 
 keyInput.addEventListener("change", () => {
     localStorage.setItem(KEY_STORE, keyInput.value.trim());
@@ -114,6 +206,11 @@ modelSelect.addEventListener("change", () => {
 
 effortSelect.addEventListener("change", () => {
     localStorage.setItem(EFFORT_STORE, effortSelect.value);
+    showHint();
+});
+
+customUrlInput.addEventListener("change", () => {
+    localStorage.setItem(CUSTOM_URL_STORE, customUrlInput.value.trim());
     showHint();
 });
 
@@ -134,10 +231,29 @@ document.getElementById("clear-data")!.addEventListener("click", () => {
 
 const apiTestBtn = document.getElementById("api-test") as HTMLButtonElement;
 const apiStatus = document.getElementById("api-status")!;
-const API_BASE = "https://api.deepseek.com";
+
+function getApiBase(): string {
+    const provider = providerSelect.value;
+    if (provider === "custom") {
+        return customUrlInput.value.trim().replace(/\/+$/, "");
+    }
+    return PROVIDERS[provider]?.baseUrl ?? "";
+}
+
+function getHeaders(key: string): Record<string, string> {
+    const provider = providerSelect.value;
+    const p = PROVIDERS[provider];
+    if (p?.headerFn) return p.headerFn(key);
+    return {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${key}`,
+    };
+}
 
 async function testApi() {
     const key = keyInput.value.trim();
+    const provider = providerSelect.value;
+
     if (!key) {
         apiStatus.style.display = "block";
         apiStatus.style.color = "#ffb0b0";
@@ -145,16 +261,24 @@ async function testApi() {
         return;
     }
 
+    const baseUrl = getApiBase();
+    if (!baseUrl) {
+        apiStatus.style.display = "block";
+        apiStatus.style.color = "#ffb0b0";
+        apiStatus.textContent = "⚠️ 请先填写自定义 API 地址";
+        return;
+    }
+
     apiTestBtn.disabled = true;
     apiTestBtn.textContent = "⏳ 测试中…";
     apiStatus.style.display = "block";
     apiStatus.style.color = "var(--ink-soft)";
-    apiStatus.textContent = "正在连接 DeepSeek API…";
+    apiStatus.textContent = `正在连接 ${PROVIDERS[provider]?.name ?? provider} API…`;
 
     try {
         // 获取模型列表
-        const resp = await fetch(`${API_BASE}/models`, {
-            headers: { Authorization: `Bearer ${key}` },
+        const resp = await fetch(`${baseUrl}/models`, {
+            headers: getHeaders(key),
         });
 
         if (!resp.ok) {
@@ -170,7 +294,6 @@ async function testApi() {
         }
 
         // 更新模型下拉框
-        const currentVal = modelSelect.value;
         modelSelect.innerHTML = "";
         for (const m of models.sort()) {
             const opt = document.createElement("option");
@@ -178,13 +301,8 @@ async function testApi() {
             opt.textContent = m;
             modelSelect.appendChild(opt);
         }
-        // 保持之前选中的模型（如果还在列表中）
-        if (models.includes(currentVal)) {
-            modelSelect.value = currentVal;
-        } else {
-            modelSelect.value = models[0]!;
-            localStorage.setItem(MODEL_STORE, modelSelect.value);
-        }
+        modelSelect.value = models[0]!;
+        localStorage.setItem(MODEL_STORE, modelSelect.value);
 
         apiStatus.style.color = "#34d399";
         apiStatus.textContent = `✅ Key 有效！已获取 ${models.length} 个模型：${models.join("、")}`;

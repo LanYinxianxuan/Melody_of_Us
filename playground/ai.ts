@@ -249,16 +249,50 @@ export function thinkingParams() {
     };
 }
 
-// DeepSeek 官方 API 基础地址
+// 获取当前供应商配置
+function getProviderConfig(): { baseUrl: string; headers: Record<string, string> } {
+    const provider = localStorage.getItem("deepseek-provider") ?? "deepseek";
+    const key = localStorage.getItem("deepseek-key")?.trim() ?? "";
+
+    const PROVIDERS: Record<string, { baseUrl: string; headerFn?: (key: string) => Record<string, string> }> = {
+        deepseek: { baseUrl: "https://api.deepseek.com" },
+        openai: { baseUrl: "https://api.openai.com/v1" },
+        claude: {
+            baseUrl: "https://api.anthropic.com/v1",
+            headerFn: (k) => ({
+                "x-api-key": k,
+                "anthropic-version": "2023-06-01",
+                "Content-Type": "application/json",
+            }),
+        },
+        gemini: { baseUrl: "https://generativelanguage.googleapis.com/v1beta" },
+        moonshot: { baseUrl: "https://api.moonshot.cn/v1" },
+        qwen: { baseUrl: "https://dashscope.aliyuncs.com/compatible-mode/v1" },
+        zhipu: { baseUrl: "https://open.bigmodel.cn/api/paas/v4" },
+        custom: { baseUrl: localStorage.getItem("deepseek-custom-url")?.trim() ?? "" },
+    };
+
+    const p = PROVIDERS[provider] ?? PROVIDERS["deepseek"]!;
+    const headers = p.headerFn ? p.headerFn(key) : {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${key}`,
+    };
+
+    return { baseUrl: p.baseUrl, headers };
+}
+
+// DeepSeek 官方 API 基础地址（保留兼容）
 export const API_BASE = "https://api.deepseek.com";
 
 export async function chatWithDeepSeek(userText: string, retry = 1): Promise<ChatResult> {
     const key = localStorage.getItem("deepseek-key")?.trim() ?? "";
-    const model = localStorage.getItem("deepseek-model") ?? "deepseek-v4-flash";
+    const model = localStorage.getItem("deepseek-model") ?? "deepseek-chat";
 
     if (!key) {
-        throw new Error("请先在菜单页设置 DeepSeek API Key（或点「演示」免 Key 体验）");
+        throw new Error("请先在菜单页设置 API Key（或点「演示」免 Key 体验）");
     }
+
+    const { baseUrl, headers } = getProviderConfig();
 
     const messages = [
         { role: "system", content: SYSTEM_PROMPT(await getCharacter()) },
@@ -266,13 +300,10 @@ export async function chatWithDeepSeek(userText: string, retry = 1): Promise<Cha
         { role: "user", content: userText },
     ];
 
-    // 直连 DeepSeek 官方 API（dev 和 App 内都可用；DeepSeek 支持 CORS）
-    const resp = await fetch(`${API_BASE}/chat/completions`, {
+    // 直连 API（支持 CORS 的供应商均可）
+    const resp = await fetch(`${baseUrl}/chat/completions`, {
         method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${key}`,
-        },
+        headers,
         body: JSON.stringify({
             model,
             messages,
@@ -484,12 +515,10 @@ export async function interviewWithAI(intro: string, turns: InterviewTurn[]): Pr
     }
 
     // 直连所选 API 端点（访谈也用直连，App 内可用）
-    const resp = await fetch(`${API_BASE}/chat/completions`, {
+    const { baseUrl, headers } = getProviderConfig();
+    const resp = await fetch(`${baseUrl}/chat/completions`, {
         method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${key}`,
-        },
+        headers,
         body: JSON.stringify({ model, messages, ...thinkingParams(), max_tokens: 2048 }),
     });
 
@@ -573,9 +602,10 @@ export async function npcSpeak(npc: NpcState, context: string): Promise<NpcSpeak
         },
     ];
 
-    const resp = await fetch(`${API_BASE}/chat/completions`, {
+    const { baseUrl, headers } = getProviderConfig();
+    const resp = await fetch(`${baseUrl}/chat/completions`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
+        headers,
         body: JSON.stringify({ model, messages, ...thinkingParams(), max_tokens: 2048 }),
     });
 

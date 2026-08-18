@@ -223,18 +223,34 @@
   <div class="card">
     <div class="card-title">⚙️ 设置</div>
     <div class="setting">
-      <label>DeepSeek API Key</label>
+      <label>模型供应商</label>
+      <select id="provider-select">
+        <option value="deepseek">DeepSeek</option>
+        <option value="openai">OpenAI（GPT）</option>
+        <option value="claude">Claude（Anthropic）</option>
+        <option value="gemini">Google Gemini</option>
+        <option value="moonshot">Moonshot（Kimi）</option>
+        <option value="qwen">通义千问（阿里）</option>
+        <option value="zhipu">智谱（GLM）</option>
+        <option value="custom">自定义（OpenAI 兼容）</option>
+      </select>
+    </div>
+    <div class="setting">
+      <label>API Key</label>
       <div style="display:flex;gap:8px;">
         <input id="api-key" type="password" placeholder="sk-…（仅存本地浏览器）" style="flex:1;">
         <button id="api-test" style="padding:10px 16px;border-radius:12px;border:1px solid var(--accent-line);background:var(--accent-soft);color:var(--accent);font-size:12px;cursor:pointer;white-space:nowrap;">🔍 测试</button>
       </div>
       <div id="api-status" style="font-size:11px;margin-top:6px;display:none;"></div>
     </div>
+    <div class="setting" id="custom-url-setting" style="display:none;">
+      <label>自定义 API 地址</label>
+      <input id="custom-url" type="text" placeholder="https://your-api.com/v1">
+    </div>
     <div class="setting">
       <label>模型</label>
       <select id="model-select">
-        <option value="deepseek-v4-flash">deepseek-v4-flash（快）</option>
-        <option value="deepseek-v4-pro">deepseek-v4-pro（强）</option>
+        <option value="deepseek-chat">deepseek-chat</option>
       </select>
     </div>
     <div class="setting">
