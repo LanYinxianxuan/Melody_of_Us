@@ -88,6 +88,66 @@ export function setTtsLang(lang: TtsLang) {
 // ============ 翻译功能 ============
 // 翻译由 AI 在回复时直接输出 dialogue_ja，TTS 直接使用，无需单独翻译
 
+// ============ 情感风格生成 ============
+
+// 根据情感状态生成 TTS 风格指令（自然语言控制）
+export function generateEmotionStyle(emotions: Record<string, number>): string {
+    const styles: string[] = [];
+
+    // 基础情绪
+    if (emotions.joy > 60) styles.push("开心愉悦");
+    if (emotions.sadness > 50) styles.push("低落难过");
+    if (emotions.anger > 50) styles.push("生气压着火");
+    if (emotions.fear > 45) styles.push("害怕紧张");
+    if (emotions.surprise > 50) styles.push("惊讶");
+    if (emotions.shyness > 55) styles.push("害羞脸红");
+    if (emotions.embarrassment > 50) styles.push("尴尬不知所措");
+    if (emotions.jealousy > 40) styles.push("吃醋酸溜溜");
+    if (emotions.loneliness > 45) styles.push("孤单想念");
+    if (emotions.anxiety > 50) styles.push("焦虑不安");
+    if (emotions.anticipation > 55) styles.push("期待雀跃");
+
+    // 状态
+    if (emotions.fatigue > 55) styles.push("疲惫困倦");
+    if (emotions.energy > 65) styles.push("元气满满");
+    if (emotions.stress > 50) styles.push("压力大烦躁");
+    if (emotions.nervousness > 55) styles.push("紧张结巴");
+    if (emotions.confidence > 60) styles.push("自信坚定");
+
+    // 关系
+    if (emotions.affection > 70) styles.push("温柔亲昵");
+    if (emotions.trust > 60) styles.push("信赖放松");
+    if (emotions.intimacy > 60) styles.push("亲密自然");
+
+    // 阴影
+    if (emotions.possessiveness > 45) styles.push("占有欲强");
+    if (emotions.pride > 50) styles.push("傲娇嘴硬");
+    if (emotions.vanity > 50) styles.push("在意形象");
+
+    return styles.join("，") || "平静自然";
+}
+
+// 根据动作和情感生成音频标签（插入到文本中）
+export function generateAudioTags(action: string, emotions: Record<string, number>): string[] {
+    const tags: string[] = [];
+
+    // 根据动作添加标签
+    if (/笑|开心|嘿嘿|哈哈/.test(action)) tags.push("[微笑]");
+    if (/叹气|叹了口气/.test(action)) tags.push("[叹气]");
+    if (/哭|流泪|眼泪/.test(action)) tags.push("[抽泣]");
+    if (/呼吸|喘|深呼吸/.test(action)) tags.push("[深呼吸]");
+    if (/颤抖|发抖/.test(action)) tags.push("[颤抖]");
+
+    // 根据情绪添加标签
+    if (emotions.shyness > 60) tags.push("[害羞]");
+    if (emotions.anger > 60) tags.push("[压低声音]");
+    if (emotions.sadness > 60) tags.push("[声音低落]");
+    if (emotions.fear > 50) tags.push("[声音颤抖]");
+    if (emotions.loneliness > 50) tags.push("[轻声]");
+
+    return tags;
+}
+
 // ============ 音频上传 ============
 
 // 读取音频文件为 Base64

@@ -56,7 +56,7 @@ import {
 } from "./story";
 import { chatWithDeepSeek, demoReply, setCharacterGetter, SYSTEM_PROMPT, type ChatResult } from "./ai";
 import { npcContext, npcSpeak } from "./ai";
-import { speak, isTtsEnabled, setTtsEnabled, initTts } from "./tts";
+import { speak, isTtsEnabled, setTtsEnabled, initTts, generateEmotionStyle, generateAudioTags } from "./tts";
 import {
     applyAgendaFromAI,
     tickAgenda,
@@ -238,7 +238,7 @@ function attachTimeStamp(el: HTMLElement, tsMs?: number) {
 }
 
 // 分段打字机：按 \n 分段逐段播放，段间停顿
-function typeReply(el: HTMLElement, full: { dialogue: string; dialogue_ja?: string; action?: string; thoughts?: string }) {
+function typeReply(el: HTMLElement, full: { dialogue: string; dialogue_ja?: string; action?: string; thoughts?: string }, emotions?: Record<string, number>) {
     const dialogue = document.createElement("div");
     dialogue.className = "dialogue";
     el.appendChild(dialogue);
@@ -279,10 +279,14 @@ function typeReply(el: HTMLElement, full: { dialogue: string; dialogue_ja?: stri
         scrollToBottom();
         setBusyState(false);
 
-        // TTS 朗读对话内容（优先使用日语版）
+        // TTS 朗读对话内容（优先使用日语版，带情感风格）
         if (isTtsEnabled()) {
             const ttsText = full.dialogue_ja || finalText;
-            if (ttsText) speak(ttsText);
+            if (ttsText) {
+                // 根据情感生成风格指令
+                const style = emotions ? generateEmotionStyle(emotions) : undefined;
+                speak(ttsText, style);
+            }
         }
     };
 
@@ -478,7 +482,7 @@ async function sendMessage(text: string, opts?: { proactive?: boolean }): Promis
         // 消息旁的重答按钮（定位到本轮检查点）
         addReanswerBtn(msgEl, cpIdx);
 
-        typeReply(msgEl, result);
+        typeReply(msgEl, result, aiState);
         attachTimeStamp(msgEl);
 
         const deltaSummary = Object.entries(result.delta ?? {})
@@ -887,7 +891,7 @@ async function mainReplyToNpc(npc: { profile: { name: string; id: string } }, np
         msgEl.classList.add("proactive");
         // 主角回应 NPC：回滚到该轮检查点（NPC 介入轮）
         addReanswerBtn(msgEl, turnCheckpoints.length - 1);
-        typeReply(msgEl, result);
+        typeReply(msgEl, result, aiState);
         attachTimeStamp(msgEl);
     } catch (e) {
         console.warn("主角回应 NPC 失败：", e);
