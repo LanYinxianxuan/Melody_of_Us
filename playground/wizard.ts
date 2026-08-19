@@ -357,23 +357,23 @@ function renderInterview() {
     if (interviewTurns.length) {
         for (const t of interviewTurns) {
             html += `
-                <div style="margin-bottom:8px;padding:8px 12px;border-radius:10px;background:rgba(255,255,255,0.06);">
-                  <div style="color:#9ecbff;font-size:12px;">🤖 ${t.q}</div>
-                  <div style="color:#ddd;font-size:13px;margin-top:4px;">你：${t.a || "（没想好）"}</div>
+                <div style="margin-bottom:8px;padding:8px 12px;border-radius:10px;background:var(--accent-soft);">
+                  <div style="color:var(--accent);font-size:12px;">🤖 ${t.q}</div>
+                  <div style="color:var(--ink-soft);font-size:13px;margin-top:4px;">你：${t.a || "（没想好）"}</div>
                 </div>`;
         }
     }
 
     if (interviewLoading) {
-        html += `<div style="color:rgba(255,255,255,0.6);font-size:13px;text-align:center;padding:16px;">AI 正在思考下一个问题…</div>`;
+        html += `<div style="color:var(--ink-soft);font-size:13px;text-align:center;padding:16px;">AI 正在思考下一个问题…</div>`;
     } else {
         html += `
-            <div style="margin:10px 0;padding:10px 14px;border-radius:12px;background:rgba(250,216,49,0.08);border:1px solid rgba(250,216,49,0.25);">
-              <div style="color:#ffd08a;font-size:12px;margin-bottom:4px;">💡 ${currentInsight || "让我想想她是谁…"}</div>
+            <div style="margin:10px 0;padding:10px 14px;border-radius:12px;background:var(--accent-soft);border:1px solid var(--accent-line);">
+              <div style="color:var(--accent-deep);font-size:12px;margin-bottom:4px;">💡 ${currentInsight || "让我想想她是谁…"}</div>
             </div>
-            <div style="font-size:15px;color:#fff;line-height:1.7;margin-bottom:10px;">🤖 ${currentQuestion}</div>
+            <div style="font-size:15px;color:var(--ink);line-height:1.7;margin-bottom:10px;font-weight:600;">🤖 ${currentQuestion}</div>
             <textarea class="wiz-input" id="wiz-answer" rows="3" placeholder="回答她的问题…（也可以写『你定吧』让她发挥）"></textarea>
-            <button id="wiz-submit" style="width:100%;margin-top:10px;padding:11px 0;border-radius:999px;border:none;background:linear-gradient(to right, #fad831, #eba345);color:#4a2c00;font-size:14px;cursor:pointer;">回答并继续</button>`;
+            <button id="wiz-submit" style="width:100%;margin-top:10px;padding:11px 0;border-radius:999px;border:none;background:linear-gradient(to right, #d65a7e, #b84567);color:#fff;font-size:14px;cursor:pointer;">回答并继续</button>`;
     }
 
     wizardBody.innerHTML = html;
