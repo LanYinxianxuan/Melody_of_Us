@@ -390,6 +390,15 @@ async function nextInterviewTurn() {
         const r = await interviewWithAI(interviewIntro, interviewTurns);
         console.log("[访谈] AI 返回:", JSON.stringify(r).slice(0, 200));
 
+        // 达到 5 轮上限：强制结束访谈，用已有信息生成角色卡
+        if (interviewTurns.length >= 5) {
+            console.log("[访谈] 已达 5 轮上限，强制生成角色卡");
+            interviewDone = true;
+            wizardDraft = { ...wizardDraft, ...(r.character ?? {}) };
+            renderInterview();
+            return;
+        }
+
         if (r.done && r.character) {
             interviewDone = true;
             wizardDraft = { ...r.character };
