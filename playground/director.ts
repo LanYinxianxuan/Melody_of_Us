@@ -7,7 +7,7 @@ import { store } from "./storage";
 import { aiState, DIMENSIONS, describeMood } from "./state";
 import { currentDayIndex, currentSchedule, fmtVirtualDate, fmtVirtualTime, herLocation, inSchool } from "./time";
 import { storyStage, journalText } from "./story";
-import { thinkingParams, API_BASE } from "./ai";
+import { thinkingParams } from "./ai";
 
 // ============ 触发条件（代码层，不消耗 API） ============
 
@@ -152,10 +152,35 @@ export const DIRECTOR_PROMPT =
     '{"needEvent":false,"eventType":"none|npc_intervention|story_event|world_event","priority":"main|supporting|world","npcId":"角色id或null","reason":"为什么(20字内)",' +
     '"relationshipEffect":{"target":"main|user|npc","npcId":"target为npc时填角色id","delta":0}或null,"memoryUpdate":{"action":"save|forget","content":"记忆内容(20字内)"}或null}';
 
+// 获取当前供应商配置（与 ai.ts 保持一致）
+function getDirectorConfig(): { baseUrl: string; headers: Record<string, string>; key: string; model: string } {
+    const slot = parseInt(localStorage.getItem("melai-current-slot") ?? "1", 10) || 1;
+    const provider = localStorage.getItem(`provider-${slot}`) ?? "deepseek";
+    const key = localStorage.getItem(`apikey-${slot}`)?.trim() ?? "";
+    const model = localStorage.getItem(`model-${slot}`) ?? "deepseek-chat";
+
+    const PROVIDERS: Record<string, { baseUrl: string }> = {
+        deepseek: { baseUrl: "https://api.deepseek.com" },
+        openai: { baseUrl: "https://api.openai.com/v1" },
+        moonshot: { baseUrl: "https://api.moonshot.cn/v1" },
+        qwen: { baseUrl: "https://dashscope.aliyuncs.com/compatible-mode/v1" },
+        zhipu: { baseUrl: "https://open.bigmodel.cn/api/paas/v4" },
+        xiaomi: { baseUrl: "https://api.xiaomimimo.com/v1" },
+        custom: { baseUrl: localStorage.getItem(`custom-url-${slot}`)?.trim() ?? "" },
+    };
+
+    const baseUrl = PROVIDERS[provider]?.baseUrl ?? PROVIDERS["deepseek"]!.baseUrl;
+    const headers = {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${key}`,
+    };
+
+    return { baseUrl, headers, key, model };
+}
+
 // 调用 Director（第二层智能决策，1 次 API）
 export async function callDirector(trigger: DirectorTrigger): Promise<DirectorDecision> {
-    const key = localStorage.getItem("deepseek-key")?.trim() ?? "";
-    const model = localStorage.getItem("deepseek-model") ?? "deepseek-v4-flash";
+    const { baseUrl, headers, key, model } = getDirectorConfig();
 
     if (!key) {
         throw new Error("Director 需要 API Key");
@@ -184,10 +209,10 @@ export async function callDirector(trigger: DirectorTrigger): Promise<DirectorDe
         },
     ];
 
-    const resp = await fetch(`${API_BASE}/chat/completions`, {
+    const resp = await fetch(`${baseUrl}/chat/completions`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
-        body: JSON.stringify({ model, messages, ...thinkingParams(), max_tokens: 1024 }),
+        headers,
+        body: JSON.stringify({ model, messages, ...thinkingParams(), response_format: { type: "json_object" }, max_tokens: 1024 }),
     });
 
     const data = await resp.json();
