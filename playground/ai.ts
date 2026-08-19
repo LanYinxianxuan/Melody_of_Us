@@ -653,42 +653,57 @@ export interface InterviewResult {
     character?: CharacterProfile;
 }
 
-export async function interviewWithAI(intro: string, turns: InterviewTurn[]): Promise<InterviewResult> {
+export async function interviewWithAI(intro: string, turns: InterviewTurn[], retry = 2): Promise<InterviewResult> {
     const { baseUrl, headers, key, model } = getProviderConfig();
 
     if (!key) throw new Error("请先设置 API Key");
+
+    // 重试时在最后一条用户消息追加提醒
+    const turnsForCall = retry < 2
+        ? [...turns.slice(0, -1), { q: turns[turns.length - 1]!.q, a: turns[turns.length - 1]!.a + "\n（请直接输出 JSON，不要输出任何其他文字或思考过程）" }]
+        : turns;
 
     const messages: { role: "user" | "assistant" | "system"; content: string }[] = [
         { role: "system", content: INTERVIEW_PROMPT },
         { role: "user", content: `这是我的角色介绍：\n${intro}` },
     ];
 
-    for (const t of turns) {
+    for (const t of turnsForCall) {
         messages.push({ role: "assistant", content: t.q });
         messages.push({ role: "user", content: t.a || "（没想好，你定吧）" });
     }
 
+    // 访谈关闭思考模式，确保直接输出 JSON
     const resp = await fetch(`${baseUrl}/chat/completions`, {
         method: "POST",
         headers,
-        body: JSON.stringify({ model, messages, ...thinkingParams(), response_format: { type: "json_object" }, max_tokens: 2048 }),
+        body: JSON.stringify({ model, messages, thinking: { type: "disabled" }, response_format: { type: "json_object" }, max_tokens: 2048 }),
     });
 
     const data = await resp.json();
 
     if (data.error) throw new Error(data.error.message ?? "访谈请求失败");
 
-    // 思考模式下可能 content 为空只有思维链——访谈要的是最终 JSON，空则回退
     const msg = data.choices?.[0]?.message ?? {};
-    const content = typeof msg.content === "string" && msg.content.trim()
-        ? msg.content
-        : typeof msg.reasoning_content === "string"
-            ? msg.reasoning_content
-            : "";
+    const content = typeof msg.content === "string" && msg.content.trim() ? msg.content : "";
 
-    if (!content.trim()) throw new Error("访谈返回为空，请稍后重试");
+    if (!content.trim()) {
+        if (retry > 0) {
+            console.warn("访谈返回空内容，重试中…");
+            return interviewWithAI(intro, turns, retry - 1);
+        }
+        throw new Error("访谈返回为空，请稍后重试");
+    }
 
-    return parseAIResponse(content) as unknown as InterviewResult;
+    try {
+        return parseAIResponse(content) as unknown as InterviewResult;
+    } catch (e) {
+        if (retry > 0) {
+            console.warn("访谈解析失败，重试中：", content.slice(0, 100));
+            return interviewWithAI(intro, turns, retry - 1);
+        }
+        throw e;
+    }
 }
 
 // ============ 支线 NPC：上下文构造 + 发言 ============
