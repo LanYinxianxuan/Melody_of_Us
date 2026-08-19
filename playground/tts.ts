@@ -198,20 +198,8 @@ function getTtsConfig(): { baseUrl: string; headers: Record<string, string>; key
     return { baseUrl, headers, key };
 }
 
-// 调用 TTS API 合成语音
-export async function synthesizeSpeech(text: string, style?: string): Promise<ArrayBuffer> {
-    const { baseUrl, headers, key } = getTtsConfig();
-    const voiceBase64 = getVoiceBase64();
-
-    if (!key) {
-        throw new Error("请先设置 API Key");
-    }
-
-    if (!voiceBase64) {
-        throw new Error("请先上传音色样本");
-    }
-
-    // 构建 messages
+// 构建 TTS 请求的 messages
+function buildTtsMessages(text: string, style?: string): Array<{ role: string; content: string }> {
     const messages: Array<{ role: string; content: string }> = [];
 
     // user 消息：风格指令（可选）
@@ -225,7 +213,24 @@ export async function synthesizeSpeech(text: string, style?: string): Promise<Ar
     // assistant 消息：要合成的文字（已经是目标语言）
     messages.push({ role: "assistant", content: text });
 
-    // 构建请求体
+    return messages;
+}
+
+// 调用 TTS API 合成语音（非流式，兼容用）
+export async function synthesizeSpeech(text: string, style?: string): Promise<ArrayBuffer> {
+    const { baseUrl, headers, key } = getTtsConfig();
+    const voiceBase64 = getVoiceBase64();
+
+    if (!key) {
+        throw new Error("请先设置 API Key");
+    }
+
+    if (!voiceBase64) {
+        throw new Error("请先上传音色样本");
+    }
+
+    const messages = buildTtsMessages(text, style);
+
     const requestBody = {
         model: "mimo-v2.5-tts-voiceclone",
         messages,
@@ -235,7 +240,7 @@ export async function synthesizeSpeech(text: string, style?: string): Promise<Ar
         },
     };
 
-    console.log("[TTS] 发送合成请求:", { text: text.slice(0, 50) + "...", style: styleText });
+    console.log("[TTS] 发送合成请求（非流式）:", { text: text.slice(0, 50) + "..." });
 
     const resp = await fetch(`${baseUrl}/chat/completions`, {
         method: "POST",
@@ -257,19 +262,139 @@ export async function synthesizeSpeech(text: string, style?: string): Promise<Ar
     }
 
     // 解码 Base64 音频
-    const binaryString = atob(audioData);
+    return base64ToArrayBuffer(audioData);
+}
+
+// 流式 TTS 合成：逐步返回音频块
+export async function* synthesizeSpeechStream(text: string, style?: string): AsyncGenerator<ArrayBuffer> {
+    const { baseUrl, headers, key } = getTtsConfig();
+    const voiceBase64 = getVoiceBase64();
+
+    if (!key) {
+        throw new Error("请先设置 API Key");
+    }
+
+    if (!voiceBase64) {
+        throw new Error("请先上传音色样本");
+    }
+
+    const messages = buildTtsMessages(text, style);
+
+    const requestBody = {
+        model: "mimo-v2.5-tts-voiceclone",
+        messages,
+        audio: {
+            format: "pcm16",
+            voice: voiceBase64,
+        },
+        stream: true,
+    };
+
+    console.log("[TTS] 发送合成请求（流式）:", { text: text.slice(0, 50) + "..." });
+
+    const resp = await fetch(`${baseUrl}/chat/completions`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(requestBody),
+    });
+
+    if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}));
+        throw new Error(err.error?.message ?? `TTS 请求失败: HTTP ${resp.status}`);
+    }
+
+    const reader = resp.body?.getReader();
+    if (!reader) throw new Error("无法读取流式响应");
+
+    const decoder = new TextDecoder();
+    let buffer = "";
+
+    try {
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split("\n");
+            buffer = lines.pop() ?? "";
+
+            for (const line of lines) {
+                const trimmed = line.trim();
+                if (!trimmed || !trimmed.startsWith("data: ")) continue;
+
+                const data = trimmed.slice(6);
+                if (data === "[DONE]") return;
+
+                try {
+                    const parsed = JSON.parse(data);
+                    const delta = parsed.choices?.[0]?.delta;
+
+                    // 提取音频块（Base64）
+                    if (delta?.audio?.data) {
+                        const pcmBytes = base64ToArrayBuffer(delta.audio.data);
+                        if (pcmBytes.byteLength > 0) {
+                            yield pcmBytes;
+                        }
+                    }
+                } catch {
+                    // 忽略解析错误
+                }
+            }
+        }
+    } finally {
+        reader.releaseLock();
+    }
+}
+
+// Base64 转 ArrayBuffer 辅助函数
+function base64ToArrayBuffer(base64: string): ArrayBuffer {
+    const binaryString = atob(base64);
     const bytes = new Uint8Array(binaryString.length);
     for (let i = 0; i < binaryString.length; i++) {
         bytes[i] = binaryString.charCodeAt(i);
     }
-
     return bytes.buffer;
 }
 
 // ============ 音频播放 ============
 
-// 播放音频 ArrayBuffer
-async function playAudioBuffer(buffer: ArrayBuffer): Promise<void> {
+// 为 PCM16 数据添加 WAV 头（24kHz mono 16bit）
+function addWavHeader(pcmData: Uint8Array, sampleRate = 24000): ArrayBuffer {
+    const numChannels = 1;
+    const bitsPerSample = 16;
+    const byteRate = sampleRate * numChannels * bitsPerSample / 8;
+    const blockAlign = numChannels * bitsPerSample / 8;
+
+    const buffer = new ArrayBuffer(44 + pcmData.length);
+    const view = new DataView(buffer);
+
+    // RIFF header
+    view.setUint32(0, 0x52494646, false); // "RIFF"
+    view.setUint32(4, 36 + pcmData.length, true);
+    view.setUint32(8, 0x57415645, false); // "WAVE"
+
+    // fmt chunk
+    view.setUint32(12, 0x666d7420, false); // "fmt "
+    view.setUint32(16, 16, true);          // chunk size
+    view.setUint16(20, 1, true);           // PCM format
+    view.setUint16(22, numChannels, true);
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, byteRate, true);
+    view.setUint16(32, blockAlign, true);
+    view.setUint16(34, bitsPerSample, true);
+
+    // data chunk
+    view.setUint32(36, 0x64617461, false); // "data"
+    view.setUint32(40, pcmData.length, true);
+
+    // PCM data
+    new Uint8Array(buffer, 44).set(pcmData);
+
+    return buffer;
+}
+
+// 播放完整音频（WAV 格式，带头）
+async function playWavBuffer(buffer: ArrayBuffer): Promise<void> {
     return new Promise((resolve, reject) => {
         const blob = new Blob([buffer], { type: "audio/wav" });
         const url = URL.createObjectURL(blob);
@@ -289,13 +414,39 @@ async function playAudioBuffer(buffer: ArrayBuffer): Promise<void> {
     });
 }
 
-// 合成并播放语音（带队列）
+// 播放 PCM16 音频块（拼接 WAV 头后播放）
+async function playPcmChunks(chunks: Uint8Array[]): Promise<void> {
+    // 拼接所有 PCM 数据
+    const totalLength = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
+    const pcmData = new Uint8Array(totalLength);
+    let offset = 0;
+    for (const chunk of chunks) {
+        pcmData.set(chunk, offset);
+        offset += chunk.length;
+    }
+
+    // 添加 WAV 头
+    const wavBuffer = addWavHeader(pcmData);
+    await playWavBuffer(wavBuffer);
+}
+
+// 合成并播放语音（流式）
 export async function speak(text: string, style?: string): Promise<void> {
     if (!ttsEnabled) return;
 
     try {
-        const buffer = await synthesizeSpeech(text, style);
-        await playAudioBuffer(buffer);
+        const pcmChunks: Uint8Array[] = [];
+
+        // 流式接收音频块
+        for await (const chunk of synthesizeSpeechStream(text, style)) {
+            const bytes = new Uint8Array(chunk);
+            pcmChunks.push(bytes);
+        }
+
+        // 拼接并播放
+        if (pcmChunks.length > 0) {
+            await playPcmChunks(pcmChunks);
+        }
     } catch (e) {
         console.warn("[TTS] 合成或播放失败:", (e as Error).message);
         // 不抛出错误，静默失败
