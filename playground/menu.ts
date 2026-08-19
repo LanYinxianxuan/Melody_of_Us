@@ -2,7 +2,7 @@
 // 每个存档槽位独立的 API 设置
 
 import { loadSlotRaw, loadSlotCharacterName, clearSlot, currentSlot } from "./storage";
-import { readAudioFile, setVoiceBase64, getVoiceBase64, clearVoice, getTtsStyle, setTtsStyle, synthesizeSpeech } from "./tts";
+import { readAudioFile, setVoiceBase64, getVoiceBase64, clearVoice, getTtsStyle, setTtsStyle, getTtsApiKey, setTtsApiKey, synthesizeSpeech } from "./tts";
 
 const TOTAL_SLOTS = 5;
 
@@ -350,6 +350,7 @@ apiTestBtn.addEventListener("click", testApi);
 
 // ============ TTS 语音设置 ============
 
+const ttsApiKeyInput = document.getElementById("tts-api-key") as HTMLInputElement;
 const ttsVoiceFile = document.getElementById("tts-voice-file") as HTMLInputElement;
 const ttsVoiceClear = document.getElementById("tts-voice-clear") as HTMLButtonElement;
 const ttsVoiceStatus = document.getElementById("tts-voice-status")!;
@@ -360,6 +361,7 @@ const ttsTestStatus = document.getElementById("tts-test-status")!;
 
 // 初始化 TTS 设置
 function loadTtsSettings() {
+    ttsApiKeyInput.value = getTtsApiKey();
     const voice = getVoiceBase64();
     if (voice) {
         ttsVoiceStatus.textContent = "✅ 已上传音色样本";
@@ -372,6 +374,12 @@ function loadTtsSettings() {
 }
 
 loadTtsSettings();
+
+// 保存 TTS API Key
+ttsApiKeyInput.addEventListener("change", () => {
+    setTtsApiKey(ttsApiKeyInput.value.trim());
+    showHint();
+});
 
 // 上传音色文件
 ttsVoiceFile.addEventListener("change", async () => {

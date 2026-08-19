@@ -7,6 +7,7 @@ import { store } from "./storage";
 const TTS_ENABLED_KEY = "melai-tts-enabled";
 const TTS_VOICE_KEY_PREFIX = "melai-tts-voice"; // 每个槽位独立
 const TTS_STYLE_KEY_PREFIX = "melai-tts-style";
+const TTS_API_KEY_PREFIX = "melai-tts-apikey"; // TTS 专用 API Key
 
 // 当前槽位
 function currentSlot(): number {
@@ -55,6 +56,16 @@ export function setTtsStyle(style: string) {
     localStorage.setItem(`${TTS_STYLE_KEY_PREFIX}-${currentSlot()}`, style);
 }
 
+// 获取 TTS 专用 API Key
+export function getTtsApiKey(): string {
+    return localStorage.getItem(`${TTS_API_KEY_PREFIX}-${currentSlot()}`) ?? "";
+}
+
+// 保存 TTS 专用 API Key
+export function setTtsApiKey(key: string) {
+    localStorage.setItem(`${TTS_API_KEY_PREFIX}-${currentSlot()}`, key);
+}
+
 // ============ 音频上传 ============
 
 // 读取音频文件为 Base64
@@ -82,11 +93,14 @@ export function readAudioFile(file: File): Promise<string> {
 
 // ============ TTS API 调用 ============
 
-// 获取 API 配置（复用 ai.ts 的供应商配置逻辑）
+// 获取 API 配置（优先使用 TTS 专用 Key，否则使用主 Key）
 function getTtsConfig(): { baseUrl: string; headers: Record<string, string>; key: string } {
     const slot = currentSlot();
     const provider = localStorage.getItem(`provider-${slot}`) ?? "xiaomi";
-    const key = localStorage.getItem(`apikey-${slot}`)?.trim() ?? "";
+    // 优先使用 TTS 专用 Key，否则使用主 Key
+    const ttsKey = getTtsApiKey();
+    const mainKey = localStorage.getItem(`apikey-${slot}`)?.trim() ?? "";
+    const key = ttsKey || mainKey;
 
     // TTS 只支持小米 MiMo，但允许自定义地址
     let baseUrl = "https://api.xiaomimimo.com/v1";

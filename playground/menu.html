@@ -274,6 +274,13 @@
   <!-- TTS 语音设置卡 -->
   <div class="card">
     <div class="card-title">🎤 语音朗读（TTS）</div>
+    <div style="font-size:11px;color:var(--ink-faint);margin-bottom:12px;padding:8px;background:var(--accent-soft);border-radius:8px;">
+      💡 TTS 使用小米 MiMo VoiceClone API，需在上方「API 设置」中选择「小米 MiMo」供应商并填写 API Key。
+    </div>
+    <div class="setting">
+      <label>TTS 专用 API Key（可选，留空则使用上方的 Key）</label>
+      <input id="tts-api-key" type="password" placeholder="sk-…（仅存本地浏览器）">
+    </div>
     <div class="setting">
       <label>音色样本（上传 MP3/WAV，10MB 以内，将克隆此音色）</label>
       <div style="display:flex;gap:8px;align-items:center;">
