@@ -461,7 +461,10 @@ function collectCurrentStep() {
 
 wizardNext.addEventListener("click", () => {
     if (wizardStep === 1) {
-        if (localStorage.getItem("deepseek-key")) {
+        // 检查当前槽位的 API Key（per-slot 存储）
+        const slot = parseInt(localStorage.getItem("melai-current-slot") ?? "1", 10) || 1;
+        const hasKey = !!localStorage.getItem(`apikey-${slot}`);
+        if (hasKey) {
             startInterview();
         } else {
             const intro = ((document.getElementById("wiz-intro") as HTMLTextAreaElement)?.value ?? "").trim();
