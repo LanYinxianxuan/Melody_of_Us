@@ -1,0 +1,1430 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <meta name="theme-color" content="#d65a7e">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="../manifest.webmanifest">
+  <link rel="apple-touch-icon" href="./icons/icon-192.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <title>情感 AI 聊天 · 38 维情感体系</title>
+  <style>
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      /* 全局溢出保护：任何子元素不产生横向滚动/溢出 */
+      html, body { max-width: 100%; overflow-x: hidden; }
+      img, canvas, svg, video { max-width: 100%; }
+
+
+      /* ===== 二次元简约高级 · 设计系统 =====
+         设计标准（open-design redesign-skill 审计）：
+         - 单一强调色（降饱和），暖白中性底，无紫粉 AI 渐变
+         - 实色按钮 + tinted 阴影 + 噪点纹理
+         - 字体层次：Outfit(数字/英文) + 系统中文，tabular-nums */
+      :root {
+          --accent: #d65a7e;            /* 樱花莓粉（唯一强调色） */
+          --accent-deep: #b84567;       /* hover/按压深一度 */
+          --accent-soft: rgba(214, 90, 126, 0.10);
+          --accent-line: rgba(214, 90, 126, 0.24);
+          --ink: #2d2a32;               /* 深炭墨（暖黑） */
+          --ink-soft: #6e6a76;          /* 次文字 */
+          --ink-faint: #a39dab;         /* 弱文字 */
+          --card: rgba(255, 255, 255, 0.88);
+          --card-strong: #ffffff;
+          --bg: #faf7f4;                /* 暖白中性底 */
+          --line: rgba(45, 42, 50, 0.08);
+          --shadow: 0 6px 24px rgba(120, 80, 60, 0.10);        /* 暖褐 tinted 阴影 */
+          --shadow-lg: 0 16px 48px rgba(120, 80, 60, 0.16);
+          --shadow-accent: 0 6px 20px rgba(214, 90, 126, 0.28);
+          --radius-lg: 24px;
+          --radius-md: 14px;
+          --radius-sm: 8px;
+          --font-num: "Outfit", "PingFang SC", sans-serif;
+      }
+
+      /* ===== 背景：图片 + 半透明毛玻璃层 ===== */
+      body {
+          height: 100vh;
+          overflow: hidden;
+          background-image: url(./assets/bg-ZvSl1C-y.jpg);
+          background-size: cover;
+          background-position: center;
+          background-attachment: fixed;
+          font-family: "PingFang SC", "HarmonyOS Sans SC", "MiSans", "微软雅黑", "Noto Sans SC", sans-serif;
+          color: var(--ink);
+      }
+
+      /* 背景图片模糊层：图片色彩透过毛玻璃显现 */
+      body::before {
+          content: "";
+          position: fixed;
+          inset: -20px;
+          background-image: url(./assets/bg-ZvSl1C-y.jpg);
+          background-size: cover;
+          background-position: center;
+          filter: blur(14px) saturate(1.25);
+          transform: scale(1.05);
+          z-index: -2;
+      }
+
+      /* 半透明柔光罩：让玻璃面板下的图片有氛围但不抢眼 */
+      body::after {
+          content: "";
+          position: fixed;
+          inset: 0;
+          background:
+              radial-gradient(900px 520px at 12% -4%, rgba(214, 90, 126, 0.18), transparent 55%),
+              radial-gradient(760px 440px at 104% 110%, rgba(140, 150, 200, 0.16), transparent 55%),
+              linear-gradient(to bottom right, rgba(250, 247, 244, 0.42), rgba(243, 238, 233, 0.5));
+          z-index: -1;
+          pointer-events: none;
+      }
+
+      /* 噪点纹理：打破数字扁平感（毛玻璃之上） */
+      .grain {
+          content: "";
+          position: fixed;
+          inset: 0;
+          background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E");
+          pointer-events: none;
+          z-index: 3;
+      }
+
+      /* ===== 聊天显示区（半透明毛玻璃） ===== */
+      #chat-wrap {
+          height: calc(100vh - 90px);
+          margin: 12px 12px 12px 12px;
+          padding: 16px;
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+
+          background: rgba(255, 255, 255, 0.4);
+          backdrop-filter: blur(28px) saturate(1.6);
+          -webkit-backdrop-filter: blur(28px) saturate(1.6);
+          border: 1px solid rgba(255, 255, 255, 0.55);
+          box-shadow:
+              inset 0 1px 0 rgba(255, 255, 255, 0.7),
+              inset 0 0 24px rgba(255, 255, 255, 0.25),
+              0 12px 40px rgba(120, 80, 60, 0.16);
+          border-radius: var(--radius-lg);
+          transition: margin-left 0.3s ease;
+          position: relative;
+          z-index: 1;
+      }
+
+      #chat-wrap.panel-open { margin-left: 330px; }
+
+      .mini-btn {
+          margin-left: 8px;
+          padding: 5px 13px;
+          border: 1px solid transparent;
+          border-radius: 999px;
+          background: transparent;
+          color: var(--ink-soft);
+          font-size: 11px;
+          cursor: pointer;
+          letter-spacing: 1px;
+          transition: all 0.2s ease;
+      }
+
+      .mini-btn:hover { background: var(--accent-soft); color: var(--accent); }
+      .mini-btn:active { transform: scale(0.96); }
+      .mini-btn.active { background: var(--accent); color: #fff; box-shadow: var(--shadow-accent); }
+
+      #chat-messages {
+          flex: 1;
+          overflow-y: auto;
+          display: flex;
+          flex-direction: column;
+          gap: 14px;
+          padding: 4px;
+          scroll-behavior: smooth;
+      }
+
+      .msg.ai .action {
+          display: block; font-size: 12px; color: var(--accent); font-style: italic; margin-top: 6px;
+      }
+      .msg.ai .thoughts {
+          display: block; font-size: 12px; color: var(--accent-deep); margin-top: 4px;
+      }
+      .msg.ai .emotion-tag {
+          display: block; font-size: 10px; color: var(--ink-faint); margin-top: 6px;
+      }
+
+      /* 支线 NPC 消息（世界里的其他人） */
+      .msg.npc-msg .npc-name {
+          font-size: 11px;
+          color: var(--accent);
+          margin-bottom: 4px;
+          font-weight: 700;
+          letter-spacing: 0.5px;
+      }
+      .msg.npc-msg .action {
+          color: var(--ink-soft);
+      }
+
+      /* 手机消息（校外：不在一起，只能发消息） */
+      .phone-badge {
+          display: block;
+          font-size: 10px;
+          margin-bottom: 3px;
+          opacity: 0.8;
+      }
+
+      /* 消息时间戳（虚拟时间：体现这条消息是几点发的） */
+      .msg-ts {
+          display: block;
+          font-size: 10px;
+          color: var(--ink-faint);
+          margin-top: 4px;
+          text-align: right;
+          user-select: none;
+          font-family: var(--font-num);
+          font-variant-numeric: tabular-nums;
+      }
+
+      /* 消息旁的重答按钮 */
+      .msg-reanswer {
+          position: absolute;
+          top: 6px;
+          right: 6px;
+          width: 20px;
+          height: 20px;
+          line-height: 20px;
+          text-align: center;
+          font-size: 12px;
+          color: rgba(107, 95, 142, 0.5);
+          background: rgba(255, 255, 255, 0.7);
+          border: 1px solid var(--line);
+          border-radius: 50%;
+          cursor: pointer;
+          opacity: 0;
+          transition: opacity 0.2s, background 0.2s;
+          padding: 0;
+      }
+      .msg:hover .msg-reanswer { opacity: 1; }
+      .msg-reanswer:hover { background: rgba(255, 255, 255, 0.18); color: #fff; }
+
+      .msg.phone { font-size: 14px; }
+      .msg.phone .dialogue { font-size: 13px; }
+
+      /* 剧情旁白：插入对话流的事件叙述 */
+      /* ===== 左侧状态面板（半透明毛玻璃浮层，可收起） ===== */
+      #state-panel {
+          position: fixed;
+          left: 12px;
+          top: 12px;
+          bottom: 90px;
+          width: 305px;
+          padding: 14px;
+          display: flex;
+          flex-direction: column;
+          overflow-y: auto;
+          border-radius: var(--radius-lg);
+          background: rgba(255, 255, 255, 0.42);
+          backdrop-filter: blur(28px) saturate(1.6);
+          -webkit-backdrop-filter: blur(28px) saturate(1.6);
+          border: 1px solid rgba(255, 255, 255, 0.55);
+          box-shadow:
+              inset 0 1px 0 rgba(255, 255, 255, 0.7),
+              inset 0 0 24px rgba(255, 255, 255, 0.22),
+              0 16px 48px rgba(120, 80, 60, 0.18);
+          transition: transform 0.3s ease, opacity 0.3s ease;
+          z-index: 20;
+      }
+
+      #state-panel.hidden { transform: translateX(-110%); opacity: 0; pointer-events: none; }
+
+      #state-panel h1 { font-size: 14px; color: var(--accent); margin-bottom: 6px; }
+      #state-panel .hint { font-size: 10px; color: var(--ink-soft); line-height: 1.5; margin-bottom: 8px; }
+
+      #meters-scroll {
+          flex: 1;
+          overflow-y: auto;
+          min-height: 0;
+          margin-top: 8px;
+          padding-right: 4px;
+      }
+
+      #meters-scroll::-webkit-scrollbar { width: 5px; }
+      #meters-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.25); border-radius: 3px; }
+
+      .group-title {
+          font-size: 11px; color: var(--ink-soft);
+          border-bottom: 1px solid var(--line);
+          padding-bottom: 4px; margin-top: 8px; cursor: pointer; user-select: none;
+          font-weight: 700;
+      }
+
+      .meter { margin: 6px 0; }
+
+      .meter .label {
+          display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 3px;
+      }
+      .meter .label .name { color: var(--ink); }
+      .meter .label .val { color: var(--accent); font-family: Consolas, monospace; font-weight: 700; }
+
+      .meter .bar {
+          height: 6px; border-radius: 3px; background: rgba(139, 92, 246, 0.12); overflow: hidden;
+      }
+      .meter .bar .fill {
+          height: 100%; border-radius: 3px; transition: width 0.6s ease;
+      }
+
+      #emotion-chart {
+          margin-top: 10px;
+          background: rgba(255, 255, 255, 0.5);
+          border-radius: 12px;
+          border: 1px solid var(--line);
+          width: 100%;
+      }
+
+      /* ===== 全部情感（默认折叠，用户自己点开查看） ===== */
+      #emotions-toggle {
+          width: 100%;
+          margin-top: 10px;
+          padding: 9px 0;
+          border: 1px solid var(--accent-line);
+          border-radius: 999px;
+          background: transparent;
+          color: var(--accent);
+          font-size: 12px;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          font-weight: 600;
+      }
+      #emotions-toggle:hover { background: var(--accent-soft); }
+      #emotions-toggle.open { background: var(--accent); color: #fff; border-color: transparent; box-shadow: var(--shadow-accent); }
+
+      /* ===== 全屏情感明细浮层 ===== */
+      #emotions-modal {
+          position: fixed;
+          inset: 0;
+          display: flex;
+          flex-direction: column;
+          background: linear-gradient(160deg, rgba(58, 42, 90, 0.98), rgba(40, 30, 66, 0.98));
+          backdrop-filter: blur(12px);
+          z-index: 105;
+          padding: 16px 20px calc(16px + env(safe-area-inset-bottom));
+      }
+      #emotions-modal.hidden { display: none; }
+      .em-modal-head {
+          display: flex; justify-content: space-between; align-items: center;
+          font-size: 16px; color: #e8d5ff; margin-bottom: 6px;
+      }
+      .em-close {
+          width: 34px; height: 34px; border-radius: 50%;
+          border: 1px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.1);
+          color: #fff; font-size: 14px; cursor: pointer;
+      }
+      .em-close:active { background: rgba(255,255,255,0.25); }
+      .em-sub {
+          font-size: 11px; color: rgba(255,255,255,0.55);
+          line-height: 1.5; margin-bottom: 10px;
+      }
+      #emotions-modal #meters-scroll {
+          flex: 1;
+          overflow-y: auto;
+          min-height: 0;
+          margin-top: 0;
+      }
+      #emotions-modal #emotion-chart {
+          width: 100%;
+          margin: 0 0 4px;
+          flex-shrink: 0;
+      }
+
+      #mood-text {
+          font-size: 11px; color: #ffd08a; line-height: 1.6;
+          background: rgba(0,0,0,0.25); padding: 8px; border-radius: 8px; margin-top: 8px;
+      }
+
+      /* ===== 时间卡（她的生活） ===== */
+      .clock-card {
+          margin-top: 10px;
+          padding: 12px;
+          background: var(--bg);
+          border: 1px solid var(--line);
+          border-radius: var(--radius-md);
+      }
+
+      .clock-row {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          font-size: 12px;
+          gap: 8px;
+      }
+
+      /* ===== 剧情卡 ===== */
+      .story-card {
+          margin-top: 10px;
+          padding: 12px;
+          background: var(--bg);
+          border: 1px solid var(--line);
+          border-radius: var(--radius-md);
+      }
+
+      .story-head {
+          display: flex;
+          justify-content: space-between;
+          font-size: 12px;
+          color: #fff;
+          margin-bottom: 2px;
+      }
+
+      .story-desc {
+          font-size: 10px;
+          color: rgba(255, 255, 255, 0.55);
+          margin-bottom: 8px;
+      }
+
+      .story-bar {
+          height: 6px;
+          border-radius: 3px;
+          background: rgba(255, 255, 255, 0.15);
+          overflow: hidden;
+      }
+
+      .story-fill {
+          height: 100%;
+          border-radius: 3px;
+          background: linear-gradient(to right, #fad831, #eba345);
+          transition: width 0.8s ease;
+      }
+
+      .story-event {
+          overflow-wrap: break-word;
+          font-size: 10px;
+          color: var(--ink-soft);
+          line-height: 1.6;
+          margin-top: 5px;
+          padding-left: 2px;
+      }
+
+      /* 今日日程时间线 */
+      .agenda-empty {
+          font-size: 10px;
+          color: rgba(255, 255, 255, 0.35);
+          padding: 6px 2px;
+      }
+
+      /* ===== 可折叠分组 ===== */
+      .panel-section {
+          border-radius: var(--radius-md);
+          margin-bottom: 6px;
+      }
+      .panel-section-toggle {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          width: 100%;
+          padding: 8px 10px;
+          background: rgba(255, 255, 255, 0.3);
+          border: 1px solid rgba(255, 255, 255, 0.4);
+          border-radius: var(--radius-sm);
+          color: var(--ink-soft);
+          font-size: 12px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s;
+          user-select: none;
+          position: sticky;
+          top: 0;
+          z-index: 2;
+      }
+      .panel-section-toggle:hover { background: rgba(255, 255, 255, 0.5); }
+      .panel-section-toggle .toggle-arrow {
+          transition: transform 0.25s;
+          font-size: 10px;
+      }
+      .panel-section-toggle.collapsed .toggle-arrow { transform: rotate(-90deg); }
+      .panel-section-content {
+          padding-top: 4px;
+          display: block;
+      }
+      .panel-section-content.collapsed {
+          display: none;
+      }
+
+      #mood-history {
+          font-size: 10px; color: var(--ink-soft); line-height: 1.6;
+          border-top: 1px solid rgba(255,255,255,0.15); padding-top: 8px; margin-top: 8px;
+          height: 90px; min-height: 90px; overflow-y: auto;
+      }
+
+      #mood-history .entry { display: flex; gap: 5px; }
+      #mood-history .entry .who { color: #7db4f0; }
+      #mood-history .entry .who.ai { color: #9ff0b8; }
+      #mood-history .entry .emo { color: #ffd08a; }
+
+      #state-config {
+          border-top: 1px solid rgba(255,255,255,0.15);
+          padding-top: 8px; margin-top: 8px;
+          display: flex; flex-direction: column; gap: 6px;
+      }
+
+      #state-config input, #state-config select {
+          padding: 7px 10px; border: none; border-radius: 8px;
+          background: rgba(255,255,255,0.9); color: #333; font-size: 12px; outline: none;
+      }
+
+      #state-config button {
+          padding: 8px; border: none; border-radius: 8px;
+          background: rgba(255,255,255,0.2); color: #fff; font-size: 12px; cursor: pointer;
+      }
+
+      #state-config button:hover { background: rgba(255,255,255,0.3); }
+      #reset-state { background: rgba(255, 184, 107, 0.35) !important; }
+
+      /* ===== 面板开关按钮 ===== */
+      #panel-toggle {
+          position: fixed;
+          left: 12px;
+          top: calc(50% - 22px);
+          width: 44px; height: 44px;
+          border-radius: 50%;
+          border: none;
+          background: var(--card-strong);
+          color: var(--accent);
+          box-shadow: var(--shadow);
+          cursor: pointer;
+          transition: 0.25s, left 0.3s ease;
+          z-index: 30;
+          font-size: 18px;
+      }
+
+      #panel-toggle:hover { transform: scale(1.08); box-shadow: var(--shadow-lg); }
+      #panel-toggle.panel-open { left: 329px; }
+
+      /* ===== 角色设定弹层 ===== */
+      #char-modal {
+          position: fixed;
+          inset: 0;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          background: rgba(0, 0, 0, 0.55);
+          backdrop-filter: blur(6px);
+          z-index: 100;
+      }
+
+      /* ===== 角色创建向导 ===== */
+      #wizard-modal {
+          position: fixed;
+          inset: 0;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          background: rgba(0, 0, 0, 0.6);
+          backdrop-filter: blur(6px);
+          z-index: 110;
+      }
+
+      #wizard-modal.hidden { display: none; }
+
+      #wizard-modal .box {
+          max-height: 86vh;
+          overflow-y: auto;
+          padding: 26px 30px;
+          border-radius: var(--radius-lg);
+          background: var(--card-strong);
+          border: 1px solid rgba(255, 255, 255, 0.7);
+          box-shadow: var(--shadow-lg);
+      }
+
+      #wizard-modal h2 { color: var(--accent); font-size: 16px; letter-spacing: 2px; margin-bottom: 6px; }
+      #wizard-modal .sub { color: var(--ink-soft); font-size: 11px; margin-bottom: 14px; line-height: 1.6; }
+
+      .wiz-preset {
+          display: block;
+          width: 100%;
+          text-align: left;
+          padding: 14px 18px;
+          margin-bottom: 10px;
+          border-radius: 14px;
+          border: 1px solid var(--line);
+          background: var(--card);
+          color: var(--ink);
+          cursor: pointer;
+          transition: all 0.2s;
+      }
+
+      .wiz-preset:hover { background: var(--accent-soft); border-color: var(--accent-line); transform: translateY(-1px); }
+      .wiz-preset .p-name { font-size: 15px; font-weight: 700; color: var(--accent); }
+      .wiz-preset .p-desc { font-size: 11px; color: var(--ink-soft); margin-top: 4px; line-height: 1.6; }
+
+      .wiz-q { font-size: 14px; color: var(--ink); margin-bottom: 12px; line-height: 1.6; font-weight: 600; }
+      .wiz-q small { display: block; color: var(--ink-soft); font-size: 11px; margin-top: 4px; font-weight: 400; }
+
+      .wiz-input {
+          width: 100%;
+          padding: 11px 14px;
+          border: 1px solid var(--line);
+          border-radius: 12px;
+          background: var(--card);
+          color: var(--ink);
+          font-size: 14px;
+          outline: none;
+          font-family: inherit;
+          transition: border-color 0.2s, box-shadow 0.2s;
+      }
+      .wiz-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(192, 132, 252, 0.15); }
+
+      .wiz-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+
+      .wiz-chip {
+          padding: 7px 16px;
+          border-radius: 999px;
+          border: 1px solid var(--line);
+          background: var(--card);
+          color: var(--ink-soft);
+          font-size: 13px;
+          cursor: pointer;
+          transition: all 0.15s;
+          user-select: none;
+      }
+
+      .wiz-chip:hover { background: var(--accent-soft); color: var(--accent); }
+      .wiz-chip.selected {
+          background: var(--accent);
+          color: #fff;
+          border-color: transparent;
+          font-weight: 600;
+          box-shadow: var(--shadow-accent);
+      }
+
+      .wiz-preview {
+          overflow-wrap: break-word;
+          background: var(--card);
+          border: 1px dashed var(--accent);
+          border-radius: 12px;
+          padding: 14px 16px;
+          font-size: 12px;
+          line-height: 1.9;
+          color: var(--ink);
+      }
+
+      .wiz-nav {
+          flex: 1;
+          padding: 10px 0;
+          border-radius: 999px;
+          border: 1px solid var(--line);
+          background: var(--card);
+          color: var(--ink-soft);
+          font-size: 13px;
+          cursor: pointer;
+          font-weight: 600;
+          transition: all 0.2s;
+      }
+      .wiz-nav:hover { background: var(--accent-soft); color: var(--accent); }
+      .wiz-nav-primary { flex: 2; background: var(--accent); color: #fff; border-color: transparent; box-shadow: var(--shadow-accent); }
+      .wiz-nav-primary:hover { background: var(--accent-deep); color: #fff; transform: translateY(-1px); }
+      .wiz-nav-danger { color: #e87979; border-color: rgba(232, 121, 121, 0.4); background: rgba(232, 121, 121, 0.06); }
+      .wiz-nav-danger:hover { background: rgba(232, 121, 121, 0.14); color: #ef4444; }
+
+      .wiz-preview b { color: #fad831; }
+
+      #char-modal.hidden { display: none; }
+
+      #char-modal .box {
+          width: 560px;
+          max-height: 86vh;
+          overflow-y: auto;
+          padding: 26px 30px;
+          border-radius: 24px;
+          background: var(--card-strong);
+          border: 1px solid var(--line);
+          box-shadow: var(--shadow-lg);
+      }
+
+      #char-modal h2 { color: var(--accent); font-size: 16px; letter-spacing: 2px; margin-bottom: 6px; }
+      #char-modal .sub { color: var(--ink-soft); font-size: 11px; margin-bottom: 16px; }
+
+      #char-modal .field { margin-bottom: 10px; }
+      #char-modal .field label {
+          display: block;
+          color: var(--ink-soft);
+          font-size: 11px;
+          margin-bottom: 4px;
+          letter-spacing: 1px;
+      }
+      #char-modal .field input, #char-modal .field textarea {
+          width: 100%;
+          padding: 9px 12px;
+          border: 1px solid var(--line);
+          border-radius: 12px;
+          background: var(--card);
+          color: var(--ink);
+          font-size: 13px;
+          outline: none;
+          font-family: inherit;
+          resize: vertical;
+          transition: border-color 0.2s;
+      }
+      #char-modal .field input:focus, #char-modal .field textarea:focus { border-color: var(--accent); }
+      #char-modal .field textarea { min-height: 56px; }
+
+      #char-modal .row { display: flex; gap: 10px; margin-top: 14px; }
+      #char-modal .row button {
+          flex: 1;
+          padding: 10px 0;
+          border-radius: 999px;
+          border: none;
+          font-size: 14px;
+          letter-spacing: 2px;
+          cursor: pointer;
+          font-weight: 600;
+      }
+      #char-save { background: var(--accent); color: #fff; box-shadow: var(--shadow-accent); }
+      #char-cancel { background: var(--card); color: var(--ink-soft); border: 1px solid var(--line) !important; }
+      #char-reset-preset { background: var(--accent-soft); color: var(--accent); }
+
+      /* ===== 聊天记录 ===== */
+      .history-divider {
+          align-self: center;
+          color: rgba(107, 95, 142, 0.55);
+          font-size: 11px;
+          margin: 6px 0;
+      }
+
+      #history-modal {
+          background: rgba(88, 64, 130, 0.35);
+          position: fixed;
+          inset: 0;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          background: rgba(0, 0, 0, 0.55);
+          backdrop-filter: blur(6px);
+          z-index: 100;
+      }
+
+      #history-modal.hidden { display: none; }
+
+      #history-modal .box {
+          width: 560px;
+          max-height: 82vh;
+          overflow-y: auto;
+          padding: 26px 30px;
+          border-radius: 24px;
+          background: var(--card-strong);
+          border: 1px solid var(--line);
+          box-shadow: var(--shadow-lg);
+      }
+
+      #history-modal h2 { color: var(--accent); font-size: 16px; letter-spacing: 2px; margin-bottom: 6px; }
+      #history-modal .sub { color: var(--ink-soft); font-size: 11px; margin-bottom: 14px; }
+
+      #history-list { display: flex; flex-direction: column; gap: 8px; max-height: 56vh; overflow-y: auto; padding-right: 4px; }
+
+      .history-day {
+          color: var(--accent);
+          font-size: 12px;
+          margin-top: 8px;
+          border-bottom: 1px solid var(--line);
+          padding-bottom: 4px;
+          font-weight: 700;
+      }
+
+      .history-msg {
+          font-size: 13px;
+          line-height: 1.6;
+      }
+
+      .history-msg.user { color: var(--accent); }
+      .history-msg.assistant { color: var(--ink); }
+
+      .history-msg .h-role {
+          display: inline-block;
+          font-size: 11px;
+          color: var(--ink-soft);
+          margin-right: 6px;
+          font-weight: 600;
+      }
+
+      .history-msg .h-time {
+          font-size: 10px;
+          color: rgba(107, 95, 142, 0.5);
+          font-family: Consolas, monospace;
+      }
+
+      .history-msg .h-content {
+          margin-top: 2px;
+          white-space: pre-wrap;
+          word-break: break-word;
+      }
+
+      /* ===== 移动端适配 ===== */
+      @media (max-width: 767px) {
+          #state-panel {
+              width: 84%;
+              left: 0;
+              right: auto;
+              top: 0;
+              bottom: 0;
+              border-radius: 0 18px 18px 0;
+              transform: translateX(-105%);
+              opacity: 0;
+          }
+          #state-panel.hidden { transform: translateX(-105%); opacity: 0; }
+          #state-panel:not(.hidden) { transform: translateX(0); opacity: 1; }
+          #chat-wrap { margin: 8px; }
+          #chat-wrap.panel-open { margin-left: 8px; }
+          #panel-toggle {
+              left: 8px;
+              top: auto;
+              bottom: calc(78px + env(safe-area-inset-bottom));
+              width: 42px;
+              height: 42px;
+              font-size: 17px;
+          }
+          #panel-toggle.panel-open { left: auto; right: 10px; top: 10px; }
+          .msg { max-width: 88%; }
+          #chat-input { font-size: 16px; }
+          #chat-input-row { padding: 10px 12px calc(10px + env(safe-area-inset-bottom)); }
+          #chat-header { flex-wrap: wrap; gap: 6px; }
+          .mini-btn { margin-left: 0; }
+          #chat-header a { font-size: 11px; }
+          #chat-messages { padding: 10px; }
+      }
+
+      /* ===== 新 UI 组件：角色卡 / 时间胶囊 / 图标按钮 / 输入胶囊 ===== */
+
+      /* 聊天头部：头像 + 身份 + 图标操作 */
+      #chat-header {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding: 2px 4px 10px;
+          border-bottom: 1px solid var(--line);
+          font-size: 13px;
+          color: var(--ink-soft);
+      }
+      .chat-avatar {
+          width: 42px; height: 42px;
+          border-radius: 50%;
+          background: linear-gradient(140deg, #f8c8d8, #f2a8c0);
+          box-shadow: 0 4px 14px rgba(214, 90, 126, 0.3), inset 0 0 0 2px rgba(255,255,255,0.6);
+          display: flex; align-items: center; justify-content: center;
+          font-size: 22px;
+          flex-shrink: 0;
+      }
+      .chat-identity { flex: 1; min-width: 0; }
+      .chat-name-row { display: flex; align-items: center; gap: 8px; }
+      .chat-name-row #chat-title-text { font-weight: 700; font-size: 15px; color: var(--ink); letter-spacing: 0.5px; }
+      .chat-sub { font-size: 11px; color: var(--ink-faint); margin-top: 1px; }
+      #chat-header .dot { width: 8px; height: 8px; border-radius: 50%; background: #4caf7d; box-shadow: 0 0 8px rgba(76,175,125,0.55); flex-shrink: 0; }
+      #chat-header .dot.busy { background: #e8a13c; box-shadow: 0 0 8px rgba(232,161,60,0.55); }
+      .chat-actions { display: flex; gap: 2px; align-items: center; flex-shrink: 0; }
+      .icon-mini {
+          width: 32px; height: 32px;
+          border: none; background: transparent;
+          border-radius: 10px;
+          font-size: 15px;
+          cursor: pointer;
+          display: flex; align-items: center; justify-content: center;
+          color: var(--ink-soft);
+          text-decoration: none;
+          transition: all 0.2s ease;
+      }
+      .icon-mini:hover { background: var(--accent-soft); transform: translateY(-1px); }
+      .icon-mini:active { transform: scale(0.92); }
+      .icon-mini.active { background: var(--accent); color: #fff; }
+
+      /* 左侧：角色卡 */
+      .char-card {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding: 14px;
+          background: rgba(255, 255, 255, 0.5);
+          border: 1px solid rgba(255, 255, 255, 0.6);
+          border-radius: var(--radius-md);
+          margin-bottom: 10px;
+          box-shadow: inset 0 1px 0 rgba(255,255,255,0.6);
+      }
+      .char-card-avatar {
+          width: 48px; height: 48px;
+          border-radius: 16px;
+          background: linear-gradient(140deg, #f8c8d8, #f2a8c0);
+          box-shadow: 0 4px 14px rgba(214, 90, 126, 0.25);
+          display: flex; align-items: center; justify-content: center;
+          font-size: 26px;
+          flex-shrink: 0;
+      }
+      .char-card-info { flex: 1; min-width: 0; }
+      .char-card-name { font-size: 15px; font-weight: 700; color: var(--ink); letter-spacing: 0.5px; }
+      .char-card-stage { font-size: 10px; color: var(--ink-faint); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .char-card-ring { position: relative; flex-shrink: 0; }
+      .char-card-pct {
+          position: absolute; inset: 0;
+          display: flex; align-items: center; justify-content: center;
+          font-size: 9px; font-weight: 700; color: var(--accent);
+          font-family: var(--font-num);
+      }
+
+      /* 时间胶囊 */
+      .time-capsule {
+          padding: 14px;
+          background: rgba(255, 255, 255, 0.5);
+          border: 1px solid rgba(255, 255, 255, 0.6);
+          border-radius: var(--radius-md);
+          margin-bottom: 10px;
+          box-shadow: inset 0 1px 0 rgba(255,255,255,0.6);
+      }
+      .time-capsule-time {
+          font-family: var(--font-num);
+          font-variant-numeric: tabular-nums;
+          font-size: 34px;
+          font-weight: 600;
+          color: var(--ink);
+          letter-spacing: 1px;
+          line-height: 1;
+      }
+      .time-capsule-meta { display: flex; align-items: center; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
+      .tc-label {
+          font-size: 11px; font-weight: 600; color: var(--accent);
+          background: var(--accent-soft);
+          padding: 2px 10px;
+          border-radius: 999px;
+      }
+      .tc-date { font-size: 11px; color: var(--ink-soft); }
+      .tc-day { font-size: 10px; color: var(--ink-faint); }
+      .tc-activity { font-size: 11px; color: var(--ink-soft); margin-top: 8px; line-height: 1.5; }
+      .tc-scene { font-size: 10px; color: var(--accent); margin-top: 4px; line-height: 1.5; }
+      .tc-actions { margin-top: 8px; }
+      .tc-btn {
+          padding: 5px 12px;
+          border: 1px solid var(--line);
+          border-radius: 999px;
+          background: var(--card-strong);
+          color: var(--ink-soft);
+          font-size: 10px;
+          cursor: pointer;
+          transition: all 0.2s;
+      }
+      .tc-btn:hover { color: var(--accent); border-color: var(--accent-line); }
+      .tc-btn-primary { background: var(--accent); color: #fff; border-color: transparent; }
+      .tc-btn-primary:hover { background: var(--accent-deep); color: #fff; }
+      .rate-btn.active { background: var(--accent) !important; color: #fff !important; border-color: transparent !important; font-weight: 600; }
+
+      /* 场景描述卡 */
+      .scene-card {
+          padding: 12px;
+          background: rgba(255, 255, 255, 0.5);
+          border: 1px solid rgba(255, 255, 255, 0.6);
+          border-radius: var(--radius-md);
+          margin-bottom: 10px;
+          box-shadow: inset 0 1px 0 rgba(255,255,255,0.6);
+      }
+      .scene-header {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          margin-bottom: 8px;
+      }
+      .scene-icon { font-size: 14px; }
+      .scene-title {
+          font-size: 13px;
+          font-weight: 700;
+          color: var(--ink);
+          letter-spacing: 0.5px;
+      }
+      .scene-location {
+          font-size: 12px;
+          color: var(--accent);
+          font-weight: 600;
+          margin-bottom: 6px;
+          padding: 4px 8px;
+          background: var(--accent-soft);
+          border-radius: 6px;
+          display: inline-block;
+      }
+      .scene-atmosphere {
+          font-size: 11px;
+          color: var(--ink-soft);
+          line-height: 1.6;
+          margin-bottom: 8px;
+          font-style: italic;
+          overflow-wrap: break-word;
+      }
+      .scene-details {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+          margin-bottom: 8px;
+      }
+      .scene-detail-item {
+          display: flex;
+          align-items: flex-start;
+          gap: 6px;
+          font-size: 10px;
+          color: var(--ink-soft);
+          line-height: 1.4;
+      }
+      .scene-detail-icon {
+          flex-shrink: 0;
+          width: 14px;
+          text-align: center;
+      }
+      .scene-detail-text {
+          flex: 1;
+      }
+      .scene-activity {
+          font-size: 11px;
+          color: var(--ink);
+          padding: 6px 8px;
+          background: rgba(255, 255, 255, 0.5);
+          border-radius: 6px;
+          border-left: 3px solid var(--accent);
+          line-height: 1.5;
+      }
+
+      /* 输入胶囊（悬浮） */
+      #chat-input-row {
+          position: fixed;
+          bottom: 0; left: 0;
+          width: 100%;
+          padding: 14px 16px calc(14px + env(safe-area-inset-bottom));
+          display: flex;
+          justify-content: center;
+          background: linear-gradient(to top, rgba(250,247,244,0.95) 60%, rgba(250,247,244,0));
+          z-index: 5;
+          pointer-events: none;
+      }
+      #chat-input-pill {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          max-width: 900px;
+          width: 100%;
+          padding: 6px 6px 6px 22px;
+          background: var(--card-strong);
+          border: 1px solid rgba(255,255,255,0.8);
+          border-radius: 999px;
+          box-shadow: 0 8px 32px rgba(120, 80, 60, 0.18);
+          pointer-events: auto;
+          transition: box-shadow 0.25s;
+      }
+      #chat-input-pill:focus-within { box-shadow: 0 10px 40px rgba(214, 90, 126, 0.22); }
+      #chat-input {
+          flex: 1;
+          min-width: 0;
+          height: 38px;
+          border: none;
+          outline: none;
+          font-size: 15px;
+          background: transparent;
+          color: var(--ink);
+      }
+      #chat-input::placeholder { color: var(--ink-faint); }
+      .icon-btn {
+          width: 44px; height: 44px;
+          border-radius: 50%;
+          border: none;
+          background: var(--accent);
+          box-shadow: var(--shadow-accent);
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          flex-shrink: 0;
+      }
+      .icon-btn:hover { background: var(--accent-deep); transform: scale(1.05); }
+      .icon-btn:active { transform: scale(0.93); }
+      .icon-btn:disabled { opacity: 0.5; transform: none; }
+
+      /* 消息：AI 带头像 */
+      .msg { position: relative; max-width: 78%; padding: 11px 16px; border-radius: 18px; font-size: 15px; line-height: 1.7; white-space: pre-wrap; word-break: break-word; overflow-wrap: anywhere; letter-spacing: 0.3px; }
+      .msg.user {
+          align-self: flex-end;
+          background: var(--accent);
+          color: #fff;
+          border-bottom-right-radius: var(--radius-sm);
+          box-shadow: var(--shadow-accent);
+      }
+      .msg.ai {
+          align-self: flex-start;
+          background: rgba(255, 255, 255, 0.62);
+          backdrop-filter: blur(12px);
+          -webkit-backdrop-filter: blur(12px);
+          color: var(--ink);
+          border: 1px solid rgba(255, 255, 255, 0.7);
+          border-bottom-left-radius: var(--radius-sm);
+          box-shadow: 0 3px 14px rgba(120, 80, 60, 0.08);
+          margin-left: 46px;
+      }
+      .msg.ai .msg-avatar {
+          position: absolute;
+          left: -46px;
+          top: 4px;
+          width: 36px; height: 36px;
+          border-radius: 50%;
+          background: linear-gradient(140deg, #f8c8d8, #f2a8c0);
+          box-shadow: 0 3px 10px rgba(214, 90, 126, 0.25);
+          display: flex; align-items: center; justify-content: center;
+          font-size: 18px;
+      }
+      .msg.npc-msg {
+          align-self: flex-start;
+          background: rgba(214, 90, 126, 0.08);
+          color: var(--ink);
+          border: 1px solid var(--accent-line);
+          border-bottom-left-radius: var(--radius-sm);
+          margin-left: 46px;
+      }
+      .msg.npc-msg .msg-avatar {
+          position: absolute;
+          left: -46px;
+          top: 4px;
+          width: 36px; height: 36px;
+          border-radius: 50%;
+          background: linear-gradient(140deg, #d8ccf5, #c4b5f0);
+          box-shadow: 0 3px 10px rgba(140, 110, 200, 0.22);
+          display: flex; align-items: center; justify-content: center;
+          font-size: 18px;
+      }
+
+      /* 系统提示消息（隐藏头像，居中弱化） */
+      .msg.sys { align-self: center; background: transparent; border: 1px dashed var(--line); color: var(--ink-faint); font-size: 12px; box-shadow: none; padding: 6px 16px; max-width: 92%; }
+      .msg.sys .msg-avatar { display: none; }
+      .msg.sys { margin-left: 0; }
+
+      /* 系统事件：居中胶囊 */
+      .story-line {
+          align-self: center;
+          font-size: 11px;
+          color: var(--ink-soft);
+          text-align: center;
+          max-width: 90%;
+          padding: 5px 18px;
+          background: var(--bg);
+          border: 1px solid var(--line);
+          border-radius: 999px;
+          line-height: 1.6;
+          font-style: italic;
+      }
+
+      /* 日程：竖向时间线 */
+      .agenda-item {
+          display: flex;
+          flex-wrap: wrap;
+          align-items: baseline;
+          gap: 6px 8px;
+          font-size: 11px;
+          padding: 4px 8px;
+          border-radius: 8px;
+          background: transparent;
+          border-left: 2px solid var(--line);
+          color: var(--ink);
+          opacity: 0.8;
+      }
+      .agenda-item.active { border-left-color: var(--accent); background: var(--accent-soft); opacity: 1; font-weight: 600; }
+      .agenda-item.done { opacity: 0.4; border-left-color: #34d399; }
+      .agenda-item .agenda-time { font-family: var(--font-num); font-variant-numeric: tabular-nums; font-size: 10px; color: var(--ink-faint); flex-shrink: 0; }
+      .agenda-item .agenda-mark { width: 12px; text-align: center; flex-shrink: 0; }
+      .agenda-item .agenda-title { flex: 1; min-width: 0; white-space: normal; word-break: break-word; }
+      .agenda-item .agenda-desc {
+          width: 100%;
+          font-size: 9px;
+          color: var(--ink-soft);
+          padding-left: 30px;
+          line-height: 1.4;
+      }
+
+  </style>
+  <script type="module" crossorigin src="./assets/chat-i0ytu6xM.js"></script>
+  <link rel="modulepreload" crossorigin href="./assets/tts-mZod1DWQ.js">
+</head>
+<body>
+
+<!-- 角色创建向导 -->
+<div id="wizard-modal" class="hidden">
+  <div class="box" style="width:620px;">
+    <h2 id="wizard-title">✨ 创建你的角色</h2>
+    <div class="sub" id="wizard-sub">先选一个预设，或自定义创建——像聊天一样，一步一步回答我的问题，最后生成她的角色卡。</div>
+
+    <div id="wizard-body"></div>
+
+    <div class="row" style="margin-top:16px;">
+      <button id="wizard-prev" class="wiz-nav">上一步</button>
+      <button id="wizard-next" class="wiz-nav wiz-nav-primary">下一步</button>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:10px;">
+      <button id="wizard-skip" class="wiz-nav" style="flex:1;">跳过（用默认角色）</button>
+      <button id="wizard-cancel" class="wiz-nav wiz-nav-danger" style="flex:1;">取消</button>
+    </div>
+  </div>
+</div>
+
+<!-- 角色设定弹层 -->
+<div id="char-modal" class="hidden">  <div class="box">
+    <h2>👤 角色设定</h2>
+    <div class="sub">定义 AI 是谁（名字/性格/背景/关系…）。保存即生效。对话中可能出现其他人（朋友/熟人/家人），由 AI 根据上下文自行应变扮演。</div>
+
+    <div style="text-align:right;margin-bottom:10px;">
+      <button id="char-wizard-reopen" style="padding:6px 14px;border:1px solid rgba(250,216,49,0.5);border-radius:999px;background:rgba(250,216,49,0.12);color:#fad831;font-size:11px;cursor:pointer;">✨ 重新引导创建</button>
+    </div>
+
+    <div class="field">
+      <label>预设</label>
+      <select id="char-preset" style="width:100%;padding:9px 12px;border:1px solid rgba(255,255,255,0.2);border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;font-size:13px;outline:none;"></select>
+    </div>
+
+    <div class="field"><label>名字</label><input id="char-name" type="text"></div>
+    <div class="field"><label>年龄</label><input id="char-age" type="text"></div>
+    <div class="field"><label>外貌</label><input id="char-appearance" type="text"></div>
+    <div class="field"><label>性格核心</label><textarea id="char-personality"></textarea></div>
+    <div class="field"><label>背景故事</label><textarea id="char-background"></textarea></div>
+    <div class="field"><label>说话风格 / 口癖</label><input id="char-speech" type="text"></div>
+    <div class="field"><label>喜好</label><input id="char-likes" type="text"></div>
+    <div class="field"><label>讨厌</label><input id="char-dislikes" type="text"></div>
+    <div class="field"><label>与用户的关系</label><input id="char-relation" type="text"></div>
+    <div class="field"><label>秘密 / 隐藏设定</label><textarea id="char-secrets"></textarea></div>
+
+    <div class="row">
+      <button id="char-reset-preset">↺ 恢复预设</button>
+      <button id="char-cancel">取消</button>
+      <button id="char-save">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 聊天记录弹层 -->
+<div id="history-modal" class="hidden">
+  <div class="box">
+    <h2>📜 聊天记录</h2>
+    <div class="sub">按虚拟日期分组，全部记录存于本地浏览器。</div>
+    <div id="history-list"></div>
+    <div class="row">
+      <button id="history-clear" style="background:rgba(255,107,107,0.3);color:#ffb0b0;">🗑 清空记录</button>
+      <button id="history-close" style="background:var(--card);color:var(--ink-soft);border:1px solid var(--line);border-radius:999px;padding:5px 16px;cursor:pointer;">关闭</button>
+    </div>
+  </div>
+</div>
+
+<!-- 左侧情感状态面板 -->
+<div id="state-panel">
+  <!-- 角色卡 -->
+  <div class="char-card">
+    <div class="char-card-avatar" id="panel-avatar">🎀</div>
+    <div class="char-card-info">
+      <div class="char-card-name" id="panel-char-name">角色</div>
+      <div class="char-card-stage" id="panel-char-stage">初识 · 开始你们的故事</div>
+    </div>
+    <div class="char-card-ring">
+      <svg viewBox="0 0 44 44" width="44" height="44">
+        <circle cx="22" cy="22" r="18" fill="none" stroke="var(--accent-soft)" stroke-width="4"/>
+        <circle id="stage-ring" cx="22" cy="22" r="18" fill="none" stroke="var(--accent)" stroke-width="4" stroke-linecap="round" stroke-dasharray="113" stroke-dashoffset="113" transform="rotate(-90 22 22)"/>
+      </svg>
+      <span class="char-card-pct" id="panel-char-pct">0%</span>
+    </div>
+  </div>
+
+  <!-- 时间胶囊 -->
+  <div class="time-capsule">
+    <div class="time-capsule-time" id="clock-time">07:30</div>
+    <div class="time-capsule-meta">
+      <span id="clock-label" class="tc-label">早晨</span>
+      <span id="clock-date" class="tc-date">9月12日 周五</span>
+      <span id="clock-day" class="tc-day">第 1 天</span>
+    </div>
+    <div id="clock-activity" class="tc-activity">在上学路上</div>
+    <div id="clock-scene" class="tc-scene">📍 你们在……</div>
+    <div class="tc-actions">
+      <button id="clock-more" class="tc-btn">⏱ 调整时间 / 倍率</button>
+    </div>
+    <div id="clock-detail" style="display:none;">
+      <div class="rate-row" style="margin-top:7px;display:flex;gap:4px;flex-wrap:wrap;">
+      <button class="rate-btn" data-rate="0.5" style="flex:1;padding:3px 0;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink-soft);font-size:10px;cursor:pointer;">0.5×</button>
+      <button class="rate-btn active" data-rate="1" style="flex:1;padding:3px 0;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink-soft);font-size:10px;cursor:pointer;">1×</button>
+      <button class="rate-btn" data-rate="10" style="flex:1;padding:3px 0;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink-soft);font-size:10px;cursor:pointer;">10×</button>
+      <button class="rate-btn" data-rate="30" style="flex:1;padding:3px 0;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink-soft);font-size:10px;cursor:pointer;">30×</button>
+      <button class="rate-btn" data-rate="60" style="flex:1;padding:3px 0;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink-soft);font-size:10px;cursor:pointer;">60×</button>
+      <button class="rate-btn" data-rate="1440" style="flex:1;padding:3px 0;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink-soft);font-size:10px;cursor:pointer;">1440×</button>
+      </div>
+      <div style="margin-top:4px;display:flex;gap:4px;align-items:center;">
+        <input id="rate-custom" type="number" min="0.01" max="100000" step="0.5" placeholder="自定义倍率(0.01~100000)"
+          style="flex:1;min-width:0;padding:4px 8px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink);font-size:10px;outline:none;">
+        <button id="rate-set" class="tc-btn tc-btn-primary">设定</button>
+      </div>
+      <div style="margin-top:4px;display:flex;gap:4px;align-items:center;">
+        <input id="day-input" type="number" min="1" placeholder="第几天" style="flex:1;min-width:0;padding:4px 8px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink);font-size:10px;outline:none;">
+        <input id="time-input" type="time" value="07:30" style="flex:1;min-width:0;padding:4px 6px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink);font-size:10px;outline:none;">
+        <button id="time-set" class="tc-btn">跳转</button>
+        <button id="today-btn" class="tc-btn">今天</button>
+      </div>
+      <div style="margin-top:4px;display:flex;gap:4px;align-items:center;">
+        <input id="date-input" type="date" style="flex:1;min-width:0;padding:4px 8px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink);font-size:10px;outline:none;">
+        <button id="date-set" class="tc-btn">设为第1天</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="mood-text">—</div>
+
+  <!-- 场景描述（常显，详细） -->
+  <div class="scene-card" id="scene-card">
+    <div class="scene-header">
+      <span class="scene-icon">📍</span>
+      <span class="scene-title" id="scene-title">场景</span>
+    </div>
+    <div class="scene-location" id="scene-location">—</div>
+    <div class="scene-atmosphere" id="scene-atmosphere">—</div>
+    <div class="scene-details">
+      <div class="scene-detail-item" id="scene-weather">
+        <span class="scene-detail-icon">🌤</span>
+        <span class="scene-detail-text">—</span>
+      </div>
+      <div class="scene-detail-item" id="scene-people">
+        <span class="scene-detail-icon">👥</span>
+        <span class="scene-detail-text">—</span>
+      </div>
+      <div class="scene-detail-item" id="scene-sound">
+        <span class="scene-detail-icon">🔊</span>
+        <span class="scene-detail-text">—</span>
+      </div>
+      <div class="scene-detail-item" id="scene-light">
+        <span class="scene-detail-icon">💡</span>
+        <span class="scene-detail-text">—</span>
+      </div>
+    </div>
+    <div class="scene-activity" id="scene-activity">—</div>
+  </div>
+
+  <!-- 剧情卡（可折叠） -->
+  <div class="panel-section">
+    <button class="panel-section-toggle" data-section="story">
+      <span>📖 剧情进展</span>
+      <span class="toggle-arrow">▼</span>
+    </button>
+    <div class="panel-section-content" id="section-story">
+      <div class="story-card">
+        <div class="story-head">
+          <span>📖 剧情</span>
+          <span id="story-stage-name" style="color:var(--gold);">初识</span>
+        </div>
+        <div class="story-desc" id="story-stage-desc">转学第一周</div>
+        <div class="story-bar"><div class="story-fill" id="story-progress-bar" style="width:0%"></div></div>
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--ink-soft);margin-top:3px;">
+          <span>这段日子</span><span id="story-progress-val">0%</span>
+        </div>
+        <div id="story-events"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 今日日程（可折叠） -->
+  <div class="panel-section">
+    <button class="panel-section-toggle" data-section="agenda">
+      <span>📅 今日日程</span>
+      <span class="toggle-arrow">▼</span>
+    </button>
+    <div class="panel-section-content" id="section-agenda">
+      <div class="clock-card" style="margin-top:4px;">
+        <div class="clock-row" style="justify-content:flex-end;">
+          <span id="agenda-day" style="color:var(--ink-soft);font-size:10px;">第 1 天</span>
+        </div>
+        <div id="agenda-list" style="display:flex;flex-direction:column;gap:4px;margin-top:6px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 查看全部情感：打开全屏浮层 -->
+  <button id="emotions-toggle">🧠 查看全部情感（38 维）</button>
+
+  <!-- 情绪日志（可折叠） -->
+  <div class="panel-section">
+    <button class="panel-section-toggle" data-section="mood">
+      <span>📊 情绪日志</span>
+      <span class="toggle-arrow">▼</span>
+    </button>
+    <div class="panel-section-content" id="section-mood">
+      <div id="mood-history"><b>情绪日志</b><br></div>
+    </div>
+  </div>
+</div>
+
+<!-- 全屏情感明细浮层 -->
+<div id="emotions-modal" class="hidden">
+  <div class="em-modal-head">
+    <span>🧠 38 维情感体系</span>
+    <button id="emotions-close" class="em-close">✕</button>
+  </div>
+  <div class="em-sub">五层：人格（底色）→ 关系（积累）→ 情绪（波动）→ 状态（漂移）→ 阴影（潜伏）。点击组标题可折叠。</div>
+  <canvas id="emotion-chart" width="1000" height="200"></canvas>
+  <div id="meters-scroll">
+    <div class="group-title" data-group="personality">🎭 人格（性格底色）</div>
+    <div id="group-personality"></div>
+
+    <div class="group-title" data-group="relation">❤️ 关系（缓慢积累）</div>
+    <div id="group-relation"></div>
+
+    <div class="group-title" data-group="emotion">💭 情绪（快速波动）</div>
+    <div id="group-emotion"></div>
+
+    <div class="group-title" data-group="status">🫀 状态（随时间漂移）</div>
+    <div id="group-status"></div>
+
+    <div class="group-title" data-group="shadow">🖤 阴影（欲望与阴暗面）</div>
+    <div id="group-shadow"></div>
+  </div>
+</div>
+
+<!-- 面板开关 -->
+<button id="panel-toggle" class="panel-open" title="收起/展开状态面板">🧠</button>
+
+<!-- 聊天区 -->
+<div id="chat-wrap" class="panel-open">
+  <div id="chat-header">
+    <div class="chat-avatar" id="chat-avatar">🎀</div>
+    <div class="chat-identity">
+      <div class="chat-name-row">
+        <span id="chat-title-text">情感 AI</span>
+        <span class="dot" id="status-dot"></span>
+      </div>
+      <div class="chat-sub" id="chat-subtitle">准备就绪</div>
+    </div>
+    <div class="chat-actions">
+      <button id="tts-toggle" class="icon-mini" title="语音朗读（TTS）">🔇</button>
+      <button id="npc-toggle" class="icon-mini" title="支线 NPC 动态介入（默认关闭）">👥</button>
+      <button id="history-btn" class="icon-mini" title="聊天记录">📜</button>
+      <button id="char-btn" class="icon-mini" title="角色设定">👤</button>
+      <button id="demo-btn" class="icon-mini" title="演示模式">🎭</button>
+      <button id="reset-state" class="icon-mini" title="重置">↺</button>
+      <a href="./menu.html" class="icon-mini" id="menu-link" title="菜单">☰</a>
+    </div>
+  </div>
+
+  <div id="chat-messages"></div>
+</div>
+
+<!-- 底部输入栏：悬浮胶囊 -->
+<div id="chat-input-row">
+  <div id="chat-input-pill">
+    <input id="chat-input" type="text" placeholder="说点什么…（动作和话可以一起：如「我抱住她，说：想你」）">
+    <button id="chat-send" class="icon-btn">
+      <svg viewBox="0 0 1024 1024" width="20" height="20">
+        <path d="M925.6 559.2L152 145.6c-11.2-5.6-24.8 3.2-23.2 15.2l60 714.4c0.8 11.2 12 17.6 22.4 13.6L460.8 784l136.8 155.2c8.8 9.6 24 5.6 27.2-6.4l65.6-245.6 235.2-99.2c11.2-5.6 12-22.4 0-28.8z" fill="#ffffff"/>
+      </svg>
+    </button>
+  </div>
+</div>
+
+<script>
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("./sw.js").catch(() => {});
+  }
+</script>
+</body>
+</html>

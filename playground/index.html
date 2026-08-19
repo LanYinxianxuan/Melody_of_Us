@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#d65a7e">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="../manifest.webmanifest">
+  <link rel="apple-touch-icon" href="./icons/icon-192.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <title>MeloAI · 与你共鸣</title>
+  <style>
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      /* 全局溢出保护：任何子元素不产生横向滚动/溢出 */
+      html, body { max-width: 100%; overflow-x: hidden; }
+      img, canvas, svg, video { max-width: 100%; }
+
+
+      :root {
+          --accent: #d65a7e;
+          --accent-deep: #b84567;
+          --accent-soft: rgba(214, 90, 126, 0.10);
+          --accent-line: rgba(214, 90, 126, 0.24);
+          --ink: #2d2a32;
+          --ink-soft: #6e6a76;
+          --card: rgba(255, 255, 255, 0.88);
+          --card-strong: #ffffff;
+          --bg: #faf7f4;
+          --line: rgba(45, 42, 50, 0.08);
+          --shadow: 0 6px 24px rgba(120, 80, 60, 0.10);
+          --shadow-lg: 0 16px 48px rgba(120, 80, 60, 0.16);
+          --shadow-accent: 0 6px 20px rgba(214, 90, 126, 0.28);
+          --radius-lg: 24px;
+          --radius-md: 14px;
+      }
+
+      body {
+          min-height: 100vh;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          align-items: center;
+          background-image: url(./assets/bg-ZvSl1C-y.jpg);
+          background-size: cover;
+          background-position: center;
+          font-family: "PingFang SC", "HarmonyOS Sans SC", "微软雅黑", "Noto Sans SC", sans-serif;
+          color: var(--ink);
+      }
+
+      body::before {
+          content: "";
+          position: fixed;
+          inset: 0;
+          background:
+              radial-gradient(1200px 600px at 20% -10%, rgba(192, 132, 252, 0.28), transparent 60%),
+              radial-gradient(1000px 500px at 100% 110%, rgba(244, 114, 182, 0.22), transparent 60%),
+              linear-gradient(to bottom right, rgba(255, 255, 255, 0.62), rgba(240, 230, 255, 0.72));
+          backdrop-filter: blur(6px);
+          z-index: -1;
+      }
+
+      .card {
+          padding: 48px 56px;
+          max-width: 620px;
+          text-align: center;
+          background: rgba(255, 255, 255, 0.42);
+          border: 1px solid rgba(255, 255, 255, 0.55);
+          border-radius: 28px;
+          box-shadow: inset 0 1px 0 rgba(255,255,255,0.7), 0 16px 48px rgba(120, 80, 60, 0.18);
+          backdrop-filter: blur(28px) saturate(1.6);
+          -webkit-backdrop-filter: blur(28px) saturate(1.6);
+      }
+
+      .logo {
+          font-size: 42px;
+          margin-bottom: 12px;
+          filter: drop-shadow(0 4px 12px rgba(0,0,0,0.4));
+      }
+
+      h1 {
+          color: var(--ink);
+          font-size: 30px;
+          letter-spacing: 6px;
+          font-weight: 600;
+          text-shadow: none;
+      }
+
+      h2 {
+          color: var(--accent);
+          font-size: 14px;
+          letter-spacing: 4px;
+          margin-top: 6px;
+          font-weight: 400;
+      }
+
+      .line {
+          width: 60px;
+          height: 2px;
+          margin: 22px auto;
+          background: linear-gradient(to right, transparent, var(--accent-line), transparent);
+      }
+
+      p {
+          color: var(--ink-soft);
+          font-size: 14px;
+          line-height: 1.9;
+          margin-bottom: 30px;
+      }
+
+      .btn {
+          display: inline-block;
+          padding: 12px 52px;
+          font-size: 17px;
+          letter-spacing: 4px;
+          color: #fff;
+          border-radius: 999px;
+          border: none;
+          cursor: pointer;
+          text-decoration: none;
+          background: var(--accent);
+          box-shadow: var(--shadow-accent);
+          transition: all 0.2s;
+      }
+
+      .btn:hover { background: var(--accent-deep); transform: translateY(-2px); }
+      .btn:active { transform: scale(0.97); }
+
+      .footer {
+          margin-top: 22px;
+          font-size: 11px;
+          color: var(--ink-soft);
+          letter-spacing: 1px;
+      }
+
+      /* ===== 移动端适配 ===== */
+      @media (max-width: 767px) {
+          body { padding: 20px 14px; }
+          .card { padding: 32px 24px; }
+          h1 { font-size: 24px; letter-spacing: 4px; }
+          .btn { width: 100%; }
+      }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">🐋</div>
+    <h1>与你共鸣的日子</h1>
+    <h2>MeloAI · Emotional Chat</h2>
+    <div class="line"></div>
+    <p>
+      一位有着 38 维情感内心的 AI 少女。<br>
+      她会因你的夸奖而开心、因你的冷落而孤独、因你提起别人而吃醋。<br>
+      对话、表情、姿态，皆由情感驱动。
+    </p>
+    <a class="btn" href="./menu.html">开始</a>
+    <div class="footer">纯 Web · 无安卓 · 情感状态自动存档</div>
+  </div>
+  <footer style="text-align:center;padding:24px 16px;color:rgba(255,255,255,0.4);font-size:11px;line-height:2;">
+    <div>Melody of Us · 情感 AI 聊天 · 38 维情感体系</div>
+    <div>作者：<a href="https://github.com/LanYinxianxuan" target="_blank" style="color:rgba(255,255,255,0.6);text-decoration:none;">LanYinxianxuan</a> ｜ GitHub：<a href="https://github.com/LanYinxianxuan/Melody_of_Us" target="_blank" style="color:rgba(255,255,255,0.6);text-decoration:none;">Melody_of_Us</a> ｜ 分支：melody-ai</div>
+    <div style="margin-top:2px;">开源协议：MIT License</div>
+  </footer>
+<script>
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("./sw.js").catch(() => {});
+  }
+</script>
+</body>
+</html>
