@@ -85,70 +85,8 @@ export function setTtsLang(lang: TtsLang) {
     localStorage.setItem(`${TTS_LANG_KEY_PREFIX}-${currentSlot()}`, lang);
 }
 
-// ============ 翻译功能（使用 AI） ============
-
-// 获取翻译用的 API 配置（使用当前槽位的主配置）
-function getTranslateConfig(): { baseUrl: string; headers: Record<string, string>; key: string; model: string } {
-    const slot = currentSlot();
-    const provider = localStorage.getItem(`provider-${slot}`) ?? "deepseek";
-    const key = localStorage.getItem(`apikey-${slot}`)?.trim() ?? "";
-    const model = localStorage.getItem(`model-${slot}`) ?? "deepseek-chat";
-
-    const PROVIDERS: Record<string, { baseUrl: string }> = {
-        deepseek: { baseUrl: "https://api.deepseek.com" },
-        openai: { baseUrl: "https://api.openai.com/v1" },
-        moonshot: { baseUrl: "https://api.moonshot.cn/v1" },
-        qwen: { baseUrl: "https://dashscope.aliyuncs.com/compatible-mode/v1" },
-        zhipu: { baseUrl: "https://open.bigmodel.cn/api/paas/v4" },
-        xiaomi: { baseUrl: "https://api.xiaomimimo.com/v1" },
-        custom: { baseUrl: localStorage.getItem(`custom-url-${slot}`)?.trim() ?? "" },
-    };
-
-    const baseUrl = PROVIDERS[provider]?.baseUrl ?? PROVIDERS["deepseek"]!.baseUrl;
-    const headers = {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${key}`,
-    };
-
-    return { baseUrl, headers, key, model };
-}
-
-// 使用当前供应商的 AI 翻译中文到日文
-async function translateZhToJa(text: string): Promise<string> {
-    const { baseUrl, headers, key, model } = getTranslateConfig();
-
-    if (!key) {
-        console.warn("[TTS] 无 API Key，跳过翻译");
-        return text;
-    }
-
-    try {
-        const resp = await fetch(`${baseUrl}/chat/completions`, {
-            method: "POST",
-            headers,
-            body: JSON.stringify({
-                model,
-                messages: [
-                    { role: "system", content: "你是翻译助手。将用户输入的中文翻译成自然流畅的日语。只输出翻译结果，不要加任何解释或额外文字。" },
-                    { role: "user", content: text },
-                ],
-                max_tokens: 500,
-            }),
-        });
-
-        const data = await resp.json();
-        const translated = data.choices?.[0]?.message?.content?.trim();
-
-        if (translated) {
-            console.log("[TTS] AI 翻译:", { original: text.slice(0, 50), translated: translated.slice(0, 50) });
-            return translated;
-        }
-    } catch (e) {
-        console.warn("[TTS] AI 翻译失败，使用原文:", (e as Error).message);
-    }
-
-    return text;
-}
+// ============ 翻译功能 ============
+// 翻译由 AI 在回复时直接输出 dialogue_ja，TTS 直接使用，无需单独翻译
 
 // ============ 音频上传 ============
 
@@ -204,7 +142,6 @@ function getTtsConfig(): { baseUrl: string; headers: Record<string, string>; key
 export async function synthesizeSpeech(text: string, style?: string): Promise<ArrayBuffer> {
     const { baseUrl, headers, key } = getTtsConfig();
     const voiceBase64 = getVoiceBase64();
-    const lang = getTtsLang();
 
     if (!key) {
         throw new Error("请先设置 API Key");
@@ -212,13 +149,6 @@ export async function synthesizeSpeech(text: string, style?: string): Promise<Ar
 
     if (!voiceBase64) {
         throw new Error("请先上传音色样本");
-    }
-
-    // 翻译文本（如果选择日语）
-    let synthesisText = text;
-    if (lang === "ja") {
-        synthesisText = await translateZhToJa(text);
-        console.log("[TTS] 翻译结果:", { original: text.slice(0, 50), translated: synthesisText.slice(0, 50) });
     }
 
     // 构建 messages
@@ -232,8 +162,8 @@ export async function synthesizeSpeech(text: string, style?: string): Promise<Ar
         messages.push({ role: "user", content: "" });
     }
 
-    // assistant 消息：要合成的文字
-    messages.push({ role: "assistant", content: synthesisText });
+    // assistant 消息：要合成的文字（已经是目标语言）
+    messages.push({ role: "assistant", content: text });
 
     // 构建请求体
     const requestBody = {
@@ -245,7 +175,7 @@ export async function synthesizeSpeech(text: string, style?: string): Promise<Ar
         },
     };
 
-    console.log("[TTS] 发送合成请求:", { text: synthesisText.slice(0, 50) + "...", lang, style: styleText });
+    console.log("[TTS] 发送合成请求:", { text: text.slice(0, 50) + "...", style: styleText });
 
     const resp = await fetch(`${baseUrl}/chat/completions`, {
         method: "POST",

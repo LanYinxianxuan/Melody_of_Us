@@ -152,6 +152,7 @@ export const FORMAT_INSTRUCTION = `
 
 字段说明：
 - dialogue: 她说的话。纯对话，1~2段（用\\n分隔），每段20~40字，总长60字左右。先承接对方→说自己→提问收尾。
+- dialogue_ja: dialogue 的日语翻译。自然流畅的日语，保持同样的语气和情感。必填。
 - action: 动作/表情描写。纯动作，20字内。如"低头笑了笑""别过脸去"。
 - thoughts: 内心想法。20字内。如"心跳好快…""他/她怎么突然说这种话"。
 - delta: 情感维度变化量。如{"affection":6,"joy":12}。每维-15~15。
@@ -163,8 +164,9 @@ export const FORMAT_INSTRUCTION = `
 
 【格式要点】
 1. dialogue 只放她说的话，不要放动作/表情/时间标签
-2. action 只放动作/表情描写，不要放对话内容
-3. story.event 和 memory 可以是空字符串，宁缺毋滥
+2. dialogue_ja 是 dialogue 的日语翻译，保持同样的语气和分段
+3. action 只放动作/表情描写，不要放对话内容
+4. story.event 和 memory 可以是空字符串，宁缺毋滥
 `;
 
 // ============ NPC 格式说明 ============

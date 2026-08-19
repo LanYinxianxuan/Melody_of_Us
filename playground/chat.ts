@@ -238,7 +238,7 @@ function attachTimeStamp(el: HTMLElement, tsMs?: number) {
 }
 
 // 分段打字机：按 \n 分段逐段播放，段间停顿
-function typeReply(el: HTMLElement, full: { dialogue: string; action?: string; thoughts?: string }) {
+function typeReply(el: HTMLElement, full: { dialogue: string; dialogue_ja?: string; action?: string; thoughts?: string }) {
     const dialogue = document.createElement("div");
     dialogue.className = "dialogue";
     el.appendChild(dialogue);
@@ -279,9 +279,10 @@ function typeReply(el: HTMLElement, full: { dialogue: string; action?: string; t
         scrollToBottom();
         setBusyState(false);
 
-        // TTS 朗读对话内容
-        if (isTtsEnabled() && finalText) {
-            speak(finalText);
+        // TTS 朗读对话内容（优先使用日语版）
+        if (isTtsEnabled()) {
+            const ttsText = full.dialogue_ja || finalText;
+            if (ttsText) speak(ttsText);
         }
     };
 

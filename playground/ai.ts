@@ -23,6 +23,7 @@ import { FORMAT_INSTRUCTION, NPC_FORMAT_INSTRUCTION } from "./response-template"
 
 export interface ChatResult {
     dialogue: string;
+    dialogue_ja?: string;  // dialogue 的日语翻译
     action?: string;
     thoughts?: string;
     stats?: Record<string, number>;
