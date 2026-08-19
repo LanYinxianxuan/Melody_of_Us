@@ -373,7 +373,8 @@ function renderInterview() {
             </div>
             <div style="font-size:15px;color:var(--ink);line-height:1.7;margin-bottom:10px;font-weight:600;">🤖 ${currentQuestion}</div>
             <textarea class="wiz-input" id="wiz-answer" rows="3" placeholder="回答她的问题…（也可以写『你定吧』让她发挥）"></textarea>
-            <button id="wiz-submit" style="width:100%;margin-top:10px;padding:11px 0;border-radius:999px;border:none;background:linear-gradient(to right, #d65a7e, #b84567);color:#fff;font-size:14px;cursor:pointer;">回答并继续</button>`;
+            <button id="wiz-submit" style="width:100%;margin-top:10px;padding:11px 0;border-radius:999px;border:none;background:linear-gradient(to right, #d65a7e, #b84567);color:#fff;font-size:14px;cursor:pointer;">回答并继续</button>
+            <button id="wiz-finish" style="width:100%;margin-top:8px;padding:9px 0;border-radius:999px;border:1px solid var(--line);background:transparent;color:var(--ink-soft);font-size:12px;cursor:pointer;">✅ 信息够了，结束访谈</button>`;
     }
 
     wizardBody.innerHTML = html;
@@ -389,15 +390,6 @@ async function nextInterviewTurn() {
     try {
         const r = await interviewWithAI(interviewIntro, interviewTurns);
         console.log("[访谈] AI 返回:", JSON.stringify(r).slice(0, 200));
-
-        // 达到 5 轮上限：强制结束访谈，用已有信息生成角色卡
-        if (interviewTurns.length >= 5) {
-            console.log("[访谈] 已达 5 轮上限，强制生成角色卡");
-            interviewDone = true;
-            wizardDraft = { ...wizardDraft, ...(r.character ?? {}) };
-            renderInterview();
-            return;
-        }
 
         if (r.done && r.character) {
             interviewDone = true;
@@ -417,6 +409,15 @@ async function nextInterviewTurn() {
         computePending();
         renderWizard();
     }
+}
+
+// 用户主动结束访谈：用已有信息生成角色卡
+function finishInterview() {
+    console.log("[访谈] 用户主动结束");
+    interviewDone = true;
+    // 补齐缺失字段（用已有信息）
+    if (!wizardDraft.background) wizardDraft.background = interviewIntro;
+    renderInterview();
 }
 
 function startInterview() {
@@ -529,6 +530,13 @@ wizardPrev.addEventListener("click", () => {
 wizardBody.addEventListener("click", async (e) => {
     const target = e.target as HTMLElement;
     const submitBtn = target.closest("#wiz-submit") as HTMLElement | null;
+    const finishBtn = target.closest("#wiz-finish") as HTMLElement | null;
+
+    // 用户主动结束访谈
+    if (finishBtn) {
+        finishInterview();
+        return;
+    }
 
     if (submitBtn) {
         const ans = ((document.getElementById("wiz-answer") as HTMLTextAreaElement)?.value ?? "").trim();

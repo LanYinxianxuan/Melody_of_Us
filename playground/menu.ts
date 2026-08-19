@@ -104,7 +104,10 @@ function renderSaves() {
                   好感 <b style="color:#f472b6;">${aff}/100</b> ｜ ${moodLine(s)} ｜ 对话 ${save.turnCount ?? 0} 轮 ｜ 剧情 ${save.storyProgress ?? 0}%
                   <br><span style="color:rgba(255,255,255,0.4);">${fmtTime((save.savedAt as number) ?? Date.now())}</span>
                 </div>
-                <div class="s-go">▶ 继续这个存档</div>`;
+                <div style="display:flex;gap:8px;margin-top:8px;">
+                  <button class="s-enter" data-slot="${slot}" data-new="0" style="flex:1;padding:7px 0;border-radius:999px;border:none;background:var(--accent);color:#fff;font-size:12px;cursor:pointer;">▶ 进入</button>
+                  <button class="s-config" data-slot="${slot}" style="flex:1;padding:7px 0;border-radius:999px;border:1px solid var(--line);background:var(--card);color:var(--ink-soft);font-size:12px;cursor:pointer;">⚙️ API 设置</button>
+                </div>`;
         } else {
             card.innerHTML = `
                 <div class="s-head">
@@ -114,18 +117,23 @@ function renderSaves() {
                   </span>
                 </div>
                 <div class="s-empty">还没有记录。</div>
-                <div class="s-go">＋ 从这里开始一段新故事</div>`;
+                <div style="display:flex;gap:8px;margin-top:8px;">
+                  <button class="s-enter" data-slot="${slot}" data-new="1" style="flex:1;padding:7px 0;border-radius:999px;border:none;background:var(--accent);color:#fff;font-size:12px;cursor:pointer;">＋ 新建</button>
+                  <button class="s-config" data-slot="${slot}" style="flex:1;padding:7px 0;border-radius:999px;border:1px solid var(--line);background:var(--card);color:var(--ink-soft);font-size:12px;cursor:pointer;">⚙️ API 设置</button>
+                </div>`;
         }
 
         card.addEventListener("click", (e) => {
             const delBtn = (e.target as HTMLElement).closest(".s-del") as HTMLElement | null;
+            const enterBtn = (e.target as HTMLElement).closest(".s-enter") as HTMLElement | null;
+            const configBtn = (e.target as HTMLElement).closest(".s-config") as HTMLElement | null;
 
+            // 删除存档
             if (delBtn) {
                 e.stopPropagation();
                 const delSlot = parseInt(delBtn.dataset.del ?? "0", 10);
                 if (confirm(`删除存档 ${delSlot}？\n此操作无法恢复！`)) {
                     clearSlot(delSlot);
-                    // 也清除该槽位的 API 设置
                     localStorage.removeItem(slotKey("provider", delSlot));
                     localStorage.removeItem(slotKey("apikey", delSlot));
                     localStorage.removeItem(slotKey("model", delSlot));
@@ -136,10 +144,34 @@ function renderSaves() {
                 return;
             }
 
-            // 切换到该槽位并进入聊天
-            localStorage.setItem("melai-current-slot", String(slot));
-            const isNew = !save;
-            location.href = `./chat.html?slot=${slot}${isNew ? "&new=1" : ""}`;
+            // 进入聊天
+            if (enterBtn) {
+                e.stopPropagation();
+                const enterSlot = parseInt(enterBtn.dataset.slot ?? "1", 10);
+                const isNew = enterBtn.dataset.new === "1";
+                localStorage.setItem("melai-current-slot", String(enterSlot));
+                location.href = `./chat.html?slot=${enterSlot}${isNew ? "&new=1" : ""}`;
+                return;
+            }
+
+            // API 设置：选中该槽位并滚动到设置区
+            if (configBtn) {
+                e.stopPropagation();
+                const configSlot = parseInt(configBtn.dataset.slot ?? "1", 10);
+                activeSlot = configSlot;
+                localStorage.setItem("melai-current-slot", String(configSlot));
+                loadSlotSettings(configSlot);
+                renderSaves();
+                // 滚动到设置区
+                const settingsCard = document.querySelector(".card:nth-of-type(2)");
+                settingsCard?.scrollIntoView({ behavior: "smooth" });
+                return;
+            }
+
+            // 点击卡片本身：只选中，不进入
+            activeSlot = slot;
+            loadSlotSettings(slot);
+            renderSaves();
         });
 
         list.appendChild(card);
