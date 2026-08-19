@@ -87,9 +87,35 @@ export function setTtsLang(lang: TtsLang) {
 
 // ============ 翻译功能（使用 AI） ============
 
+// 获取翻译用的 API 配置（使用当前槽位的主配置）
+function getTranslateConfig(): { baseUrl: string; headers: Record<string, string>; key: string; model: string } {
+    const slot = currentSlot();
+    const provider = localStorage.getItem(`provider-${slot}`) ?? "deepseek";
+    const key = localStorage.getItem(`apikey-${slot}`)?.trim() ?? "";
+    const model = localStorage.getItem(`model-${slot}`) ?? "deepseek-chat";
+
+    const PROVIDERS: Record<string, { baseUrl: string }> = {
+        deepseek: { baseUrl: "https://api.deepseek.com" },
+        openai: { baseUrl: "https://api.openai.com/v1" },
+        moonshot: { baseUrl: "https://api.moonshot.cn/v1" },
+        qwen: { baseUrl: "https://dashscope.aliyuncs.com/compatible-mode/v1" },
+        zhipu: { baseUrl: "https://open.bigmodel.cn/api/paas/v4" },
+        xiaomi: { baseUrl: "https://api.xiaomimimo.com/v1" },
+        custom: { baseUrl: localStorage.getItem(`custom-url-${slot}`)?.trim() ?? "" },
+    };
+
+    const baseUrl = PROVIDERS[provider]?.baseUrl ?? PROVIDERS["deepseek"]!.baseUrl;
+    const headers = {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${key}`,
+    };
+
+    return { baseUrl, headers, key, model };
+}
+
 // 使用当前供应商的 AI 翻译中文到日文
 async function translateZhToJa(text: string): Promise<string> {
-    const { baseUrl, headers, key } = getTtsConfig();
+    const { baseUrl, headers, key, model } = getTranslateConfig();
 
     if (!key) {
         console.warn("[TTS] 无 API Key，跳过翻译");
@@ -101,7 +127,7 @@ async function translateZhToJa(text: string): Promise<string> {
             method: "POST",
             headers,
             body: JSON.stringify({
-                model: "deepseek-chat",
+                model,
                 messages: [
                     { role: "system", content: "你是翻译助手。将用户输入的中文翻译成自然流畅的日语。只输出翻译结果，不要加任何解释或额外文字。" },
                     { role: "user", content: text },
