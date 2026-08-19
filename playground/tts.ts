@@ -85,57 +85,42 @@ export function setTtsLang(lang: TtsLang) {
     localStorage.setItem(`${TTS_LANG_KEY_PREFIX}-${currentSlot()}`, lang);
 }
 
-// ============ 翻译功能 ============
+// ============ 翻译功能（使用 AI） ============
 
-// 简单的中日文翻译词典（常用短句）
-const ZH_TO_JA_DICT: Record<string, string> = {
-    "你好": "こんにちは",
-    "早上好": "おはよう",
-    "晚安": "おやすみ",
-    "谢谢": "ありがとう",
-    "对不起": "ごめんなさい",
-    "没关系": "大丈夫",
-    "喜欢你": "好きだよ",
-    "讨厌": "嫌だ",
-    "开心": "嬉しい",
-    "难过": "悲しい",
-    "生气": "怒ってる",
-    "害羞": "恥ずかしい",
-    "害怕": "怖い",
-    "想你": "会いたい",
-    "笨蛋": "バカ",
-    "最喜欢": "大好き",
-    "早上": "朝",
-    "中午": "昼",
-    "晚上": "夜",
-    "明天": "明日",
-    "今天": "今日",
-    "昨天": "昨日",
-};
-
-// 使用免费翻译 API 翻译中文到日文
+// 使用当前供应商的 AI 翻译中文到日文
 async function translateZhToJa(text: string): Promise<string> {
-    // 先检查词典
-    const trimmed = text.trim();
-    if (ZH_TO_JA_DICT[trimmed]) {
-        return ZH_TO_JA_DICT[trimmed];
+    const { baseUrl, headers, key } = getTtsConfig();
+
+    if (!key) {
+        console.warn("[TTS] 无 API Key，跳过翻译");
+        return text;
     }
 
     try {
-        // 使用 Google Translate 免费 API
-        const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=zh-CN&tl=ja&dt=t&q=${encodeURIComponent(text)}`;
-        const resp = await fetch(url);
-        const data = await resp.json();
+        const resp = await fetch(`${baseUrl}/chat/completions`, {
+            method: "POST",
+            headers,
+            body: JSON.stringify({
+                model: "deepseek-chat",
+                messages: [
+                    { role: "system", content: "你是翻译助手。将用户输入的中文翻译成自然流畅的日语。只输出翻译结果，不要加任何解释或额外文字。" },
+                    { role: "user", content: text },
+                ],
+                max_tokens: 500,
+            }),
+        });
 
-        // 提取翻译结果
-        if (data && data[0]) {
-            return data[0].map((item: any[]) => item[0]).join("");
+        const data = await resp.json();
+        const translated = data.choices?.[0]?.message?.content?.trim();
+
+        if (translated) {
+            console.log("[TTS] AI 翻译:", { original: text.slice(0, 50), translated: translated.slice(0, 50) });
+            return translated;
         }
     } catch (e) {
-        console.warn("[TTS] 翻译失败，使用原文:", (e as Error).message);
+        console.warn("[TTS] AI 翻译失败，使用原文:", (e as Error).message);
     }
 
-    // 翻译失败则返回原文
     return text;
 }
 
