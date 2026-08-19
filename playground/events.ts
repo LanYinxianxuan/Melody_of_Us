@@ -1,86 +1,54 @@
-// events.ts —— 随机事件种子池（代码层主动注入，不依赖 AI 自觉）
-// 每轮用户发送消息前，由 chat.ts 调用 rollEventSeed()：
-// - 30% 概率注入一个事件种子；连续 3 轮未注入则强制注入
-// - 同一事件 5 轮内不重复；注入后至少间隔 2 轮
-// 事件种子作为"情境插曲"拼入系统提示词，引导 AI 自然融入，不打断对话主线。
+// events.ts —— 随机事件触发器（只负责“何时触发”，事件内容由 AI 生成）
+// 依据：日程(agenda) / 对话上下文 / 38维情绪 / 剧情线 —— 这些都已注入系统提示词，
+// 这里仅在合适时机给 AI 一条“此刻自然发生一件小事”的指令，让 AI 依据当下情境自行生成事件。
+//
+// 触发规则：
+// - 每轮用户消息前 30% 概率触发；连续 3 轮未触发则强制触发
+// - 触发后至少间隔 2 轮；保证每 5~8 轮对话至少出现一次，单次对话不连续刷屏
 
-export interface EventSeed {
-    id: string;
-    type: "env" | "behavior" | "interaction";
-    /** 注入给 AI 的情境描述（具体、有画面感，15~40 字） */
-    text: string;
-}
+// ============ 触发指令（措辞多变，避免 AI 模式化应对） ============
 
-// ============ 事件池 ============
-
-const EVENT_POOL: EventSeed[] = [
-    // —— 环境变化 ——
-    { id: "env-rain", type: "env", text: "窗外忽然暗下来像要下雨，一阵风裹着凉意吹进来，她下意识拢了拢衣领。" },
-    { id: "env-sound", type: "env", text: "不远处传来一阵不小的动静，她好奇地偏头看了一眼，又转回来。" },
-    { id: "env-msg", type: "env", text: "她的手机震了一下，屏幕亮起一条消息，她扫了一眼没点开。" },
-    { id: "env-melody", type: "env", text: "远处飘来一段熟悉的旋律，她跟着轻轻哼了两句。" },
-    { id: "env-lights", type: "env", text: "头顶的灯闪了一下，光线暗了一瞬又恢复，两人相视一愣。" },
-    // —— 角色行为 ——
-    { id: "bhv-remember", type: "behavior", text: "她忽然想起什么，从口袋里摸出一个小东西在手里转了转。" },
-    { id: "bhv-sneeze", type: "behavior", text: "她打了个喷嚏，揉了揉鼻子，小声嘟囔好像有点着凉。" },
-    { id: "bhv-clock", type: "behavior", text: "她低头看了一眼时间，轻声说都这个点了。" },
-    { id: "bhv-daydream", type: "behavior", text: "她盯着窗外出了会儿神，才回过神来看向你。" },
-    { id: "bhv-doodle", type: "behavior", text: "她随手在纸上画了个什么东西，画完又赶紧划掉了。" },
-    // —— 互动提议 ——
-    { id: "act-earphone", type: "interaction", text: "她把耳机分出一只递给你，问要不要一起听她最近循环的歌。" },
-    { id: "act-hungry", type: "interaction", text: "她摸了摸肚子说有点饿了，问你要不要一起去弄点吃的。" },
-    { id: "act-story", type: "interaction", text: "她忽然笑着说想到个有意思的事，想讲给你听。" },
-    { id: "act-cold-hand", type: "interaction", text: "她小声说手有点冷，问能不能借你焐一下，就一下。" },
-    { id: "act-plan", type: "interaction", text: "她提议周末要不要一起去某个地方走走，问你怎么想。" },
+const TRIGGER_DIRECTIVES: string[] = [
+    "【此刻的小事】结合你正在做的事、今日日程、当前情绪和剧情线，此刻自然发生一件具体鲜活的小事（天气或环境变化、手机消息、突然想起的事、注意到对方的一个细节等）。自然地把它带进这轮回应里——可以一句话带过，也可以展开成小插曲。不要生硬汇报，不要压过主线话题，更不要为写而写：没有合适的小事就轻轻略过。",
+    "【情境插曲】现在依据你的处境自然发生一件小小的日常事件（周围的声音/光线的变化、收到一条消息、脑海里闪过一个念头、对方身上的小细节等），把它自然融入这轮回复。要贴合此刻的时间、地点、你在做的事和心情，别打断主线，别硬凑。",
+    "【随机小插曲】此刻，一件与当下情境相符的小事悄然发生（可能和环境有关，也可能和你此刻的心情、正在推进的事有关）。自然地提及它，让它成为对话的一部分，不刻意、不抢戏。",
 ];
 
-// ============ 注入状态（防重复/防过频） ============
+// ============ 触发状态（防重复/防过频） ============
 
-const MAX_REPEAT_WINDOW = 5;   // 最近 5 轮内不重复同一事件
-const MIN_GAP = 2;             // 注入后至少间隔 2 轮
-const FORCE_AFTER = 3;         // 连续 3 轮未注入 → 强制注入
-const INJECT_CHANCE = 0.3;     // 每轮注入概率（25%~40% 区间取 30%）
+const MIN_GAP = 2;             // 触发后至少间隔 2 轮
+const FORCE_AFTER = 3;         // 连续 3 轮未触发 → 强制触发
+const INJECT_CHANCE = 0.3;     // 每轮触发概率
 
 let turnCounter = 0;
-let lastInjectedTurn = -99;
-let lastEventIds: string[] = [];
+let lastTriggeredTurn = -99;
+let directiveCursor = 0;
 
 /** 重置（新会话/重置存档时调用） */
 export function resetEventTracker() {
     turnCounter = 0;
-    lastInjectedTurn = -99;
-    lastEventIds = [];
-}
-
-/** 选取一个未在最近窗口内用过的事件种子 */
-function pickSeed(): EventSeed | null {
-    const candidates = EVENT_POOL.filter((e) => !lastEventIds.includes(e.id));
-    const pool = candidates.length ? candidates : EVENT_POOL;
-    return pool[Math.floor(Math.random() * pool.length)] ?? null;
+    lastTriggeredTurn = -99;
 }
 
 /**
- * 掷一次事件注入骰子。
- * @returns 注入的事件种子文本；未注入返回 null。
+ * 掷一次事件触发骰子。
+ * @returns 触发时返回给 AI 的“生成事件”指令文本；未触发返回 null。
  */
 export function rollEventSeed(): string | null {
     turnCounter++;
 
-    // 强制条件：连续 3 轮未注入
-    const forced = turnCounter - lastInjectedTurn > FORCE_AFTER;
-    // 最小间隔：注入后 2 轮内不重复注入（强制除外）
-    if (!forced && turnCounter - lastInjectedTurn <= MIN_GAP) return null;
+    // 强制条件：连续 3 轮未触发
+    const forced = turnCounter - lastTriggeredTurn > FORCE_AFTER;
+    // 最小间隔：触发后 2 轮内不重复触发（强制除外）
+    if (!forced && turnCounter - lastTriggeredTurn <= MIN_GAP) return null;
     // 概率判定
     if (!forced && Math.random() > INJECT_CHANCE) return null;
 
-    const seed = pickSeed();
-    if (!seed) return null;
+    lastTriggeredTurn = turnCounter;
+    // 轮转指令措辞，避免每轮指令文本完全相同
+    const directive = TRIGGER_DIRECTIVES[directiveCursor % TRIGGER_DIRECTIVES.length]!;
+    directiveCursor++;
 
-    // 记录使用
-    lastInjectedTurn = turnCounter;
-    lastEventIds.push(seed.id);
-    if (lastEventIds.length > MAX_REPEAT_WINDOW) lastEventIds.shift();
-
-    console.log(`[事件注入] ✅ type=${seed.type} id=${seed.id} (turn=${turnCounter}${forced ? ", 强制" : ""})`);
-    return seed.text;
+    console.log(`[事件触发] ✅ 注入生成指令 (turn=${turnCounter}${forced ? ", 强制" : ""})`);
+    return directive;
 }
