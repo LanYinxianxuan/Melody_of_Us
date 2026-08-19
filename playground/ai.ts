@@ -325,6 +325,102 @@ function getProviderConfig(): { baseUrl: string; headers: Record<string, string>
 // DeepSeek 官方 API 基础地址（保留兼容）
 export const API_BASE = "https://api.deepseek.com";
 
+// 流式输出接口
+export interface StreamChunk {
+    content: string;      // 累积的完整内容
+    delta: string;        // 本次新增的内容
+    done: boolean;        // 是否完成
+    reasoning?: string;   // 思考内容（如果有的话）
+}
+
+// 流式聊天：返回 AsyncGenerator，逐步产出内容
+export async function* chatWithDeepSeekStream(userText: string): AsyncGenerator<StreamChunk> {
+    const { baseUrl, headers, key, model } = getProviderConfig();
+
+    if (!key) {
+        throw new Error("请先在菜单页设置 API Key（或点「演示」免 Key 体验）");
+    }
+
+    const messages = [
+        { role: "system", content: SYSTEM_PROMPT(await getCharacter()) },
+        ...buildHistoryContext(),
+        { role: "user", content: userText },
+    ];
+
+    const requestBody = {
+        model,
+        messages,
+        ...thinkingParams(),
+        response_format: { type: "json_object" },
+        max_tokens: 16384,
+        stream: true,
+    };
+
+    console.log(`%c📤 [Stream] 发送请求 → ${model}`, "color: #d65a7e; font-weight: bold;");
+
+    const resp = await fetch(`${baseUrl}/chat/completions`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(requestBody),
+    });
+
+    if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}));
+        throw new Error(err.error?.message ?? `API 错误：HTTP ${resp.status}`);
+    }
+
+    const reader = resp.body?.getReader();
+    if (!reader) throw new Error("无法读取流式响应");
+
+    const decoder = new TextDecoder();
+    let buffer = "";
+    let fullContent = "";
+    let fullReasoning = "";
+
+    try {
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split("\n");
+            buffer = lines.pop() ?? "";
+
+            for (const line of lines) {
+                const trimmed = line.trim();
+                if (!trimmed || !trimmed.startsWith("data: ")) continue;
+
+                const data = trimmed.slice(6);
+                if (data === "[DONE]") {
+                    yield { content: fullContent, delta: "", done: true, reasoning: fullReasoning };
+                    return;
+                }
+
+                try {
+                    const parsed = JSON.parse(data);
+                    const delta = parsed.choices?.[0]?.delta;
+
+                    if (delta?.content) {
+                        fullContent += delta.content;
+                        yield { content: fullContent, delta: delta.content, done: false };
+                    }
+
+                    if (delta?.reasoning_content) {
+                        fullReasoning += delta.reasoning_content;
+                    }
+                } catch {
+                    // 忽略解析错误
+                }
+            }
+        }
+    } finally {
+        reader.releaseLock();
+    }
+
+    yield { content: fullContent, delta: "", done: true, reasoning: fullReasoning };
+}
+
+// 非流式聊天（保留兼容）
 export async function chatWithDeepSeek(userText: string, retry = 2): Promise<ChatResult> {
     const { baseUrl, headers, key, model } = getProviderConfig();
 

@@ -54,7 +54,7 @@ import {
     setStoryMessageSender,
     setStoryCharNameGetter,
 } from "./story";
-import { chatWithDeepSeek, demoReply, setCharacterGetter, SYSTEM_PROMPT, type ChatResult } from "./ai";
+import { chatWithDeepSeek, chatWithDeepSeekStream, parseAIResponse, demoReply, setCharacterGetter, SYSTEM_PROMPT, type ChatResult, type StreamChunk } from "./ai";
 import { npcContext, npcSpeak } from "./ai";
 import { speak, isTtsEnabled, setTtsEnabled, initTts, generateEmotionStyle, generateAudioTags } from "./tts";
 import {
@@ -86,6 +86,14 @@ import {
 } from "./intervention";
 
 // ============ 角色弹层数据流 ============
+
+// 全局滚动到底部函数
+function scrollToBottom() {
+    const container = document.getElementById("chat-messages");
+    if (container) {
+        container.scrollTop = container.scrollHeight;
+    }
+}
 
 // 检查当前槽位是否有 API Key（per-slot 存储）
 function hasApiKey(): boolean {
@@ -400,7 +408,60 @@ async function sendMessage(text: string, opts?: { proactive?: boolean }): Promis
                 ? { ...base, dialogue: isNeglect ? neglectLine(neglectLevel().level) : proactiveLine(), story: fallbackStory() }
                 : base;
         } else {
-            result = await chatWithDeepSeek(text);
+            // 使用流式输出
+            const msgEl = appendMessage("ai");
+            addReanswerBtn(msgEl, cpIdx);
+
+            let fullContent = "";
+
+            // 创建流式输出的 UI 元素
+            const dialogueEl = document.createElement("div");
+            dialogueEl.className = "dialogue";
+            msgEl.appendChild(dialogueEl);
+
+            // 流式输出循环
+            const stream = chatWithDeepSeekStream(text);
+            let chunkResult = await stream.next();
+
+            while (!chunkResult.done) {
+                const chunk = chunkResult.value;
+                fullContent = chunk.content;
+                dialogueEl.textContent = fullContent;
+                scrollToBottom();
+                chunkResult = await stream.next();
+            }
+
+            // 获取最后的 chunk（done=true）
+            if (chunkResult.value) {
+                fullContent = chunkResult.value.content;
+            }
+
+            // 解析最终的 JSON 结果
+            try {
+                result = parseAIResponse(fullContent);
+            } catch (e) {
+                // 解析失败时的兜底处理
+                console.warn("流式输出解析失败，降级处理：", fullContent.slice(0, 200));
+                result = {
+                    dialogue: fullContent.trim() || "（她张了张嘴，最后只是轻轻叹了口气。）",
+                    stats: { ...aiState },
+                    delta: {},
+                    user_emotion: "neutral",
+                    story: fallbackStory(),
+                };
+            }
+
+            // 清理临时 UI 元素（typeReply 会重新渲染）
+            msgEl.innerHTML = "";
+
+            // 继续后续处理...
+            attachTimeStamp(msgEl);
+
+            // TTS 朗读（如果有日语版）
+            if (isTtsEnabled() && result.dialogue_ja) {
+                const style = generateEmotionStyle(aiState);
+                speak(result.dialogue_ja, style);
+            }
         }
 
         if (!result.dialogue) {
@@ -473,18 +534,18 @@ async function sendMessage(text: string, opts?: { proactive?: boolean }): Promis
             container.scrollTop = container.scrollHeight;
         }
 
-        const msgEl = appendMessage("ai");
-
-        if (proactive) {
-            msgEl.classList.add("proactive");
+        // 如果是 demo 模式，需要创建消息元素并渲染
+        if (demoMode) {
+            const msgEl = appendMessage("ai");
+            if (proactive) {
+                msgEl.classList.add("proactive");
+            }
+            addReanswerBtn(msgEl, cpIdx);
+            typeReply(msgEl, result, aiState);
+            attachTimeStamp(msgEl);
         }
 
-        // 消息旁的重答按钮（定位到本轮检查点）
-        addReanswerBtn(msgEl, cpIdx);
-
-        typeReply(msgEl, result, aiState);
-        attachTimeStamp(msgEl);
-
+        // 情感标签
         const deltaSummary = Object.entries(result.delta ?? {})
             .filter(([, v]) => Math.abs(v as number) >= 3)
             .map(([k, v]) => {
@@ -495,7 +556,12 @@ async function sendMessage(text: string, opts?: { proactive?: boolean }): Promis
         const tag = document.createElement("span");
         tag.className = "emotion-tag";
         tag.textContent = `${proactive ? "✨ 她主动开口｜" : ""}AI 状态：${dominantTrait()}${deltaSummary ? `｜变化：${deltaSummary}` : ""}`;
-        msgEl.appendChild(tag);
+
+        // 找到最后一个 AI 消息元素并添加标签
+        const lastAiMsg = document.querySelector("#chat-messages .msg.ai:last-of-type");
+        if (lastAiMsg) {
+            lastAiMsg.appendChild(tag);
+        }
 
         // 主角回复完成 → 世界调度层（Director）智能判断（代码层 trigger 命中才调用）
         if (!proactive) {
