@@ -71,6 +71,7 @@ import {
     type DirectorTrigger,
 } from "./director";
 import { openWizard, setWizardSavedCallback } from "./wizard";
+import { rollEventSeed, resetEventTracker } from "./events";
 import {
     screenNpcCandidates,
     decideIntervention,
@@ -404,7 +405,9 @@ async function sendMessage(text: string, opts?: { proactive?: boolean }): Promis
                 ? { ...base, dialogue: isNeglect ? neglectLine(neglectLevel().level) : proactiveLine(), story: fallbackStory() }
                 : base;
         } else {
-            result = await chatWithDeepSeek(text);
+            // 代码层掷随机事件种子（30% 概率，连续 3 轮强制），注入系统提示词引导 AI 自然融入
+            const eventSeed = rollEventSeed();
+            result = await chatWithDeepSeek(text, 2, eventSeed ?? undefined);
         }
 
         if (!result.dialogue) {
@@ -1144,6 +1147,7 @@ document.getElementById("reset-state")!.addEventListener("click", () => {
         store.dayIndex = currentDayIndex();
 
         localStorage.removeItem(SAVE_KEY);
+        resetEventTracker(); // 重置随机事件防重复窗口
 
         chartHistory.length = 0;
         document.getElementById("chat-messages")!.innerHTML = "";

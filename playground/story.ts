@@ -247,10 +247,11 @@ export function maybeRandomMoment() {
     if (!forced && Date.now() < nextRandomAt) return;
 
     // 频率随情绪/剧情动态变化：越主动的时候，等待间隔越短、尝试概率越高
+    // （调高触发率：间隔 20~120s 内浮动，基础通过率提到 60%）
     const drive = proactiveDrive();
-    const intervalMs = Math.max(15000, Math.min(180000, (30000 + Math.random() * 40000) / Math.max(0.4, drive)));
+    const intervalMs = Math.max(20000, Math.min(120000, (25000 + Math.random() * 25000) / Math.max(0.4, drive)));
     nextRandomAt = Date.now() + intervalMs;
-    if (!forced && Math.random() > Math.min(0.9, 0.45 * drive)) {
+    if (!forced && Math.random() > Math.min(0.9, 0.6 * drive)) {
         console.log(`[随机事件] 跳过：随机概率 (drive=${drive.toFixed(2)})`);
         return;
     }

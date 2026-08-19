@@ -18,6 +18,7 @@ import { fallbackStory, journalText, storyStage, worldSetting } from "./story";
 import type { CharacterProfile } from "./character";
 import { agendaContext } from "./agenda";
 import { FORMAT_INSTRUCTION, NPC_FORMAT_INSTRUCTION } from "./response-template";
+import { fallbackAction, isGenericAction } from "./actions";
 
 // ============ 聊天接口 ============
 
@@ -37,7 +38,7 @@ export interface ChatResult {
 
 export { EMOTION_NAMES };
 
-export const SYSTEM_PROMPT = (character: CharacterProfile) =>
+export const SYSTEM_PROMPT = (character: CharacterProfile, eventSeed?: string) =>
     "你是一个有真实情感状态的 AI 聊天伙伴。你的角色设定：\n" +
     characterToText(character) +
     "\n\n你的内心有 38 个维度（含人性阴影面），当前值（0-100）如下：\n" +
@@ -97,6 +98,7 @@ export const SYSTEM_PROMPT = (character: CharacterProfile) =>
     `【你的记忆】（这些是你记住的重要事情，对话时要自然地体现你还记得；新发生的值得记住的事，写入输出 JSON 的 memory 字段）：\n${memoriesText()}\n` +
     `【剧情档案】（你正处于连续的故事中，要衔接这些事，不要让对话像每次重新开始）：\n${journalText()}\n` +
     worldSetting(character.name) +
+    (eventSeed ? `【此刻的情境插曲】${eventSeed}（把这件事自然地带进你的回应里，作为对话的一部分，不要生硬汇报，不要让它压过主线话题。）\n` : "") +
     "\n你的回复必须自然流露上述状态（高好感→亲昵；低信任→疏离；害羞→欲言又止；生气→生硬；疲惫→话短；嫉妒→酸溜溜；孤独→黏人；期待→雀跃；" +
     "阴影面也要自然流露：贪婪→对礼物/好处心动；虚荣→在意形象爱被夸；占有欲→不喜欢你和别人亲近；傲慢→偶尔嘴硬端着；懒惰→想偷懒撒娇）。" +
     "不要直接说数值或\"我现在很开心\"，用语气、用词、动作、内心想法自然体现。内容保持健康得体。\n\n" +
@@ -104,6 +106,11 @@ export const SYSTEM_PROMPT = (character: CharacterProfile) =>
     "① 必须先回应对方刚说的话（承接他/她的内容，哪怕只是附和一句）；\n" +
     "② 说完自己的话后，**抛一个问题或邀请对方回应**（'你呢？''你觉得呢？''你说呢？'），把话题抛回去，保持一来一回；\n" +
     "③ 不要一个人说太多——通常 1~2 段就够，保持简短，等对方接话；不要连续自问自答。\n\n" +
+    "【主动互动：不要被动】\n" +
+    "① 对方回复很短或只是附和（'嗯''哈哈''哦''好'）时，**不要同样敷衍**——主动延伸：接住上句、补充一个细节、抛一个具体问题，把话头接稳；\n" +
+    "② 主动分享你的日常/心情/小发现，主动关心对方（'你那边呢？''你饿不饿？'），制造一来一回的小互动；\n" +
+    "③ 每轮回复都尽量带一点'行动感'：不仅是回答问题，也可以自然地邀请对方一起做点什么（听歌、散步、看个东西）；\n" +
+    "④ 但不要为了主动而连续自问自答，保持对话节奏。\n\n" +
     "【逻辑连贯性：必须遵守】\n" +
     "① 你的回复必须与你**上一轮说过的话**保持同一话题与立场：上一轮你说了什么态度、约定了什么、正聊什么，这一轮要顺着继续，不能自相矛盾、不能凭空推翻；\n" +
     "② 若要开启新话题，用自然过渡（「对了…」「话说回来…」），不要生硬跳转；\n" +
@@ -250,6 +257,16 @@ export function parseAIResponse(content: string): ChatResult {
 
     // 清理 dialogue 字段：移除时间标签和动作描述（这些应该在 action 字段）
     parsed.dialogue = cleanDialogue(parsed.dialogue);
+
+    // action 补全：缺失或过于泛泛时，按当前情感从动作库选取具体动作
+    if (typeof parsed.dialogue === "string" && parsed.dialogue.trim()) {
+        const action = typeof parsed.action === "string" ? parsed.action.trim() : "";
+        if (!action || isGenericAction(action)) {
+            // 结合当前情感 + 本轮 delta 推断主导情感
+            const emotions = { ...aiState, ...(parsed.delta ?? {}) };
+            parsed.action = fallbackAction(emotions);
+        }
+    }
 
     return parsed as ChatResult;
 }
@@ -435,7 +452,7 @@ export async function* chatWithDeepSeekStream(userText: string): AsyncGenerator<
 }
 
 // 非流式聊天（保留兼容）
-export async function chatWithDeepSeek(userText: string, retry = 2): Promise<ChatResult> {
+export async function chatWithDeepSeek(userText: string, retry = 2, eventSeed?: string): Promise<ChatResult> {
     const { baseUrl, headers, key, model } = getProviderConfig();
 
     if (!key) {
@@ -443,7 +460,7 @@ export async function chatWithDeepSeek(userText: string, retry = 2): Promise<Cha
     }
 
     const messages = [
-        { role: "system", content: SYSTEM_PROMPT(await getCharacter()) },
+        { role: "system", content: SYSTEM_PROMPT(await getCharacter(), eventSeed) },
         ...buildHistoryContext(),
         { role: "user", content: userText },
     ];
@@ -493,13 +510,13 @@ export async function chatWithDeepSeek(userText: string, retry = 2): Promise<Cha
     // 思考模式下思维链在 reasoning_content；若 content 为空说明模型只思考了没给出最终回答
     if (thinkingActive && !content.trim() && typeof msg.reasoning_content === "string" && msg.reasoning_content.trim()) {
         console.warn("思考模式下 content 为空，重试中…");
-        return chatWithDeepSeek(userText + "\n只输出JSON，不要思考过程。", retry - 1);
+        return chatWithDeepSeek(userText + "\n只输出JSON，不要思考过程。", retry - 1, eventSeed);
     }
 
     if (!content.trim()) {
         if (retry > 0) {
             console.warn("返回空内容，重试中…");
-            return chatWithDeepSeek(userText + "\n只输出JSON。", retry - 1);
+            return chatWithDeepSeek(userText + "\n只输出JSON。", retry - 1, eventSeed);
         }
         throw new Error("连续返回为空");
     }
@@ -509,7 +526,7 @@ export async function chatWithDeepSeek(userText: string, retry = 2): Promise<Cha
     } catch (e) {
         if (retry > 0) {
             console.warn("解析失败，重试中：", content.slice(0, 100));
-            return chatWithDeepSeek(userText + `\n你上次输出了纯文本。必须输出JSON格式：{"dialogue":"...","action":"...","thoughts":"...","delta":{},"user_emotion":"neutral","memory":"","story":{"event":"","progress":0,"thread":"new"}}`, retry - 1);
+            return chatWithDeepSeek(userText + `\n你上次输出了纯文本。必须输出JSON格式：{"dialogue":"...","action":"...","thoughts":"...","delta":{},"user_emotion":"neutral","memory":"","story":{"event":"","progress":0,"thread":"new"}}`, retry - 1, eventSeed);
         }
 
         // 最终兜底：从纯文本中提取对话
@@ -521,6 +538,7 @@ export async function chatWithDeepSeek(userText: string, retry = 2): Promise<Cha
 
         return {
             dialogue: dialogue || "（她张了张嘴，最后只是轻轻叹了口气。）",
+            action: fallbackAction(aiState),
             stats: { ...aiState },
             delta: {},
             user_emotion: "neutral",
