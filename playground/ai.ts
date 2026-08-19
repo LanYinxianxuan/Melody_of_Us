@@ -121,10 +121,8 @@ export const SYSTEM_PROMPT = (character: CharacterProfile) =>
     "【重要】①memory 和 story.event 都可以是空字符串，宁缺毋滥；②有进行中的剧情线时，要记得在后续轮次推进、收尾，不要断头。\n" +
     "【严禁】不要在 dialogue 里重复时间标签（如[第X天 XX:XX]）！时间信息是给你参考的，不是让你说出来的。\n\n" +
     "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n" +
-    "【最关键：输出格式】你必须且只能输出一个 JSON 对象，不要输出任何其他文字、解释、markdown 标记。\n" +
-    FORMAT_INSTRUCTION + "\n" +
-    "示例：\n" +
-    '{"dialogue":"嘿嘿，被你夸得尾巴都要翘起来啦～\\n你呢，今天有什么开心的事吗？","action":"开心地晃了晃脑袋，眼睛弯成月牙","thoughts":"他/她夸我了…心里暖暖的","stats":{},"delta":{"affection":6,"joy":12},"user_emotion":"joy","memory":"","story":{"event":"","progress":0,"thread":"new"}}';
+    "【最关键：输出格式】\n" +
+    FORMAT_INSTRUCTION;
 
 // 她的长期记忆：优先最近的，最多 8 条
 function memoriesText(): string {
@@ -344,6 +342,7 @@ export async function chatWithDeepSeek(userText: string, retry = 2): Promise<Cha
         model,
         messages,
         ...thinkingParams(),
+        response_format: { type: "json_object" },
         max_tokens: 16384,
     };
     console.group(`%c📤 [DEBUG] 发送请求 → ${model}`, "color: #d65a7e; font-weight: bold;");
@@ -575,7 +574,7 @@ export async function interviewWithAI(intro: string, turns: InterviewTurn[]): Pr
     const resp = await fetch(`${baseUrl}/chat/completions`, {
         method: "POST",
         headers,
-        body: JSON.stringify({ model, messages, ...thinkingParams(), max_tokens: 2048 }),
+        body: JSON.stringify({ model, messages, ...thinkingParams(), response_format: { type: "json_object" }, max_tokens: 2048 }),
     });
 
     const data = await resp.json();
@@ -657,7 +656,7 @@ export async function npcSpeak(npc: NpcState, context: string): Promise<NpcSpeak
     const resp = await fetch(`${baseUrl}/chat/completions`, {
         method: "POST",
         headers,
-        body: JSON.stringify({ model, messages, ...thinkingParams(), max_tokens: 2048 }),
+        body: JSON.stringify({ model, messages, ...thinkingParams(), response_format: { type: "json_object" }, max_tokens: 2048 }),
     });
 
     const data = await resp.json();

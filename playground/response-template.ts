@@ -148,32 +148,23 @@ export const RESPONSE_EXAMPLES = {
 // ============ 系统提示词中的格式说明 ============
 
 export const FORMAT_INSTRUCTION = `
-【输出格式】严格输出 JSON，不要任何其他文字：
+【输出格式】严格输出 JSON，不要任何其他文字。
 
-{
-  "dialogue": "她说的话（纯对话）——分1~2段(\\n分隔)，先承接对方→说自己→提问收尾，每段20~40字，总长60字左右",
-  "action": "动作/表情描写（纯动作）——20字内，如：低头笑了笑、别过脸去",
-  "thoughts": "内心想法——20字内，如：心跳好快…",
-  "stats": {"affection": 数值, "trust": 数值, ...},
-  "delta": {"affection": 变化量, "trust": 变化量, ...},
-  "user_emotion": "joy/anger/sad/shy/surprised/neutral",
-  "memory": "值得记住的事（30字内，没有写空字符串）",
-  "story": {
-    "event": "值得记录的小事（15~30字，普通聊天写空字符串）",
-    "progress": 0,
-    "thread": "new/continue/end"
-  },
-  "agenda": {
-    "add": [{"time": "HH:MM", "title": "事件标题(20字内)", "desc": "补充(可选)"}]
-  }
-}
+字段说明：
+- dialogue: 她说的话。纯对话，1~2段（用\\n分隔），每段20~40字，总长60字左右。先承接对方→说自己→提问收尾。
+- action: 动作/表情描写。纯动作，20字内。如"低头笑了笑""别过脸去"。
+- thoughts: 内心想法。20字内。如"心跳好快…""他/她怎么突然说这种话"。
+- delta: 情感维度变化量。如{"affection":6,"joy":12}。每维-15~15。
+- user_emotion: 用户消息情绪。只能是 joy/anger/sad/shy/surprised/neutral 之一。
+- memory: 值得长期记住的事。30字内，没有写空字符串""。
+- story.event: 值得记录的小事。15~30字，普通聊天写空字符串""。
+- story.progress: 推动剧情程度0~5，普通聊天写0。
+- story.thread: 剧情线状态。new=新开 / continue=推进中 / end=收尾。
 
 【格式要点】
 1. dialogue 只放她说的话，不要放动作/表情/时间标签
 2. action 只放动作/表情描写，不要放对话内容
-3. thoughts 放内心想法
-4. story.event 和 memory 可以是空字符串，宁缺毋滥
-5. 普通聊天没有新约定时，agenda 字段省略
+3. story.event 和 memory 可以是空字符串，宁缺毋滥
 `;
 
 // ============ NPC 格式说明 ============
