@@ -56,6 +56,7 @@ import {
 } from "./story";
 import { chatWithDeepSeek, demoReply, setCharacterGetter, SYSTEM_PROMPT, type ChatResult } from "./ai";
 import { npcContext, npcSpeak } from "./ai";
+import { speak, isTtsEnabled, setTtsEnabled, initTts } from "./tts";
 import {
     applyAgendaFromAI,
     tickAgenda,
@@ -277,6 +278,11 @@ function typeReply(el: HTMLElement, full: { dialogue: string; action?: string; t
 
         scrollToBottom();
         setBusyState(false);
+
+        // TTS 朗读对话内容
+        if (isTtsEnabled() && finalText) {
+            speak(finalText);
+        }
     };
 
     const playSegment = () => {
@@ -1077,6 +1083,24 @@ npcToggleBtn.addEventListener("click", () => {
         : "👤 已关闭多人模式：现在是你们两个人的世界，支线角色不会出现。";
 });
 refreshNpcToggle();
+
+// TTS 语音朗读开关
+const ttsToggleBtn = document.getElementById("tts-toggle") as HTMLButtonElement;
+function refreshTtsToggle() {
+    ttsToggleBtn.textContent = isTtsEnabled() ? "🔊" : "🔇";
+    ttsToggleBtn.classList.toggle("active", isTtsEnabled());
+}
+ttsToggleBtn.addEventListener("click", () => {
+    setTtsEnabled(!isTtsEnabled());
+    refreshTtsToggle();
+    const ttsSys = appendMessage("ai"); ttsSys.classList.add("sys"); ttsSys.textContent = isTtsEnabled()
+        ? "🔊 已开启语音朗读：AI 回复会自动朗读。需要在菜单页上传音色样本。"
+        : "🔇 已关闭语音朗读。";
+});
+refreshTtsToggle();
+
+// 初始化 TTS
+initTts();
 
 document.getElementById("reset-state")!.addEventListener("click", () => {
     if (confirm("重置这段故事？会清空：情感、剧情、聊天记录、时间线，且无法恢复。")) {

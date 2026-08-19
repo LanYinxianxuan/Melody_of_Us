@@ -271,6 +271,31 @@
     <div id="save-hint">✓ 已保存</div>
   </div>
 
+  <!-- TTS 语音设置卡 -->
+  <div class="card">
+    <div class="card-title">🎤 语音朗读（TTS）</div>
+    <div class="setting">
+      <label>音色样本（上传 MP3/WAV，10MB 以内，将克隆此音色）</label>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <input id="tts-voice-file" type="file" accept="audio/mp3,audio/mpeg,audio/wav" style="flex:1;font-size:12px;">
+        <button id="tts-voice-clear" style="padding:8px 12px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink-soft);font-size:11px;cursor:pointer;">清除</button>
+      </div>
+      <div id="tts-voice-status" style="font-size:11px;margin-top:4px;color:var(--ink-soft);">未上传</div>
+    </div>
+    <div class="setting">
+      <label>风格指令（可选，控制语气/情感/语速，如「温柔轻声」「活泼元气」）</label>
+      <input id="tts-style" type="text" placeholder="如：温柔轻声，带一点害羞">
+    </div>
+    <div class="setting">
+      <label>TTS 测试</label>
+      <div style="display:flex;gap:8px;">
+        <input id="tts-test-text" type="text" placeholder="输入要朗读的文字" style="flex:1;">
+        <button id="tts-test-btn" style="padding:8px 16px;border-radius:8px;border:1px solid var(--accent-line);background:var(--accent-soft);color:var(--accent);font-size:12px;cursor:pointer;">🔊 试听</button>
+      </div>
+      <div id="tts-test-status" style="font-size:11px;margin-top:4px;color:var(--ink-soft);"></div>
+    </div>
+  </div>
+
   <footer style="text-align:center;padding:24px 16px;color:var(--ink-faint);font-size:11px;line-height:2;">
     <div style="margin-bottom:4px;">Melody of Us · 情感 AI 聊天 · 38 维情感体系</div>
     <div>作者：<a href="https://github.com/LanYinxianxuan" target="_blank" style="color:var(--accent);text-decoration:none;">LanYinxianxuan</a> ｜ GitHub：<a href="https://github.com/LanYinxianxuan/Melody_of_Us" target="_blank" style="color:var(--accent);text-decoration:none;">Melody_of_Us</a> ｜ 分支：melody-ai</div>

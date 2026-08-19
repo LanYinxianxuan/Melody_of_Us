@@ -2,6 +2,7 @@
 // 每个存档槽位独立的 API 设置
 
 import { loadSlotRaw, loadSlotCharacterName, clearSlot, currentSlot } from "./storage";
+import { readAudioFile, setVoiceBase64, getVoiceBase64, clearVoice, getTtsStyle, setTtsStyle, synthesizeSpeech } from "./tts";
 
 const TOTAL_SLOTS = 5;
 
@@ -346,6 +347,101 @@ async function testApi() {
 }
 
 apiTestBtn.addEventListener("click", testApi);
+
+// ============ TTS 语音设置 ============
+
+const ttsVoiceFile = document.getElementById("tts-voice-file") as HTMLInputElement;
+const ttsVoiceClear = document.getElementById("tts-voice-clear") as HTMLButtonElement;
+const ttsVoiceStatus = document.getElementById("tts-voice-status")!;
+const ttsStyleInput = document.getElementById("tts-style") as HTMLInputElement;
+const ttsTestText = document.getElementById("tts-test-text") as HTMLInputElement;
+const ttsTestBtn = document.getElementById("tts-test-btn") as HTMLButtonElement;
+const ttsTestStatus = document.getElementById("tts-test-status")!;
+
+// 初始化 TTS 设置
+function loadTtsSettings() {
+    const voice = getVoiceBase64();
+    if (voice) {
+        ttsVoiceStatus.textContent = "✅ 已上传音色样本";
+        ttsVoiceStatus.style.color = "#34d399";
+    } else {
+        ttsVoiceStatus.textContent = "未上传";
+        ttsVoiceStatus.style.color = "var(--ink-soft)";
+    }
+    ttsStyleInput.value = getTtsStyle();
+}
+
+loadTtsSettings();
+
+// 上传音色文件
+ttsVoiceFile.addEventListener("change", async () => {
+    const file = ttsVoiceFile.files?.[0];
+    if (!file) return;
+
+    try {
+        ttsVoiceStatus.textContent = "⏳ 读取中...";
+        ttsVoiceStatus.style.color = "var(--ink-soft)";
+        const base64 = await readAudioFile(file);
+        setVoiceBase64(base64);
+        ttsVoiceStatus.textContent = "✅ 已上传音色样本";
+        ttsVoiceStatus.style.color = "#34d399";
+    } catch (e) {
+        ttsVoiceStatus.textContent = `❌ ${(e as Error).message}`;
+        ttsVoiceStatus.style.color = "#ffb0b0";
+    }
+});
+
+// 清除音色
+ttsVoiceClear.addEventListener("click", () => {
+    clearVoice();
+    ttsVoiceFile.value = "";
+    ttsVoiceStatus.textContent = "未上传";
+    ttsVoiceStatus.style.color = "var(--ink-soft)";
+});
+
+// 保存风格指令
+ttsStyleInput.addEventListener("change", () => {
+    setTtsStyle(ttsStyleInput.value.trim());
+});
+
+// TTS 测试
+ttsTestBtn.addEventListener("click", async () => {
+    const text = ttsTestText.value.trim();
+    if (!text) {
+        ttsTestStatus.textContent = "⚠️ 请输入要朗读的文字";
+        ttsTestStatus.style.color = "#ffb0b0";
+        return;
+    }
+
+    const voice = getVoiceBase64();
+    if (!voice) {
+        ttsTestStatus.textContent = "⚠️ 请先上传音色样本";
+        ttsTestStatus.style.color = "#ffb0b0";
+        return;
+    }
+
+    ttsTestBtn.disabled = true;
+    ttsTestBtn.textContent = "⏳ 合成中...";
+    ttsTestStatus.textContent = "正在调用 MiMo TTS API...";
+    ttsTestStatus.style.color = "var(--ink-soft)";
+
+    try {
+        const buffer = await synthesizeSpeech(text, ttsStyleInput.value.trim());
+        const blob = new Blob([buffer], { type: "audio/wav" });
+        const url = URL.createObjectURL(blob);
+        const audio = new Audio(url);
+        audio.onended = () => URL.revokeObjectURL(url);
+        await audio.play();
+        ttsTestStatus.textContent = "✅ 播放成功";
+        ttsTestStatus.style.color = "#34d399";
+    } catch (e) {
+        ttsTestStatus.textContent = `❌ ${(e as Error).message}`;
+        ttsTestStatus.style.color = "#ffb0b0";
+    } finally {
+        ttsTestBtn.disabled = false;
+        ttsTestBtn.textContent = "🔊 试听";
+    }
+});
 
 // ============ 初始化 ============
 
