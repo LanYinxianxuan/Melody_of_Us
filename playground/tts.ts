@@ -430,9 +430,21 @@ async function playPcmChunks(chunks: Uint8Array[]): Promise<void> {
     await playWavBuffer(wavBuffer);
 }
 
+// TTS 冷却：防止频繁请求触发 429
+let lastSpeakAt = 0;
+const SPEAK_COOLDOWN_MS = 3000;
+
 // 合成并播放语音（流式）
 export async function speak(text: string, style?: string): Promise<void> {
     if (!ttsEnabled) return;
+
+    // 冷却检查
+    const now = Date.now();
+    if (now - lastSpeakAt < SPEAK_COOLDOWN_MS) {
+        console.warn(`[TTS] 冷却中，跳过（${Math.round((SPEAK_COOLDOWN_MS - (now - lastSpeakAt)) / 1000)}s）`);
+        return;
+    }
+    lastSpeakAt = now;
 
     try {
         const pcmChunks: Uint8Array[] = [];

@@ -485,12 +485,6 @@ async function sendMessage(text: string, opts?: { proactive?: boolean }): Promis
         typeReply(msgEl, result, aiState);
         attachTimeStamp(msgEl);
 
-        // TTS 朗读（如果有日语版）
-        if (isTtsEnabled() && result.dialogue_ja) {
-            const style = generateEmotionStyle(aiState);
-            speak(result.dialogue_ja, style);
-        }
-
         const deltaSummary = Object.entries(result.delta ?? {})
             .filter(([, v]) => Math.abs(v as number) >= 3)
             .map(([k, v]) => {
