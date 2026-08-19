@@ -5,7 +5,7 @@
 
 import { store } from "./storage";
 import { aiState, DIMENSIONS, describeMood } from "./state";
-import { currentDayIndex, currentSchedule, fmtVirtualDate, fmtVirtualTime, herLocation, inSchool } from "./time";
+import { currentDayIndex, currentSchedule, fmtVirtualDate, fmtVirtualTime, herLocation } from "./time";
 import { storyStage, journalText } from "./story";
 import { thinkingParams } from "./ai";
 

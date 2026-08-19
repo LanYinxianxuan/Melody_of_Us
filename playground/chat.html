@@ -18,6 +18,10 @@
   <title>情感 AI 聊天 · 38 维情感体系</title>
   <style>
       * { box-sizing: border-box; margin: 0; padding: 0; }
+      /* 全局溢出保护：任何子元素不产生横向滚动/溢出 */
+      html, body { max-width: 100%; overflow-x: hidden; }
+      img, canvas, svg, video { max-width: 100%; }
+
 
       /* ===== 二次元简约高级 · 设计系统 =====
          设计标准（open-design redesign-skill 审计）：
@@ -118,26 +122,6 @@
 
       #chat-wrap.panel-open { margin-left: 330px; }
 
-      #chat-header {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          font-size: 13px;
-          color: var(--ink-soft);
-          font-weight: 600;
-      }
-
-      #chat-header .dot {
-          width: 9px; height: 9px; border-radius: 50%;
-          background: linear-gradient(135deg, #34d399, #6ee7b7);
-          box-shadow: 0 0 10px rgba(52, 211, 153, 0.7);
-      }
-
-      #chat-header .dot.busy { background: linear-gradient(135deg, #fbbf24, #f59e0b); box-shadow: 0 0 10px rgba(251, 191, 36, 0.7); }
-      #chat-header a { color: var(--accent); font-size: 12px; margin-left: auto; text-decoration: none; font-weight: 600; }
-      #chat-header a + a { margin-left: 10px; }
-      #chat-header a:first-of-type { margin-left: auto; }
-
       .mini-btn {
           margin-left: 8px;
           padding: 5px 13px;
@@ -165,33 +149,6 @@
           scroll-behavior: smooth;
       }
 
-      .msg {
-          position: relative;
-          max-width: 74%;
-          padding: 11px 16px;
-          border-radius: 18px;
-          font-size: 15px; line-height: 1.7;
-          white-space: pre-wrap; word-break: break-word;
-          letter-spacing: 0.3px;
-      }
-
-      .msg.user {
-          align-self: flex-end;
-          background: var(--accent);
-          color: #fff;
-          border-bottom-right-radius: var(--radius-sm);
-          box-shadow: var(--shadow-accent);
-      }
-
-      .msg.ai {
-          align-self: flex-start;
-          background: rgba(255, 255, 255, 0.94);
-          color: var(--ink);
-          border-bottom-left-radius: var(--radius-sm);
-          border: 1px solid rgba(255, 255, 255, 0.7);
-          box-shadow: 0 3px 14px rgba(120, 80, 60, 0.08);
-      }
-
       .msg.ai .action {
           display: block; font-size: 12px; color: var(--accent); font-style: italic; margin-top: 6px;
       }
@@ -203,14 +160,6 @@
       }
 
       /* 支线 NPC 消息（世界里的其他人） */
-      .msg.npc-msg {
-          align-self: flex-start;
-          background: rgba(214, 90, 126, 0.08);
-          color: var(--ink);
-          border-bottom-left-radius: var(--radius-sm);
-          border: 1px solid var(--accent-line);
-          box-shadow: 0 3px 14px rgba(120, 80, 60, 0.08);
-      }
       .msg.npc-msg .npc-name {
           font-size: 11px;
           color: var(--accent);
@@ -268,20 +217,6 @@
       .msg.phone .dialogue { font-size: 13px; }
 
       /* 剧情旁白：插入对话流的事件叙述 */
-      .story-line {
-          align-self: center;
-          font-size: 12px;
-          color: var(--ink-soft);
-          font-style: italic;
-          text-align: center;
-          max-width: 90%;
-          padding: 5px 16px;
-          background: var(--bg);
-          border: 1px solid var(--line);
-          border-radius: 999px;
-          line-height: 1.6;
-      }
-
       /* ===== 左侧状态面板（半透明毛玻璃浮层，可收起） ===== */
       #state-panel {
           position: fixed;
@@ -429,13 +364,6 @@
           gap: 8px;
       }
 
-      .rate-btn.active {
-          background: var(--accent) !important;
-          color: #fff !important;
-          border-color: transparent !important;
-          font-weight: 600;
-      }
-
       /* ===== 剧情卡 ===== */
       .story-card {
           margin-top: 10px;
@@ -474,6 +402,7 @@
       }
 
       .story-event {
+          overflow-wrap: break-word;
           font-size: 10px;
           color: var(--ink-soft);
           line-height: 1.6;
@@ -482,43 +411,6 @@
       }
 
       /* 今日日程时间线 */
-      .agenda-item {
-          display: flex;
-          align-items: baseline;
-          gap: 6px;
-          font-size: 11px;
-          padding: 4px 8px;
-          border-radius: 8px;
-          background: rgba(192, 132, 252, 0.07);
-          border-left: 2px solid rgba(139, 92, 246, 0.25);
-          color: var(--ink);
-          opacity: 0.85;
-      }
-      .agenda-item.active {
-          border-left-color: var(--accent);
-          background: var(--accent-soft);
-          opacity: 1;
-          font-weight: 600;
-      }
-      .agenda-item.done {
-          opacity: 0.45;
-          border-left-color: #34d399;
-          text-decoration: line-through;
-      }
-      .agenda-item .agenda-mark { width: 12px; text-align: center; flex-shrink: 0; }
-      .agenda-item .agenda-time {
-          font-family: Consolas, monospace;
-          font-size: 10px;
-          color: var(--ink-soft);
-          flex-shrink: 0;
-      }
-      .agenda-item .agenda-title { flex: 1; word-break: break-all; }
-      .agenda-item .agenda-desc {
-          width: 100%;
-          font-size: 9px;
-          color: var(--ink-soft);
-          padding-left: 30px;
-      }
       .agenda-empty {
           font-size: 10px;
           color: rgba(255, 255, 255, 0.35);
@@ -612,57 +504,6 @@
 
       #panel-toggle:hover { transform: scale(1.08); box-shadow: var(--shadow-lg); }
       #panel-toggle.panel-open { left: 329px; }
-
-      /* ===== 底部输入栏 ===== */
-      #chat-input-row {
-          position: fixed;
-          bottom: 0; left: 0;
-          width: 100%;
-          background: rgba(250, 247, 244, 0.88);
-          backdrop-filter: blur(20px);
-          -webkit-backdrop-filter: blur(20px);
-          border-top: 1px solid var(--line);
-          padding: 12px 14px;
-          display: flex;
-          justify-content: center;
-          align-items: center;
-          gap: 10px;
-          z-index: 5;
-      }
-
-      #chat-input {
-          flex: 1;
-          max-width: 900px;
-          height: 46px;
-          border-radius: 23px;
-          padding: 0 20px;
-          border: 1px solid var(--line);
-          outline: none;
-          font-size: 15px;
-          background: var(--card-strong);
-          color: var(--ink);
-          transition: border-color 0.2s, box-shadow 0.2s;
-      }
-      #chat-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
-      #chat-input::placeholder { color: var(--ink-faint); }
-
-      .icon-btn {
-          width: 46px; height: 46px;
-          border-radius: 50%;
-          border: none;
-          background: var(--accent);
-          box-shadow: var(--shadow-accent);
-          display: flex;
-          justify-content: center;
-          align-items: center;
-          cursor: pointer;
-          transition: all 0.2s ease;
-      }
-
-      .icon-btn:hover { background: var(--accent-deep); transform: scale(1.06); }
-      .icon-btn:active { transform: scale(0.94); }
-      .icon-btn:disabled { opacity: 0.5; transform: none; }
-      .icon-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
       /* ===== 角色设定弹层 ===== */
       #char-modal {
@@ -762,6 +603,7 @@
       }
 
       .wiz-preview {
+          overflow-wrap: break-word;
           background: var(--card);
           border: 1px dashed var(--accent);
           border-radius: 12px;
@@ -1113,6 +955,7 @@
           line-height: 1.6;
           margin-bottom: 8px;
           font-style: italic;
+          overflow-wrap: break-word;
       }
       .scene-details {
           display: flex;
@@ -1175,6 +1018,7 @@
       #chat-input-pill:focus-within { box-shadow: 0 10px 40px rgba(214, 90, 126, 0.22); }
       #chat-input {
           flex: 1;
+          min-width: 0;
           height: 38px;
           border: none;
           outline: none;
@@ -1201,7 +1045,7 @@
       .icon-btn:disabled { opacity: 0.5; transform: none; }
 
       /* 消息：AI 带头像 */
-      .msg { position: relative; max-width: 78%; padding: 11px 16px; border-radius: 18px; font-size: 15px; line-height: 1.7; white-space: pre-wrap; word-break: break-word; letter-spacing: 0.3px; }
+      .msg { position: relative; max-width: 78%; padding: 11px 16px; border-radius: 18px; font-size: 15px; line-height: 1.7; white-space: pre-wrap; word-break: break-word; overflow-wrap: anywhere; letter-spacing: 0.3px; }
       .msg.user {
           align-self: flex-end;
           background: var(--accent);
@@ -1288,6 +1132,7 @@
       .agenda-item.active { border-left-color: var(--accent); background: var(--accent-soft); opacity: 1; font-weight: 600; }
       .agenda-item.done { opacity: 0.4; border-left-color: #34d399; }
       .agenda-item .agenda-time { font-family: var(--font-num); font-variant-numeric: tabular-nums; font-size: 10px; color: var(--ink-faint); flex-shrink: 0; }
+      .agenda-item .agenda-mark { width: 12px; text-align: center; flex-shrink: 0; }
       .agenda-item .agenda-title { flex: 1; min-width: 0; white-space: normal; word-break: break-word; }
       .agenda-item .agenda-desc {
           width: 100%;

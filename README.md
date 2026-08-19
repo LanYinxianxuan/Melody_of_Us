@@ -166,6 +166,27 @@ playground/
 - 数据全部存浏览器 localStorage，无后端
 - API Key 仅存本地，不会上传
 - 每个存档槽位独立存储 API Key
+- 所有用户/AI 文本经 HTML 转义渲染，防止 XSS
+- Android WebView 关闭 file/content 访问与混合内容，Manifest 禁止备份与明文流量
+
+## 🤖 CI/CD（GitHub Actions）
+
+`.github/workflows/build-android-release.yml` 自动构建 Web + APK：
+
+- **触发**：手动（Actions 页面）或推送 `v*` 标签
+- **产物**：`melody-ai-apk`（APK）、`playground-web`（网页包），推送标签时自动发布 GitHub Release
+- **签名**：未配置 Secret 时用 debug 签名（便于侧载安装）；配置后可正式签名
+
+**可选签名 Secret（Repository → Settings → Secrets and variables → Actions）**：
+
+| Secret | 说明 |
+|--------|------|
+| `KEYSTORE_BASE64` | keystore 文件的 Base64（`base64 -w0 xx.keystore`） |
+| `KEYSTORE_PASSWORD` | keystore 密码 |
+| `KEY_ALIAS` | 密钥别名 |
+| `KEY_PASSWORD` | 密钥密码 |
+
+所有密钥仅通过 GitHub Secrets 注入，代码中不硬编码任何密钥。
 
 ## 📦 技术栈
 

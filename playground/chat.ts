@@ -28,7 +28,6 @@ import {
     jumpToToday,
     onSlotChanged,
     proactiveLine,
-    inSchool,
     currentSchedule,
     markUserReplied,
     setSlotChangeHandler,
@@ -36,6 +35,7 @@ import {
     setMessageSender as setTimeMessageSender,
     setRelationGetter,
     setProactiveEnabled,
+    setProactiveGate,
     setProactiveDriveGetter,
     setRandomMomentHook,
     herLocation,
@@ -51,26 +51,22 @@ import {
     userIsTyping,
     neglectLevel,
     neglectLine,
-    setStoryMessageSender,
     setStoryCharNameGetter,
 } from "./story";
 import { chatWithDeepSeek, demoReply, setCharacterGetter, SYSTEM_PROMPT, type ChatResult } from "./ai";
 import { npcContext, npcSpeak } from "./ai";
-import { speak, isTtsEnabled, setTtsEnabled, initTts, generateEmotionStyle, generateAudioTags } from "./tts";
+import { speak, isTtsEnabled, setTtsEnabled, initTts, generateEmotionStyle } from "./tts";
 import {
     applyAgendaFromAI,
     tickAgenda,
     renderAgendaUI,
     planTodayAgenda,
     todayHasNoAgenda,
-    agendaContext,
     setAgendaCharacterGetter,
 } from "./agenda";
 import {
     detectTrigger,
     callDirector,
-    emptyDecision,
-    userInputMentionsNpc,
     type DirectorDecision,
     type DirectorTrigger,
 } from "./director";
@@ -191,8 +187,16 @@ function logEmotion(who: "user" | "ai", text: string, extra?: string) {
     const box = document.getElementById("mood-history")!;
     const div = document.createElement("div");
     div.className = "entry";
-    div.innerHTML = `<span class="who ${who === "ai" ? "ai" : ""}">${who === "ai" ? "AI" : "你"}</span>` +
-        `<span class="emo">${extra ?? ""}</span><span style="color:#6a6a85;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:110px;">${text}</span>`;
+    const whoSpan = document.createElement("span");
+    whoSpan.className = `who ${who === "ai" ? "ai" : ""}`;
+    whoSpan.textContent = who === "ai" ? "AI" : "你";
+    const emoSpan = document.createElement("span");
+    emoSpan.className = "emo";
+    emoSpan.textContent = extra ?? "";
+    const textSpan = document.createElement("span");
+    textSpan.style.cssText = "color:#6a6a85;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:110px;";
+    textSpan.textContent = text;
+    div.append(whoSpan, emoSpan, textSpan);
     box.appendChild(div);
     box.scrollTop = box.scrollHeight;
 }
@@ -279,13 +283,13 @@ function typeReply(el: HTMLElement, full: { dialogue: string; dialogue_ja?: stri
         scrollToBottom();
         setBusyState(false);
 
-        // TTS 朗读对话内容（优先使用日语版，带情感风格）
+        // TTS 朗读对话内容（优先使用日语版，带情感风格 + 停顿/重音标记）
         if (isTtsEnabled()) {
             const ttsText = full.dialogue_ja || finalText;
             if (ttsText) {
-                // 根据情感生成风格指令
+                // 根据情感生成风格指令，并透传情感数值用于插入停顿/语速标记
                 const style = emotions ? generateEmotionStyle(emotions) : undefined;
-                speak(ttsText, style);
+                speak(ttsText, style, emotions);
             }
         }
     };
@@ -970,10 +974,17 @@ function openHistory() {
                 const timeStr = time
                     ? `${String(time.getHours()).padStart(2, "0")}:${String(time.getMinutes()).padStart(2, "0")}`
                     : "";
-                div.innerHTML =
-                    `<span class="h-role">${e.role === "user" ? "你" : CHARACTER_REF.name}</span>` +
-                    `<span class="h-time">${timeStr}</span>` +
-                    `<div class="h-content">${e.content}</div>`;
+                // 用 textContent 渲染内容，防止聊天内容中的 HTML 被注入执行（XSS）
+                const roleSpan = document.createElement("span");
+                roleSpan.className = "h-role";
+                roleSpan.textContent = e.role === "user" ? "你" : CHARACTER_REF.name;
+                const timeSpan = document.createElement("span");
+                timeSpan.className = "h-time";
+                timeSpan.textContent = timeStr;
+                const contentDiv = document.createElement("div");
+                contentDiv.className = "h-content";
+                contentDiv.textContent = e.content;
+                div.append(roleSpan, timeSpan, contentDiv);
                 list.appendChild(div);
             }
         }
@@ -1248,7 +1259,8 @@ document.getElementById("char-save")!.addEventListener("click", () => {
 document.getElementById("char-reset-preset")!.addEventListener("click", () => {
     const preset = (document.getElementById("char-preset") as HTMLSelectElement).value;
     if (PRESETS[preset]) {
-        Object.assign(CHARACTER_REF, { ...PRESETS[preset]! });
+        const { scene: _scene, ...profile } = PRESETS[preset]!;
+        Object.assign(CHARACTER_REF, profile);
         fillCharForm();
     }
 });
@@ -1273,10 +1285,8 @@ setTimeMessageSender((text, opts) => {
     void sendMessage(text, opts);
 });
 
-setStoryMessageSender((text, opts) => {
-    if (busy || userIsTyping()) return; // AI 回复中或用户正在输入，不打扰
-    void sendMessage(text, opts);
-});
+// 主动开口门控：AI 回复中 / 用户输入中不允许随机事件开口（不打断主流程）
+setProactiveGate(() => !busy && !userIsTyping());
 
 setSlotChangeHandler(() => {
     updateScheduleUI();

@@ -2,8 +2,8 @@
 // 依赖 state / time / storage；随机事件的"她开口"通过 messageSender 回调（chat.ts 注册）。
 
 import { aiState, clamp } from "./state";
-import { store, saveState, HistoryEntry } from "./storage";
-import { currentSchedule, currentDayIndex, fmtVirtualTime, isFirstMeeting, proactiveEnabled, setMessageSender, tryProactiveSpeak, tryProactiveSpeakForce } from "./time";
+import { store, saveState } from "./storage";
+import { currentSchedule, currentDayIndex, fmtVirtualTime, isFirstMeeting, proactiveEnabled, tryProactiveSpeak, tryProactiveSpeakForce } from "./time";
 
 // 角色名注入（chat.ts 注册，避免循环依赖）
 let charNameGetter: (() => string) | null = null;
@@ -85,7 +85,8 @@ export function proactiveDrive(): number {
     factor += (aiState.confidence - 50) / 200;
     factor -= (aiState.neuroticism - 50) / 300;
 
-    return clamp(factor, 0.4, 1.6);
+    // 限幅到 0.4 ~ 1.6（修复：原 clamp 只会限 0~100，区间形同虚设）
+    return Math.max(0.4, Math.min(1.6, factor));
 }
 
 // ============ 剧情档案（按天归档） ============
@@ -175,11 +176,7 @@ let nextRandomAt = Date.now() + 8000;
 let turnsSinceEvent = 0;
 let lastUserInputAt = 0;
 
-// 主动开口的"等待回复"纪律：她说了一句，必须等用户回复才能再说下一句
-let awaitingReply = false;
-let lastProactiveAt = 0;
-const PROACTIVE_COOLDOWN_MS = 60000; // 两次主动开口最短间隔（即使话题不同）
-
+// 主动开口的"等待回复"纪律与冷却由 time.ts 的 tryProactiveSpeak 统一收口
 export function bumpTurnsSinceEvent() {
     turnsSinceEvent++;
 }
@@ -192,12 +189,6 @@ export function userIsTyping(): boolean {
     const input = document.getElementById("chat-input") as HTMLInputElement | null;
     if (input && input.value.trim()) return true;
     return Date.now() - lastUserInputAt < 2000;
-}
-
-let messageSender: ((text: string, opts?: { proactive?: boolean }) => void) | null = null;
-
-export function setStoryMessageSender(fn: (text: string, opts?: { proactive?: boolean }) => void) {
-    messageSender = fn;
 }
 
 // 构造"此刻的实时情境"，交给 AI 自己抉择（不预设任何事件内容）
@@ -385,7 +376,7 @@ export function updateStoryUI() {
     if (nameEl) nameEl.textContent = charNameGetter?.() || "角色";
     const stageEl = document.getElementById("panel-char-stage");
     if (stageEl) stageEl.textContent = `${stage.name} · ${stage.desc}`;
-    const ring = document.getElementById("stage-ring") as SVGCircleElement | null;
+    const ring = document.getElementById("stage-ring") as unknown as SVGCircleElement | null;
     if (ring) {
         const r = 18;
         const circ = 2 * Math.PI * r;

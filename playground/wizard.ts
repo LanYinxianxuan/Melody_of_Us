@@ -3,9 +3,10 @@
 
 import { CHARACTER, PRESETS, saveCharacter, setCharacter, type CharacterProfile } from "./character";
 import { interviewWithAI, type InterviewTurn } from "./ai";
-import { CHAR_KEY, store, saveState, DEFAULT_SCENE, type SceneConfig } from "./storage";
-import { aiState, initStateForRelation } from "./state";
+import { store, saveState, DEFAULT_SCENE, type SceneConfig } from "./storage";
+import { initStateForRelation } from "./state";
 import { setProactiveEnabled } from "./time";
+import { escapeHtml } from "./util";
 
 // ============ 场景解析 ============
 // 用户自由描述"在哪生活/她平时做什么" → 场景配置（驱动作息/地点/世界观）
@@ -176,8 +177,9 @@ export function closeWizard() {
 function applyPreset(key: string) {
     const preset = PRESETS[key];
     if (preset) {
-        Object.assign(CHARACTER, { ...preset });
-        delete (CHARACTER as any).scene; // scene 不进角色卡存档（属场景系统）
+        // scene 属场景系统，不进角色卡存档
+        const { scene: _scene, ...profile } = preset;
+        Object.assign(CHARACTER, profile);
         saveCharacter();
         // 预设自带场景（咖啡店/公司/Livehouse/诊所/画室…）；没有则默认校园
         store.scene = preset.scene ? { ...preset.scene } : { ...DEFAULT_SCENE };
@@ -328,16 +330,17 @@ function renderWizard() {
 }
 
 function buildPreviewHTML(d: WizardDraft): string {
+    // 所有草稿字段均经 escapeHtml 转义，防止注入 HTML（XSS）
     return `
         <div class="wiz-preview">
-          <b>名字：</b>${d.name || "（未填）"}（${d.age || "?"}）<br>
-          <b>外貌：</b>${d.appearance || "（未填）"}<br>
-          <b>性格：</b>${d.personality || "（未填）"}<br>
-          <b>背景：</b>${d.background || "（未填）"}<br>
-          <b>说话风格：</b>${d.speechStyle || "（未填）"}<br>
-          <b>喜好：</b>${d.likes || "（未填）"} ｜ <b>讨厌：</b>${d.dislikes || "（未填）"}<br>
-          <b>与你的关系：</b>${d.relation || "（未填）"}<br>
-          <b>秘密：</b>${d.secrets || "（未填）"}
+          <b>名字：</b>${escapeHtml(d.name) || "（未填）"}（${escapeHtml(d.age) || "?"}）<br>
+          <b>外貌：</b>${escapeHtml(d.appearance) || "（未填）"}<br>
+          <b>性格：</b>${escapeHtml(d.personality) || "（未填）"}<br>
+          <b>背景：</b>${escapeHtml(d.background) || "（未填）"}<br>
+          <b>说话风格：</b>${escapeHtml(d.speechStyle) || "（未填）"}<br>
+          <b>喜好：</b>${escapeHtml(d.likes) || "（未填）"} ｜ <b>讨厌：</b>${escapeHtml(d.dislikes) || "（未填）"}<br>
+          <b>与你的关系：</b>${escapeHtml(d.relation) || "（未填）"}<br>
+          <b>秘密：</b>${escapeHtml(d.secrets) || "（未填）"}
         </div>`;
 }
 
@@ -358,8 +361,8 @@ function renderInterview() {
         for (const t of interviewTurns) {
             html += `
                 <div style="margin-bottom:8px;padding:8px 12px;border-radius:10px;background:var(--accent-soft);">
-                  <div style="color:var(--accent);font-size:12px;">🤖 ${t.q}</div>
-                  <div style="color:var(--ink-soft);font-size:13px;margin-top:4px;">你：${t.a || "（没想好）"}</div>
+                  <div style="color:var(--accent);font-size:12px;">🤖 ${escapeHtml(t.q)}</div>
+                  <div style="color:var(--ink-soft);font-size:13px;margin-top:4px;">你：${escapeHtml(t.a) || "（没想好）"}</div>
                 </div>`;
         }
     }
@@ -369,9 +372,9 @@ function renderInterview() {
     } else {
         html += `
             <div style="margin:10px 0;padding:10px 14px;border-radius:12px;background:var(--accent-soft);border:1px solid var(--accent-line);">
-              <div style="color:var(--accent-deep);font-size:12px;margin-bottom:4px;">💡 ${currentInsight || "让我想想她是谁…"}</div>
+              <div style="color:var(--accent-deep);font-size:12px;margin-bottom:4px;">💡 ${escapeHtml(currentInsight) || "让我想想她是谁…"}</div>
             </div>
-            <div style="font-size:15px;color:var(--ink);line-height:1.7;margin-bottom:10px;font-weight:600;">🤖 ${currentQuestion}</div>
+            <div style="font-size:15px;color:var(--ink);line-height:1.7;margin-bottom:10px;font-weight:600;">🤖 ${escapeHtml(currentQuestion)}</div>
             <textarea class="wiz-input" id="wiz-answer" rows="3" placeholder="回答她的问题…（也可以写『你定吧』让她发挥）"></textarea>
             <button id="wiz-submit" style="width:100%;margin-top:10px;padding:11px 0;border-radius:999px;border:none;background:linear-gradient(to right, #d65a7e, #b84567);color:#fff;font-size:14px;cursor:pointer;">回答并继续</button>
             <button id="wiz-finish" style="width:100%;margin-top:8px;padding:9px 0;border-radius:999px;border:1px solid var(--line);background:transparent;color:var(--ink-soft);font-size:12px;cursor:pointer;">✅ 信息够了，结束访谈</button>`;

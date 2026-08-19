@@ -13,12 +13,15 @@ export interface CharacterProfile {
     dislikes: string; // 讨厌
     relation: string; // 与用户的关系
     secrets: string; // 秘密 / 隐藏设定（未揭晓）
-    // 预设自带场景（选择该预设时设定世界；自定义创建时忽略）
+}
+
+// 预设角色 = 角色档案 + 自带场景（选择预设时设定世界；场景不随角色卡存档）
+export interface PresetProfile extends CharacterProfile {
     scene?: SceneConfig;
 }
 
 // 预设角色（选择时自动带上各自的世界场景）
-export const PRESETS: Record<string, CharacterProfile> = {
+export const PRESETS: Record<string, PresetProfile> = {
     nina: {
         name: "仁菜（Nina）",
         age: "17 岁",
@@ -141,10 +144,6 @@ export function emptyCharacter(): CharacterProfile {
     };
 }
 
-export function defaultCharacter(): CharacterProfile {
-    return { ...PRESETS.nina! };
-}
-
 export function loadCharacter(): CharacterProfile {
     try {
         const raw = localStorage.getItem(CHAR_KEY);
@@ -152,7 +151,7 @@ export function loadCharacter(): CharacterProfile {
         const data = JSON.parse(raw);
         // 以空模板为底，只填存档字段——绝不混入任何预设默认值
         const c: CharacterProfile = { ...emptyCharacter(), ...data };
-        delete (c as any).scene; // scene 属场景系统，不进角色卡
+        delete (c as { scene?: unknown }).scene; // 兼容旧存档可能带 scene 字段
         return c;
     } catch {
         return emptyCharacter();

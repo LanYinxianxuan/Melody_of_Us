@@ -15,6 +15,10 @@
   <title>MeloAI · 与你共鸣</title>
   <style>
       * { box-sizing: border-box; margin: 0; padding: 0; }
+      /* 全局溢出保护：任何子元素不产生横向滚动/溢出 */
+      html, body { max-width: 100%; overflow-x: hidden; }
+      img, canvas, svg, video { max-width: 100%; }
+
 
       :root {
           --accent: #d65a7e;

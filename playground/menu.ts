@@ -2,7 +2,8 @@
 // 每个存档槽位独立的 API 设置
 
 import { loadSlotRaw, loadSlotCharacterName, clearSlot, currentSlot } from "./storage";
-import { readAudioFile, setVoiceBase64, getVoiceBase64, clearVoice, getTtsStyle, setTtsStyle, getTtsApiKey, setTtsApiKey, getTtsLang, setTtsLang, synthesizeSpeech, TTS_LANGS, type TtsLang } from "./tts";
+import { escapeHtml } from "./util";
+import { readAudioFile, setVoiceBase64, getVoiceBase64, clearVoice, getTtsStyle, setTtsStyle, getTtsApiKey, setTtsApiKey, getTtsLang, setTtsLang, synthesizeSpeech, type TtsLang } from "./tts";
 
 const TOTAL_SLOTS = 5;
 
@@ -94,7 +95,7 @@ function renderSaves() {
             const aff = Math.round(s.affection ?? 0);
             card.innerHTML = `
                 <div class="s-head">
-                  <span class="s-name">存档 ${slot} · ${loadSlotCharacterName(slot)}</span>
+                  <span class="s-name">存档 ${slot} · ${escapeHtml(loadSlotCharacterName(slot))}</span>
                   <span style="display:flex;gap:6px;align-items:center;">
                     <span class="s-tag">${providerName}${hasKey ? " ✓" : " ✗"}</span>
                     <button class="s-del" data-del="${slot}">🗑 删除</button>
@@ -193,7 +194,6 @@ const slotLabel = document.getElementById("slot-label")!;
 function loadSlotSettings(slot: number) {
     const provider = localStorage.getItem(slotKey("provider", slot)) ?? "deepseek";
     const key = localStorage.getItem(slotKey("apikey", slot)) ?? "";
-    const model = localStorage.getItem(slotKey("model", slot)) ?? "";
     const customUrl = localStorage.getItem(slotKey("custom-url", slot)) ?? "";
     const effort = localStorage.getItem("melai-effort") ?? "high"; // effort 全局共享
 

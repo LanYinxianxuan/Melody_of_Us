@@ -1,7 +1,6 @@
 // tts.ts —— MiMo TTS VoiceClone 语音合成模块
 // 使用小米 MiMo v2.5-tts-voiceclone API，支持音色克隆
 
-import { store } from "./storage";
 
 // TTS 配置存储键
 const TTS_ENABLED_KEY = "melai-tts-enabled";
@@ -25,8 +24,6 @@ export const TTS_LANGS: Record<TtsLang, { name: string; flag: string }> = {
 // ============ TTS 状态 ============
 
 let ttsEnabled = localStorage.getItem(TTS_ENABLED_KEY) === "true";
-let audioQueue: HTMLAudioElement[] = [];
-let isPlaying = false;
 
 export function isTtsEnabled(): boolean {
     return ttsEnabled;
@@ -131,21 +128,54 @@ export function generateEmotionStyle(emotions: Record<string, number>): string {
 export function generateAudioTags(action: string, emotions: Record<string, number>): string[] {
     const tags: string[] = [];
 
-    // 根据动作添加标签
-    if (/笑|开心|嘿嘿|哈哈/.test(action)) tags.push("[微笑]");
-    if (/叹气|叹了口气/.test(action)) tags.push("[叹气]");
-    if (/哭|流泪|眼泪/.test(action)) tags.push("[抽泣]");
-    if (/呼吸|喘|深呼吸/.test(action)) tags.push("[深呼吸]");
-    if (/颤抖|发抖/.test(action)) tags.push("[颤抖]");
+    // 根据动作添加标签（MiMo 文档支持的英文控制标签）
+    if (/笑|开心|嘿嘿|哈哈/.test(action)) tags.push("[smiling]");
+    if (/叹气|叹了口气/.test(action)) tags.push("[sigh]");
+    if (/哭|流泪|眼泪/.test(action)) tags.push("[sobbing]");
+    if (/呼吸|喘|深呼吸/.test(action)) tags.push("[takes a breath]");
+    if (/颤抖|发抖/.test(action)) tags.push("[voice trembling]");
 
     // 根据情绪添加标签
-    if (emotions.shyness > 60) tags.push("[害羞]");
-    if (emotions.anger > 60) tags.push("[压低声音]");
-    if (emotions.sadness > 60) tags.push("[声音低落]");
-    if (emotions.fear > 50) tags.push("[声音颤抖]");
-    if (emotions.loneliness > 50) tags.push("[轻声]");
+    if (emotions.shyness > 60) tags.push("(shy, softly)");
+    if (emotions.anger > 60) tags.push("(angry, low voice)");
+    if (emotions.sadness > 60) tags.push("(sad, gentle)");
+    if (emotions.fear > 50) tags.push("(nervous, trembling)");
+    if (emotions.loneliness > 50) tags.push("(quiet, lonely)");
 
     return tags;
+}
+
+// 增强 TTS 文本：插入停顿/呼吸/语速标记（基于标点与情感），让语音情感自然
+export function enhanceTtsText(text: string, emotions?: Record<string, number>): string {
+    let t = text;
+
+    // 1) 情绪驱动的开头风格标签（整体语气 + 语速）
+    let prefix = "";
+    if (emotions) {
+        if (emotions.fatigue > 55) prefix = "(slowly, tired)";
+        else if (emotions.shyness > 55) prefix = "(shy, softly)";
+        else if (emotions.sadness > 50) prefix = "(sad, gentle)";
+        else if (emotions.anger > 50) prefix = "(angry, low voice)";
+        else if (emotions.joy > 60) prefix = "(happy, lively)";
+        else if (emotions.nervousness > 55) prefix = "(nervous, trembling)";
+        else if (emotions.anticipation > 55) prefix = "(excited, quick)";
+        else if (emotions.confidence > 60) prefix = "(confident, steady)";
+    }
+
+    // 2) 句间呼吸停顿：每两句句号插入一次 [takes a breath]（不打断自然节奏）
+    let sentenceCount = 0;
+    t = t.replace(/。+/g, (m) => {
+        sentenceCount++;
+        return sentenceCount % 2 === 0 ? m + "[takes a breath]" : m;
+    });
+
+    // 3) 感叹与疑问的韵律标记（句末语气上扬/加重）
+    t = t.replace(/！/g, "！[emphasis]");
+    t = t.replace(/？/g, "？[rising]");
+
+    // 4) 省略号保留为自然停顿（模型原生支持）
+
+    return prefix ? prefix + t : t;
 }
 
 // ============ 音频上传 ============
@@ -199,10 +229,10 @@ function getTtsConfig(): { baseUrl: string; headers: Record<string, string>; key
 }
 
 // 构建 TTS 请求的 messages
-function buildTtsMessages(text: string, style?: string): Array<{ role: string; content: string }> {
+function buildTtsMessages(text: string, style?: string, emotions?: Record<string, number>): Array<{ role: string; content: string }> {
     const messages: Array<{ role: string; content: string }> = [];
 
-    // user 消息：风格指令（可选）
+    // user 消息：风格指令（自然语言控制，可选）
     const styleText = style || getTtsStyle();
     if (styleText) {
         messages.push({ role: "user", content: styleText });
@@ -210,14 +240,14 @@ function buildTtsMessages(text: string, style?: string): Array<{ role: string; c
         messages.push({ role: "user", content: "" });
     }
 
-    // assistant 消息：要合成的文字（已经是目标语言）
-    messages.push({ role: "assistant", content: text });
+    // assistant 消息：要合成的文字（已是目标语言；插入停顿/重音/语速标记）
+    messages.push({ role: "assistant", content: enhanceTtsText(text, emotions) });
 
     return messages;
 }
 
 // 调用 TTS API 合成语音（非流式，兼容用）
-export async function synthesizeSpeech(text: string, style?: string): Promise<ArrayBuffer> {
+export async function synthesizeSpeech(text: string, style?: string, emotions?: Record<string, number>): Promise<ArrayBuffer> {
     const { baseUrl, headers, key } = getTtsConfig();
     const voiceBase64 = getVoiceBase64();
 
@@ -229,7 +259,7 @@ export async function synthesizeSpeech(text: string, style?: string): Promise<Ar
         throw new Error("请先上传音色样本");
     }
 
-    const messages = buildTtsMessages(text, style);
+    const messages = buildTtsMessages(text, style, emotions);
 
     const requestBody = {
         model: "mimo-v2.5-tts-voiceclone",
@@ -266,7 +296,7 @@ export async function synthesizeSpeech(text: string, style?: string): Promise<Ar
 }
 
 // 流式 TTS 合成：逐步返回音频块
-export async function* synthesizeSpeechStream(text: string, style?: string): AsyncGenerator<ArrayBuffer> {
+export async function* synthesizeSpeechStream(text: string, style?: string, emotions?: Record<string, number>): AsyncGenerator<ArrayBuffer> {
     const { baseUrl, headers, key } = getTtsConfig();
     const voiceBase64 = getVoiceBase64();
 
@@ -278,7 +308,7 @@ export async function* synthesizeSpeechStream(text: string, style?: string): Asy
         throw new Error("请先上传音色样本");
     }
 
-    const messages = buildTtsMessages(text, style);
+    const messages = buildTtsMessages(text, style, emotions);
 
     const requestBody = {
         model: "mimo-v2.5-tts-voiceclone",
@@ -435,7 +465,7 @@ let lastSpeakAt = 0;
 const SPEAK_COOLDOWN_MS = 3000;
 
 // 合成并播放语音（流式）
-export async function speak(text: string, style?: string): Promise<void> {
+export async function speak(text: string, style?: string, emotions?: Record<string, number>): Promise<void> {
     if (!ttsEnabled) return;
 
     // 冷却检查
@@ -450,7 +480,7 @@ export async function speak(text: string, style?: string): Promise<void> {
         const pcmChunks: Uint8Array[] = [];
 
         // 流式接收音频块
-        for await (const chunk of synthesizeSpeechStream(text, style)) {
+        for await (const chunk of synthesizeSpeechStream(text, style, emotions)) {
             const bytes = new Uint8Array(chunk);
             pcmChunks.push(bytes);
         }

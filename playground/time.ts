@@ -93,12 +93,22 @@ let awaitingReply = false;
 let lastProactiveAt = 0;
 const PROACTIVE_COOLDOWN_MS = 60000; // 两次主动开口最短间隔
 
+// 主动开口门控：由 chat.ts 注册，返回 false 时不允许此刻开口
+// （AI 正在回复中 / 用户正在输入 → 不打断主流程）
+let proactiveGate: (() => boolean) | null = null;
+export function setProactiveGate(fn: () => boolean) {
+    proactiveGate = fn;
+}
+
 export function markUserReplied() {
     awaitingReply = false;
 }
 
 export function tryProactiveSpeak(text: string): boolean {
     const now = Date.now();
+    if (proactiveGate && !proactiveGate()) {
+        return false; // 忙碌/输入中：不排队、不占用冷却，下次再试
+    }
     if (awaitingReply) {
         console.log("[主动开口] 跳过：awaitingReply=true");
         return false;
@@ -117,6 +127,7 @@ export function tryProactiveSpeak(text: string): boolean {
 // 被冷落升级：允许突破"等待回复"，但仍有冷却
 export function tryProactiveSpeakForce(text: string): boolean {
     const now = Date.now();
+    if (proactiveGate && !proactiveGate()) return false;
     if (now - lastProactiveAt < PROACTIVE_COOLDOWN_MS) return false;
     lastProactiveAt = now;
     awaitingReply = true;

@@ -283,7 +283,6 @@ export async function planTodayAgenda(chatFn: (text: string) => Promise<{ agenda
 // 兜底：把当前场景作息表转成今天的日程（无 AI key 时也能显示时间线）
 export function fallbackPlanToday() {
     const today = currentDayIndex();
-    const s = store.scene;
     for (const slot of getSchedule()) {
         const activity = slot.activity.replace(/你/g, "她");
         addAgendaItem(today, { time: slot.time, title: slot.label, desc: activity, source: "ai" });
