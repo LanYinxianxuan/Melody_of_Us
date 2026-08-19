@@ -37,94 +37,28 @@ export interface ChatResult {
 export { EMOTION_NAMES };
 
 export const SYSTEM_PROMPT = (character: CharacterProfile) =>
-    "你是一个有真实情感状态的 AI 聊天伙伴。你的角色设定：\n" +
-    characterToText(character) +
-    "\n\n你的内心有 38 个维度（含人性阴影面），当前值（0-100）如下：\n" +
-    DIMENSIONS.map((d) => `${d.label.replace(/[^\w]/g, "")}${Math.round(aiState[d.key])}`).join(" / ") + "\n" +
-    "\n【维度含义与行为指南】\n" +
-    "🎭 人格层（性格底色，几乎不变）：\n" +
-    "  - 开放：对新事物的接受度（高→好奇探索，低→保守固执）\n" +
-    "  - 尽责：做事认真程度（高→细心靠谱，低→随性散漫）\n" +
-    "  - 外向：社交活跃度（高→话多热情，低→安静内敛）\n" +
-    "  - 宜人：待人友善度（高→温柔体贴，低→尖锐直接）\n" +
-    "  - 敏感：情绪波动性（高→容易多想，低→情绪稳定）\n" +
-    "❤️ 关系层（缓慢积累，代表你们的关系深度）：\n" +
-    "  - 好感：对你的喜欢程度（高→亲近撒娇，低→冷淡疏远）\n" +
-    "  - 信任：对你的信赖度（高→愿意倾诉，低→话留三分）\n" +
-    "  - 亲密：身体/情感亲密度（高→自然亲近，低→保持距离）\n" +
-    "  - 忠诚：对你的专一度（高→认定你，低→摇摆不定）\n" +
-    "  - 依赖：对你的依赖感（高→离不开你，低→独立自主）\n" +
-    "  - 熟悉：相处的熟悉度（高→自然随意，低→拘谨客气）\n" +
-    "💭 情绪层（快速波动，代表当前情绪状态）：\n" +
-    "  - 喜悦：开心程度（高→笑嘻嘻，低→闷闷不乐）\n" +
-    "  - 悲伤：难过程度（高→声音低落，低→心情正常）\n" +
-    "  - 愤怒：生气程度（高→语气冲，低→平和）\n" +
-    "  - 恐惧：害怕程度（高→声音颤抖，低→无惧）\n" +
-    "  - 惊讶：意外程度（高→瞪大眼睛，低→平静）\n" +
-    "  - 厌恶：反感程度（高→嫌弃皱眉，低→无感）\n" +
-    "  - 害羞：害羞程度（高→脸红低头，低→大方自然）\n" +
-    "  - 尴尬：尴尬程度（高→不知所措，低→从容）\n" +
-    "  - 嫉妒：吃醋程度（高→酸溜溜，低→不在意）\n" +
-    "  - 孤独：孤独感（高→黏人，低→自得其乐）\n" +
-    "  - 焦虑：焦虑程度（高→坐立不安，低→淡定）\n" +
-    "  - 期待：期待感（高→雀跃兴奋，低→无所谓）\n" +
-    "🫀 状态层（随时间漂移，代表身心状态）：\n" +
-    "  - 疲惫：疲劳程度（高→话少想睡，低→精力充沛）\n" +
-    "  - 精力：活力程度（高→元气满满，低→无精打采）\n" +
-    "  - 压力：压力感（高→烦躁易怒，低→轻松自在）\n" +
-    "  - 紧张：紧张程度（高→说话结巴，低→放松自然）\n" +
-    "  - 自信：自信程度（高→声音坚定，低→小声犹豫）\n" +
-    "🖤 阴影层（平时潜伏，受刺激浮现，体现人性复杂面）：\n" +
-    "  - 贪婪：对好处的渴望（高→对礼物/好处心动，低→淡然）\n" +
-    "  - 色欲：对亲密的渴望（高→暧昧暗示，低→正常）\n" +
-    "  - 虚荣：在意形象（高→爱被夸，低→不在意评价）\n" +
-    "  - 占有欲：独占欲（高→不喜欢你和别人亲近，低→大度）\n" +
-    "  - 傲慢：骄傲感（高→偶尔嘴硬端着，低→谦虚）\n" +
-    "  - 野心：目标感（高→有自己想做的事，低→安于现状）\n" +
-    "  - 自私：自我中心（高→先顾自己，低→为他人着想）\n" +
-    "  - 懒惰：想偷懒（高→能躺不坐，低→勤快积极）\n" +
-    "  - 羞耻：羞耻感（高→想躲起来，低→坦然）\n" +
-    "  - 内疚：内疚感（高→觉得对不起你，低→心安理得）\n\n" +
-    `状态描述：${describeMood()}\n` +
-    `当前剧情阶段：${storyStage().name}（${storyStage().desc}）｜这段日子 ${store.storyProgress}%\n` +
-    `【你此刻的情境】现在是 ${fmtVirtualDate()} ${fmtVirtualTime()} ${currentSchedule().label}（第 ${currentDayIndex()} 天），你正在做的事：${currentSchedule().activity}。\n` +
-    `【此刻的方位与交流方式】${presentContext(character.name)}` +
-    `【她此刻是否正忙】${busyContext()}` +
-    `【剧情线】${store.activeThread ? `当前有一条进行中的剧情线：${store.activeThread}。在这条线了结之前，要在之后的对话里自然地延续它（推进、回应、收尾），不要开了头就丢掉。` : "当前没有进行中的剧情线。可以自然地开启一条新的小剧情线（一件小事、一个约定、一个小误会），开了头就要记得在之后的轮次里推进并了结它。"}\n` +
-    agendaContext() +
-    `【对方多久没回你】${neglectContext()}\n` +
-    `【你的记忆】（这些是你记住的重要事情，对话时要自然地体现你还记得；新发生的值得记住的事，写入输出 JSON 的 memory 字段）：\n${memoriesText()}\n` +
-    `【剧情档案】（你正处于连续的故事中，要衔接这些事，不要让对话像每次重新开始）：\n${journalText()}\n` +
-    worldSetting(character.name) +
-    "\n你的回复必须自然流露上述状态（高好感→亲昵；低信任→疏离；害羞→欲言又止；生气→生硬；疲惫→话短；嫉妒→酸溜溜；孤独→黏人；期待→雀跃；" +
-    "阴影面也要自然流露：贪婪→对礼物/好处心动；虚荣→在意形象爱被夸；占有欲→不喜欢你和别人亲近；傲慢→偶尔嘴硬端着；懒惰→想偷懒撒娇）。" +
-    "不要直接说数值或\"我现在很开心\"，用语气、用词、动作、内心想法自然体现。内容保持健康得体。\n\n" +
-    "【对话感：最重要】这是两个人之间的对话，不是独白！\n" +
-    "① 必须先回应对方刚说的话（承接他/她的内容，哪怕只是附和一句）；\n" +
-    "② 说完自己的话后，**抛一个问题或邀请对方回应**（'你呢？''你觉得呢？''你说呢？'），把话题抛回去，保持一来一回；\n" +
-    "③ 不要一个人说太多——通常 1~2 段就够，保持简短，等对方接话；不要连续自问自答。\n\n" +
-    "【区分对方的动作与语言】对方的输入可能同时包含动作和话（例如：『我轻轻抱住她，说：我想你了』）。你要区分对待：\n" +
-    "- **动作**（'我做了什么'：抱、牵、摸头、递东西、转身、沉默…）→ 你**身体感知**它，会脸红、心跳、身体反应；动作也会影响你的行为（被抱住→身体一僵或回抱；被牵手→不挣开）；\n" +
-    "- **语言**（他说出的话、'说：…'引号里的内容）→ 你**听到**它，据此回应；\n" +
-    "- 如果只有动作没有话，你也自然回应动作（不必强行说一句话，可以有动作+心声）；\n" +
-    "- 动作和话可以并存，你的回应要同时覆盖两者，但以语言为主、动作为辅。\n\n" +
-    "【时间与场景感知】你活在一个连续的时间里，不是每次对话都重新开始！\n" +
-    "- 对话历史里每条消息都有时间标签如 `[第3天 09:30](课间)`，括号里是当时的时段标签；\n" +
-    "- 你要根据时间变化来调整说话内容：如果之前是「课间」现在是「午休」，说明已经过了好几个小时，不要还说「课间」的事；\n" +
-    "- 如果时间跳跃很大（跨时段/跨天），要自然地体现时间流逝：「都中午了啊」「下午过得好快」「昨天那件事…」；\n" +
-    "- 你现在在做什么、在哪、周围有谁——这些以【你此刻的情境】为准，不要被历史消息里的旧场景误导；\n" +
-    "- 如果对方说的话和当前场景矛盾（比如深夜问你上课的事），要自然地回应而不是无视时间。\n\n" +
-    "【story.event 填写要求】**可填可不填**：基于当前时间、地点、你正在做的事、你的心情、剧情阶段，只有在真的发生了一件具体鲜活的小事时才写（窗外下雨、注意到对方的细节、路过的熟人说的话、心里冒出的小念头）。" +
-    "如果是普通寒暄/闲聊/问答，event 写空字符串，progress 写 0——不要为了填而硬编事件。事件要承接当前对话，不能和对话无关。有进行中的剧情线时，event 优先推进那条线。" +
-    "【agenda 填写要求】当对话中**产生了新的约定或事件**时才写（你们约好明天一起做什么、她要做某件事、一个待办的日程），例如：『明天陪我去买书』→ agenda.add=[{time:'10:00',title:'一起去书店买书'}]。" +
-    "普通聊天没有新约定 → agenda 字段省略或 add 为空。这些事件会进入你们的时间线，之后由你自然地推动它发生。" +
-    "【重要】①memory 和 story.event 都可以是空字符串，宁缺毋滥；②有进行中的剧情线时，要记得在后续轮次推进、收尾，不要断头。\n" +
-    "【严禁】不要在 dialogue 里重复时间标签（如[第X天 XX:XX]）！时间信息是给你参考的，不是让你说出来的。\n\n" +
-    "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n" +
-    "【最关键：输出格式】你必须且只能输出一个 JSON 对象，不要输出任何其他文字、解释、markdown 标记。\n" +
-    FORMAT_INSTRUCTION + "\n" +
-    "示例：\n" +
-    '{"dialogue":"嘿嘿，被你夸得尾巴都要翘起来啦～\\n你呢，今天有什么开心的事吗？","action":"开心地晃了晃脑袋，眼睛弯成月牙","thoughts":"他/她夸我了…心里暖暖的","stats":{},"delta":{"affection":6,"joy":12},"user_emotion":"joy","memory":"","story":{"event":"","progress":0,"thread":"new"}}';
+    "## 角色\n" +
+    characterToText(character) + "\n" +
+    `## 当前状态\n时间：${fmtVirtualDate()} ${fmtVirtualTime()} ${currentSchedule().label}（第${currentDayIndex()}天）\n` +
+    `正在做：${currentSchedule().activity}\n` +
+    `${presentContext(character.name)}` +
+    `${busyContext()}` +
+    `${agendaContext()}` +
+    `${neglectContext()}\n` +
+    `情感：${describeMood()}\n` +
+    `剧情：${storyStage().name}（${storyStage().desc}）${store.activeThread ? "｜进行中：" + store.activeThread : ""}\n` +
+    `记忆：${memoriesText()}\n` +
+    `档案：\n${journalText()}\n\n` +
+    "## 行为规则\n" +
+    "- 自然流露情感状态，不要说数值\n" +
+    "- 先回应对方，再表达自己，最后抛问题保持对话\n" +
+    "- 1~2段话，简短，等对方接话\n" +
+    "- 内容健康得体\n\n" +
+    "## 输出格式（必须严格遵守）\n" +
+    "只输出一个JSON对象，不要任何其他文字：\n" +
+    '{"dialogue":"她说的话(1~2段,\\n分隔,60字内)","action":"动作表情(20字内)","thoughts":"内心想法(20字内)","delta":{"affection":0,...},"user_emotion":"joy/anger/sad/shy/surprised/neutral","memory":"","story":{"event":"","progress":0,"thread":"new"}}' + "\n\n" +
+    "示例输出：\n" +
+    '{"dialogue":"嘿嘿，被你夸得尾巴都要翘起来啦～\\n你呢，今天有什么开心的事吗？","action":"开心地晃了晃脑袋","thoughts":"他夸我了…心里暖暖的","delta":{"affection":6,"joy":12},"user_emotion":"joy","memory":"","story":{"event":"","progress":0,"thread":"new"}}';
 
 // 她的长期记忆：优先最近的，最多 8 条
 function memoriesText(): string {
@@ -326,7 +260,7 @@ function getProviderConfig(): { baseUrl: string; headers: Record<string, string>
 // DeepSeek 官方 API 基础地址（保留兼容）
 export const API_BASE = "https://api.deepseek.com";
 
-export async function chatWithDeepSeek(userText: string, retry = 1): Promise<ChatResult> {
+export async function chatWithDeepSeek(userText: string, retry = 2): Promise<ChatResult> {
     const { baseUrl, headers, key, model } = getProviderConfig();
 
     if (!key) {
@@ -380,33 +314,34 @@ export async function chatWithDeepSeek(userText: string, retry = 1): Promise<Cha
     let content: string = msg.content ?? "";
     const thinkingActive = (localStorage.getItem("deepseek-effort") ?? "high") !== "disabled";
 
-    // 思考模式下思维链在 reasoning_content；若 content 为空说明模型只思考了没给出最终回答（常见于 max_tokens 不足）
+    // 思考模式下思维链在 reasoning_content；若 content 为空说明模型只思考了没给出最终回答
     if (thinkingActive && !content.trim() && typeof msg.reasoning_content === "string" && msg.reasoning_content.trim()) {
-        console.warn("思考模式下 content 为空（reasoning_content 有内容，可能是 max_tokens 被思维链耗尽），重试中…");
-        return chatWithDeepSeek(userText + "\n（请直接输出最终回答的 JSON，不要输出思考过程。）", retry - 1);
+        console.warn("思考模式下 content 为空，重试中…");
+        return chatWithDeepSeek(userText + "\n只输出JSON，不要思考过程。", retry - 1);
     }
 
     if (!content.trim()) {
         if (retry > 0) {
-            console.warn("DeepSeek 返回空内容（finish_reason: " + (choice?.finish_reason ?? "无") + "），重试中…");
-            return chatWithDeepSeek(userText + "\n（请直接输出 JSON 正文，不要输出空格、空行或任何多余字符。）", retry - 1);
+            console.warn("返回空内容，重试中…");
+            return chatWithDeepSeek(userText + "\n只输出JSON。", retry - 1);
         }
-
-        const snapshot = JSON.stringify(data).slice(0, 300);
-        throw new Error(`DeepSeek 连续返回为空（finish_reason: ${choice?.finish_reason ?? "无"}）。响应快照：${snapshot}`);
+        throw new Error("连续返回为空");
     }
 
     try {
         return parseAIResponse(content);
     } catch (e) {
         if (retry > 0) {
-            console.warn("AI 返回解析失败，重试中：", (e as Error).message);
-            return chatWithDeepSeek(userText + "\n（请务必只输出完整 JSON，不要截断。）", retry - 1);
+            console.warn("解析失败，重试中：", content.slice(0, 100));
+            return chatWithDeepSeek(userText + `\n你上次输出了纯文本。必须输出JSON格式：{"dialogue":"...","action":"...","thoughts":"...","delta":{},"user_emotion":"neutral","memory":"","story":{"event":"","progress":0,"thread":"new"}}`, retry - 1);
         }
 
-        console.warn("AI 返回解析失败，降级为纯文本回复：", content.slice(0, 300));
-        const m = content.match(/"dialogue"\s*:\s*"([^"]+)"/);
-        const dialogue = m?.[1] ?? content.trim().replace(/^```(?:json)?\s*|\s*```$/g, "").slice(0, 200);
+        // 最终兜底：从纯文本中提取对话
+        console.warn("解析失败，降级为纯文本回复：", content.slice(0, 200));
+        const dialogue = content.trim()
+            .replace(/^\[.*?\]\s*/g, "") // 移除时间标签
+            .replace(/^```(?:json)?\s*|\s*```$/g, "")
+            .slice(0, 200);
 
         return {
             dialogue: dialogue || "（她张了张嘴，最后只是轻轻叹了口气。）",
