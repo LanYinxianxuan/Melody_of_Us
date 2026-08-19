@@ -384,9 +384,11 @@ function renderInterview() {
 async function nextInterviewTurn() {
     interviewLoading = true;
     renderInterview();
+    console.log("[访谈] 开始下一轮，当前轮数:", interviewTurns.length);
 
     try {
         const r = await interviewWithAI(interviewIntro, interviewTurns);
+        console.log("[访谈] AI 返回:", JSON.stringify(r).slice(0, 200));
 
         if (r.done && r.character) {
             interviewDone = true;
