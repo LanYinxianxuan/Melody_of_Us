@@ -290,13 +290,20 @@
       <div id="tts-voice-status" style="font-size:11px;margin-top:4px;color:var(--ink-soft);">未上传</div>
     </div>
     <div class="setting">
+      <label>合成语言（中文会自动翻译成日文再合成）</label>
+      <select id="tts-lang">
+        <option value="zh">🇨🇳 中文（原声）</option>
+        <option value="ja">🇯🇵 日本語（自动翻译）</option>
+      </select>
+    </div>
+    <div class="setting">
       <label>风格指令（可选，控制语气/情感/语速，如「温柔轻声」「活泼元气」）</label>
       <input id="tts-style" type="text" placeholder="如：温柔轻声，带一点害羞">
     </div>
     <div class="setting">
       <label>TTS 测试</label>
       <div style="display:flex;gap:8px;">
-        <input id="tts-test-text" type="text" placeholder="输入要朗读的文字" style="flex:1;">
+        <input id="tts-test-text" type="text" placeholder="输入要朗读的文字（中文）" style="flex:1;">
         <button id="tts-test-btn" style="padding:8px 16px;border-radius:8px;border:1px solid var(--accent-line);background:var(--accent-soft);color:var(--accent);font-size:12px;cursor:pointer;">🔊 试听</button>
       </div>
       <div id="tts-test-status" style="font-size:11px;margin-top:4px;color:var(--ink-soft);"></div>

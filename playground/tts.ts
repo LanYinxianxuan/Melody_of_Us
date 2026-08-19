@@ -8,11 +8,19 @@ const TTS_ENABLED_KEY = "melai-tts-enabled";
 const TTS_VOICE_KEY_PREFIX = "melai-tts-voice"; // 每个槽位独立
 const TTS_STYLE_KEY_PREFIX = "melai-tts-style";
 const TTS_API_KEY_PREFIX = "melai-tts-apikey"; // TTS 专用 API Key
+const TTS_LANG_KEY_PREFIX = "melai-tts-lang"; // TTS 语言：zh / ja
 
 // 当前槽位
 function currentSlot(): number {
     return parseInt(localStorage.getItem("melai-current-slot") ?? "1", 10) || 1;
 }
+
+// 支持的语言
+export type TtsLang = "zh" | "ja";
+export const TTS_LANGS: Record<TtsLang, { name: string; flag: string }> = {
+    zh: { name: "中文", flag: "🇨🇳" },
+    ja: { name: "日本語", flag: "🇯🇵" },
+};
 
 // ============ TTS 状态 ============
 
@@ -64,6 +72,71 @@ export function getTtsApiKey(): string {
 // 保存 TTS 专用 API Key
 export function setTtsApiKey(key: string) {
     localStorage.setItem(`${TTS_API_KEY_PREFIX}-${currentSlot()}`, key);
+}
+
+// 获取 TTS 语言
+export function getTtsLang(): TtsLang {
+    const lang = localStorage.getItem(`${TTS_LANG_KEY_PREFIX}-${currentSlot()}`);
+    return (lang === "ja" || lang === "zh") ? lang : "zh";
+}
+
+// 保存 TTS 语言
+export function setTtsLang(lang: TtsLang) {
+    localStorage.setItem(`${TTS_LANG_KEY_PREFIX}-${currentSlot()}`, lang);
+}
+
+// ============ 翻译功能 ============
+
+// 简单的中日文翻译词典（常用短句）
+const ZH_TO_JA_DICT: Record<string, string> = {
+    "你好": "こんにちは",
+    "早上好": "おはよう",
+    "晚安": "おやすみ",
+    "谢谢": "ありがとう",
+    "对不起": "ごめんなさい",
+    "没关系": "大丈夫",
+    "喜欢你": "好きだよ",
+    "讨厌": "嫌だ",
+    "开心": "嬉しい",
+    "难过": "悲しい",
+    "生气": "怒ってる",
+    "害羞": "恥ずかしい",
+    "害怕": "怖い",
+    "想你": "会いたい",
+    "笨蛋": "バカ",
+    "最喜欢": "大好き",
+    "早上": "朝",
+    "中午": "昼",
+    "晚上": "夜",
+    "明天": "明日",
+    "今天": "今日",
+    "昨天": "昨日",
+};
+
+// 使用免费翻译 API 翻译中文到日文
+async function translateZhToJa(text: string): Promise<string> {
+    // 先检查词典
+    const trimmed = text.trim();
+    if (ZH_TO_JA_DICT[trimmed]) {
+        return ZH_TO_JA_DICT[trimmed];
+    }
+
+    try {
+        // 使用 Google Translate 免费 API
+        const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=zh-CN&tl=ja&dt=t&q=${encodeURIComponent(text)}`;
+        const resp = await fetch(url);
+        const data = await resp.json();
+
+        // 提取翻译结果
+        if (data && data[0]) {
+            return data[0].map((item: any[]) => item[0]).join("");
+        }
+    } catch (e) {
+        console.warn("[TTS] 翻译失败，使用原文:", (e as Error).message);
+    }
+
+    // 翻译失败则返回原文
+    return text;
 }
 
 // ============ 音频上传 ============
@@ -120,6 +193,7 @@ function getTtsConfig(): { baseUrl: string; headers: Record<string, string>; key
 export async function synthesizeSpeech(text: string, style?: string): Promise<ArrayBuffer> {
     const { baseUrl, headers, key } = getTtsConfig();
     const voiceBase64 = getVoiceBase64();
+    const lang = getTtsLang();
 
     if (!key) {
         throw new Error("请先设置 API Key");
@@ -127,6 +201,13 @@ export async function synthesizeSpeech(text: string, style?: string): Promise<Ar
 
     if (!voiceBase64) {
         throw new Error("请先上传音色样本");
+    }
+
+    // 翻译文本（如果选择日语）
+    let synthesisText = text;
+    if (lang === "ja") {
+        synthesisText = await translateZhToJa(text);
+        console.log("[TTS] 翻译结果:", { original: text.slice(0, 50), translated: synthesisText.slice(0, 50) });
     }
 
     // 构建 messages
@@ -141,7 +222,7 @@ export async function synthesizeSpeech(text: string, style?: string): Promise<Ar
     }
 
     // assistant 消息：要合成的文字
-    messages.push({ role: "assistant", content: text });
+    messages.push({ role: "assistant", content: synthesisText });
 
     // 构建请求体
     const requestBody = {
@@ -153,7 +234,7 @@ export async function synthesizeSpeech(text: string, style?: string): Promise<Ar
         },
     };
 
-    console.log("[TTS] 发送合成请求:", { text: text.slice(0, 50) + "...", style: styleText });
+    console.log("[TTS] 发送合成请求:", { text: synthesisText.slice(0, 50) + "...", lang, style: styleText });
 
     const resp = await fetch(`${baseUrl}/chat/completions`, {
         method: "POST",

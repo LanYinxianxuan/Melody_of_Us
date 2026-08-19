@@ -2,7 +2,7 @@
 // 每个存档槽位独立的 API 设置
 
 import { loadSlotRaw, loadSlotCharacterName, clearSlot, currentSlot } from "./storage";
-import { readAudioFile, setVoiceBase64, getVoiceBase64, clearVoice, getTtsStyle, setTtsStyle, getTtsApiKey, setTtsApiKey, synthesizeSpeech } from "./tts";
+import { readAudioFile, setVoiceBase64, getVoiceBase64, clearVoice, getTtsStyle, setTtsStyle, getTtsApiKey, setTtsApiKey, getTtsLang, setTtsLang, synthesizeSpeech, TTS_LANGS, type TtsLang } from "./tts";
 
 const TOTAL_SLOTS = 5;
 
@@ -354,6 +354,7 @@ const ttsApiKeyInput = document.getElementById("tts-api-key") as HTMLInputElemen
 const ttsVoiceFile = document.getElementById("tts-voice-file") as HTMLInputElement;
 const ttsVoiceClear = document.getElementById("tts-voice-clear") as HTMLButtonElement;
 const ttsVoiceStatus = document.getElementById("tts-voice-status")!;
+const ttsLangSelect = document.getElementById("tts-lang") as HTMLSelectElement;
 const ttsStyleInput = document.getElementById("tts-style") as HTMLInputElement;
 const ttsTestText = document.getElementById("tts-test-text") as HTMLInputElement;
 const ttsTestBtn = document.getElementById("tts-test-btn") as HTMLButtonElement;
@@ -362,6 +363,7 @@ const ttsTestStatus = document.getElementById("tts-test-status")!;
 // 初始化 TTS 设置
 function loadTtsSettings() {
     ttsApiKeyInput.value = getTtsApiKey();
+    ttsLangSelect.value = getTtsLang();
     const voice = getVoiceBase64();
     if (voice) {
         ttsVoiceStatus.textContent = "✅ 已上传音色样本";
@@ -378,6 +380,12 @@ loadTtsSettings();
 // 保存 TTS API Key
 ttsApiKeyInput.addEventListener("change", () => {
     setTtsApiKey(ttsApiKeyInput.value.trim());
+    showHint();
+});
+
+// 保存 TTS 语言
+ttsLangSelect.addEventListener("change", () => {
+    setTtsLang(ttsLangSelect.value as TtsLang);
     showHint();
 });
 
