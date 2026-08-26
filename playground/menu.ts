@@ -93,34 +93,40 @@ function renderSaves() {
         if (save) {
             const s = save.aiState as Record<string, number>;
             const aff = Math.round(s.affection ?? 0);
+            const tagIcon = hasKey
+                ? `<svg class="ico" viewBox="0 0 24 24" style="width:10px;height:10px;"><use href="#i-check"/></svg>`
+                : `<svg class="ico" viewBox="0 0 24 24" style="width:10px;height:10px;"><use href="#i-x"/></svg>`;
             card.innerHTML = `
                 <div class="s-head">
                   <span class="s-name">存档 ${slot} · ${escapeHtml(loadSlotCharacterName(slot))}</span>
                   <span style="display:flex;gap:6px;align-items:center;">
-                    <span class="s-tag">${providerName}${hasKey ? " ✓" : " ✗"}</span>
-                    <button class="s-del" data-del="${slot}">🗑 删除</button>
+                    <span class="s-tag">${providerName}${tagIcon}</span>
+                    <button class="s-del" data-del="${slot}"><svg class="ico" viewBox="0 0 24 24" style="width:12px;height:12px;"><use href="#i-trash-2"/></svg>删除</button>
                   </span>
                 </div>
                 <div class="s-info">
-                  好感 <b style="color:#f472b6;">${aff}/100</b> ｜ ${moodLine(s)} ｜ 对话 ${save.turnCount ?? 0} 轮 ｜ 剧情 ${save.storyProgress ?? 0}%
-                  <br><span style="color:rgba(255,255,255,0.4);">${fmtTime((save.savedAt as number) ?? Date.now())}</span>
+                  好感 <b>${aff}/100</b> ｜ ${moodLine(s)} ｜ 对话 ${save.turnCount ?? 0} 轮 ｜ 剧情 ${save.storyProgress ?? 0}%
+                  <br><span>${fmtTime((save.savedAt as number) ?? Date.now())}</span>
                 </div>
-                <div style="display:flex;gap:8px;margin-top:8px;">
-                  <button class="s-enter" data-slot="${slot}" data-new="0" style="flex:1;padding:7px 0;border-radius:999px;border:none;background:var(--accent);color:#fff;font-size:12px;cursor:pointer;">▶ 进入</button>
-                  <button class="s-config" data-slot="${slot}" style="flex:1;padding:7px 0;border-radius:999px;border:1px solid var(--line);background:var(--card);color:var(--ink-soft);font-size:12px;cursor:pointer;">⚙️ API 设置</button>
+                <div class="s-actions">
+                  <button class="s-enter btn btn-primary" data-slot="${slot}" data-new="0"><svg class="ico" viewBox="0 0 24 24" style="width:12px;height:12px;"><use href="#i-arrow-right"/></svg>进入</button>
+                  <button class="s-config btn btn-ghost" data-slot="${slot}"><svg class="ico" viewBox="0 0 24 24" style="width:12px;height:12px;"><use href="#i-sliders-horizontal"/></svg>API 设置</button>
                 </div>`;
         } else {
+            const tagIcon = hasKey
+                ? `<svg class="ico" viewBox="0 0 24 24" style="width:10px;height:10px;"><use href="#i-check"/></svg>`
+                : `<svg class="ico" viewBox="0 0 24 24" style="width:10px;height:10px;"><use href="#i-x"/></svg>`;
             card.innerHTML = `
                 <div class="s-head">
                   <span class="s-name">存档 ${slot}</span>
                   <span style="display:flex;gap:6px;align-items:center;">
-                    <span class="s-tag">${providerName}${hasKey ? " ✓" : " ✗"}</span>
+                    <span class="s-tag">${providerName}${tagIcon}</span>
                   </span>
                 </div>
                 <div class="s-empty">还没有记录。</div>
-                <div style="display:flex;gap:8px;margin-top:8px;">
-                  <button class="s-enter" data-slot="${slot}" data-new="1" style="flex:1;padding:7px 0;border-radius:999px;border:none;background:var(--accent);color:#fff;font-size:12px;cursor:pointer;">＋ 新建</button>
-                  <button class="s-config" data-slot="${slot}" style="flex:1;padding:7px 0;border-radius:999px;border:1px solid var(--line);background:var(--card);color:var(--ink-soft);font-size:12px;cursor:pointer;">⚙️ API 设置</button>
+                <div class="s-actions">
+                  <button class="s-enter btn btn-primary" data-slot="${slot}" data-new="1"><svg class="ico" viewBox="0 0 24 24" style="width:12px;height:12px;"><use href="#i-plus"/></svg>新建</button>
+                  <button class="s-config btn btn-ghost" data-slot="${slot}"><svg class="ico" viewBox="0 0 24 24" style="width:12px;height:12px;"><use href="#i-sliders-horizontal"/></svg>API 设置</button>
                 </div>`;
         }
 
@@ -164,7 +170,7 @@ function renderSaves() {
                 loadSlotSettings(configSlot);
                 renderSaves();
                 // 滚动到设置区
-                const settingsCard = document.querySelector(".card:nth-of-type(2)");
+                const settingsCard = document.getElementById("settings-panel");
                 settingsCard?.scrollIntoView({ behavior: "smooth" });
                 return;
             }
@@ -314,16 +320,16 @@ async function testApi() {
 
     if (!key) {
         apiStatus.style.display = "block";
-        apiStatus.style.color = "#ffb0b0";
-        apiStatus.textContent = "⚠️ 请先输入 API Key";
+        apiStatus.style.color = "var(--danger)";
+        apiStatus.textContent = "请先输入 API Key";
         return;
     }
 
     const baseUrl = getApiBase();
     if (!baseUrl) {
         apiStatus.style.display = "block";
-        apiStatus.style.color = "#ffb0b0";
-        apiStatus.textContent = "⚠️ 请先填写自定义 API 地址";
+        apiStatus.style.color = "var(--danger)";
+        apiStatus.textContent = "请先填写自定义 API 地址";
         return;
     }
 
@@ -331,7 +337,7 @@ async function testApi() {
     saveCurrentSettings();
 
     apiTestBtn.disabled = true;
-    apiTestBtn.textContent = "⏳ 测试中…";
+    apiTestBtn.textContent = "测试中…";
     apiStatus.style.display = "block";
     apiStatus.style.color = "var(--ink-soft)";
     apiStatus.textContent = `正在连接 ${PROVIDERS[provider]?.name ?? provider} API…`;
@@ -367,14 +373,14 @@ async function testApi() {
         modelSelect.value = models[0]!;
         localStorage.setItem(slotKey("model", activeSlot), modelSelect.value);
 
-        apiStatus.style.color = "#34d399";
-        apiStatus.textContent = `✅ Key 有效！已获取 ${models.length} 个模型`;
+        apiStatus.style.color = "var(--ink)";
+        apiStatus.textContent = `Key 有效！已获取 ${models.length} 个模型`;
     } catch (e) {
-        apiStatus.style.color = "#ffb0b0";
-        apiStatus.textContent = `❌ 测试失败：${(e as Error).message}`;
+        apiStatus.style.color = "var(--danger)";
+        apiStatus.textContent = `测试失败：${(e as Error).message}`;
     } finally {
         apiTestBtn.disabled = false;
-        apiTestBtn.textContent = "🔍 测试";
+        apiTestBtn.textContent = "测试";
     }
 }
 
@@ -398,8 +404,8 @@ function loadTtsSettings() {
     ttsLangSelect.value = getTtsLang();
     const voice = getVoiceBase64();
     if (voice) {
-        ttsVoiceStatus.textContent = "✅ 已上传音色样本";
-        ttsVoiceStatus.style.color = "#34d399";
+        ttsVoiceStatus.textContent = "已上传音色样本";
+        ttsVoiceStatus.style.color = "var(--ink)";
     } else {
         ttsVoiceStatus.textContent = "未上传";
         ttsVoiceStatus.style.color = "var(--ink-soft)";
@@ -427,15 +433,15 @@ ttsVoiceFile.addEventListener("change", async () => {
     if (!file) return;
 
     try {
-        ttsVoiceStatus.textContent = "⏳ 读取中...";
+        ttsVoiceStatus.textContent = "读取中…";
         ttsVoiceStatus.style.color = "var(--ink-soft)";
         const base64 = await readAudioFile(file);
         setVoiceBase64(base64);
-        ttsVoiceStatus.textContent = "✅ 已上传音色样本";
-        ttsVoiceStatus.style.color = "#34d399";
+        ttsVoiceStatus.textContent = "已上传音色样本";
+        ttsVoiceStatus.style.color = "var(--ink)";
     } catch (e) {
-        ttsVoiceStatus.textContent = `❌ ${(e as Error).message}`;
-        ttsVoiceStatus.style.color = "#ffb0b0";
+        ttsVoiceStatus.textContent = (e as Error).message;
+        ttsVoiceStatus.style.color = "var(--danger)";
     }
 });
 
@@ -456,20 +462,20 @@ ttsStyleInput.addEventListener("change", () => {
 ttsTestBtn.addEventListener("click", async () => {
     const text = ttsTestText.value.trim();
     if (!text) {
-        ttsTestStatus.textContent = "⚠️ 请输入要朗读的文字";
-        ttsTestStatus.style.color = "#ffb0b0";
+        ttsTestStatus.textContent = "请输入要朗读的文字";
+        ttsTestStatus.style.color = "var(--danger)";
         return;
     }
 
     const voice = getVoiceBase64();
     if (!voice) {
-        ttsTestStatus.textContent = "⚠️ 请先上传音色样本";
-        ttsTestStatus.style.color = "#ffb0b0";
+        ttsTestStatus.textContent = "请先上传音色样本";
+        ttsTestStatus.style.color = "var(--danger)";
         return;
     }
 
     ttsTestBtn.disabled = true;
-    ttsTestBtn.textContent = "⏳ 合成中...";
+    ttsTestBtn.textContent = "合成中…";
     ttsTestStatus.textContent = "正在调用 MiMo TTS API...";
     ttsTestStatus.style.color = "var(--ink-soft)";
 
@@ -480,14 +486,14 @@ ttsTestBtn.addEventListener("click", async () => {
         const audio = new Audio(url);
         audio.onended = () => URL.revokeObjectURL(url);
         await audio.play();
-        ttsTestStatus.textContent = "✅ 播放成功";
-        ttsTestStatus.style.color = "#34d399";
+        ttsTestStatus.textContent = "播放成功";
+        ttsTestStatus.style.color = "var(--ink)";
     } catch (e) {
-        ttsTestStatus.textContent = `❌ ${(e as Error).message}`;
-        ttsTestStatus.style.color = "#ffb0b0";
+        ttsTestStatus.textContent = (e as Error).message;
+        ttsTestStatus.style.color = "var(--danger)";
     } finally {
         ttsTestBtn.disabled = false;
-        ttsTestBtn.textContent = "🔊 试听";
+        ttsTestBtn.textContent = "试听";
     }
 });
 

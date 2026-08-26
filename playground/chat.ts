@@ -106,7 +106,7 @@ function buildMeters() {
             div.id = `meter-${dim.key}`;
             div.innerHTML = `
                 <div class="label"><span class="name">${dim.label}</span><span class="val" id="val-${dim.key}">0</span></div>
-                <div class="bar"><div class="fill" id="bar-${dim.key}" style="width:0%;background:${dim.color}"></div></div>`;
+                <div class="bar"><div class="fill" id="bar-${dim.key}" style="width:0%;background:var(--ink)"></div></div>`;
             box.appendChild(div);
         }
     }
@@ -128,7 +128,7 @@ function updateStateUI() {
         (document.getElementById(`val-${dim.key}`)!).textContent = v.toFixed(0);
         (document.getElementById(`bar-${dim.key}`)!).style.width = `${v}%`;
     }
-    (document.getElementById("mood-text")!).textContent = `💬 ${describeMood()}`;
+    (document.getElementById("mood-text")!).textContent = describeMood();
     drawChart();
 }
 
@@ -146,7 +146,7 @@ function drawChart() {
 
     ctx.clearRect(0, 0, W, H);
 
-    ctx.strokeStyle = "rgba(255,255,255,0.08)";
+    ctx.strokeStyle = "rgba(0,0,0,0.08)";
     for (let i = 1; i < 4; i++) {
         ctx.beginPath();
         ctx.moveTo(0, (H / 4) * i);
@@ -169,16 +169,16 @@ function drawChart() {
         ctx.stroke();
     };
 
-    drawLine("affection", "#ff6b9d");
-    drawLine("joy", "#facc15");
-    drawLine("anger", "#ef4444");
+    drawLine("affection", "#111111");
+    drawLine("joy", "#555555");
+    drawLine("anger", "#8a8a8a");
 
     ctx.font = "9px sans-serif";
-    ctx.fillStyle = "#ff6b9d";
+    ctx.fillStyle = "#111111";
     ctx.fillText("—好感", 6, 10);
-    ctx.fillStyle = "#facc15";
+    ctx.fillStyle = "#555555";
     ctx.fillText("—喜悦", 50, 10);
-    ctx.fillStyle = "#ef4444";
+    ctx.fillStyle = "#8a8a8a";
     ctx.fillText("—愤怒", 92, 10);
 }
 
@@ -195,7 +195,7 @@ function logEmotion(who: "user" | "ai", text: string, extra?: string) {
     emoSpan.className = "emo";
     emoSpan.textContent = extra ?? "";
     const textSpan = document.createElement("span");
-    textSpan.style.cssText = "color:#6a6a85;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:110px;";
+    textSpan.style.cssText = "color:var(--ink-soft);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:110px;";
     textSpan.textContent = text;
     div.append(whoSpan, emoSpan, textSpan);
     box.appendChild(div);
@@ -422,7 +422,7 @@ async function sendMessage(text: string, opts?: { proactive?: boolean }): Promis
         }
 
         updateStateUI();
-        logEmotion(proactive ? "ai" : "user", proactive ? "✨主动" : text, EMOTION_NAMES[result.user_emotion] ?? result.user_emotion);
+        logEmotion(proactive ? "ai" : "user", proactive ? "主动" : text, EMOTION_NAMES[result.user_emotion] ?? result.user_emotion);
         logEmotion("ai", result.dialogue.slice(0, 20), `↗${dominantTrait()}`);
 
         // 剧情推进：AI 给了事件才记录（普通聊天不硬凑事件）
@@ -475,7 +475,7 @@ async function sendMessage(text: string, opts?: { proactive?: boolean }): Promis
             const container = document.getElementById("chat-messages")!;
             const line = document.createElement("div");
             line.className = "story-line";
-            line.textContent = `📖 ${story.event}`;
+            line.textContent = story.event;
             container.appendChild(line);
             container.scrollTop = container.scrollHeight;
         }
@@ -501,7 +501,7 @@ async function sendMessage(text: string, opts?: { proactive?: boolean }): Promis
             .join(" ");
         const tag = document.createElement("span");
         tag.className = "emotion-tag";
-        tag.textContent = `${proactive ? "✨ 她主动开口｜" : ""}AI 状态：${dominantTrait()}${deltaSummary ? `｜变化：${deltaSummary}` : ""}`;
+        tag.textContent = `${proactive ? "她主动开口｜" : ""}AI 状态：${dominantTrait()}${deltaSummary ? `｜变化：${deltaSummary}` : ""}`;
         msgEl.appendChild(tag);
 
         // 主角回复完成 → 世界调度层（Director）智能判断（代码层 trigger 命中才调用）
@@ -512,7 +512,7 @@ async function sendMessage(text: string, opts?: { proactive?: boolean }): Promis
 
         return result;
     } catch (e) {
-        appendMessage("ai").classList.add("sys"); appendMessage("ai").textContent = `⚠️ ${(e as Error).message}`;
+        appendMessage("ai").classList.add("sys"); appendMessage("ai").textContent = (e as Error).message;
         return null;
     } finally {
         setBusyState(false);
@@ -543,7 +543,7 @@ async function handleSend() {
 function addReanswerBtn(msgEl: HTMLElement, cpIdx: number) {
     const btn = document.createElement("button");
     btn.className = "msg-reanswer";
-    btn.textContent = "↺";
+    btn.innerHTML = `<svg class="ico" viewBox="0 0 24 24" style="width:12px;height:12px;"><use href="#i-rotate-ccw"/></svg>`;
     btn.title = "重新回答这条（之后的内容也会重来）";
     btn.addEventListener("click", () => void reAnswerAt(cpIdx));
     msgEl.appendChild(btn);
@@ -617,7 +617,7 @@ async function executeDirectorDecision(decision: DirectorDecision) {
             const container = document.getElementById("chat-messages")!;
             const line = document.createElement("div");
             line.className = "story-line";
-            line.textContent = `📖 ${ev}`;
+            line.textContent = ev;
             container.appendChild(line);
             container.scrollTop = container.scrollHeight;
 
@@ -952,7 +952,7 @@ function openHistory() {
     );
 
     if (!visibleHistory.length) {
-        list.innerHTML = '<div style="color:rgba(255,255,255,0.5);font-size:12px;text-align:center;padding:20px;">还没有聊天记录。</div>';
+        list.innerHTML = '<div style="color:var(--ink-faint);font-size:12px;text-align:center;padding:20px;">还没有聊天记录。</div>';
     } else {
         const groups = new Map<string, typeof visibleHistory>();
 
@@ -1047,10 +1047,21 @@ document.getElementById("panel-toggle")!.addEventListener("click", () => {
     const panel = document.getElementById("state-panel")!;
     const wrap = document.getElementById("chat-wrap")!;
     const btn = document.getElementById("panel-toggle")!;
+    const mask = document.getElementById("panel-mask")!;
 
+    const closing = !panel.classList.contains("hidden");
     panel.classList.toggle("hidden");
     wrap.classList.toggle("panel-open");
     btn.classList.toggle("panel-open");
+    mask.classList.toggle("show", !closing);
+});
+
+// 移动端遮罩点击关闭面板
+document.getElementById("panel-mask")!.addEventListener("click", () => {
+    document.getElementById("state-panel")!.classList.add("hidden");
+    document.getElementById("chat-wrap")!.classList.remove("panel-open");
+    document.getElementById("panel-toggle")!.classList.remove("panel-open");
+    document.getElementById("panel-mask")!.classList.remove("show");
 });
 
 // 全部情感：打开全屏浮层
@@ -1069,14 +1080,19 @@ document.getElementById("emotions-modal")!.addEventListener("click", (e) => {
 });
 
 const demoBtn = document.getElementById("demo-btn") as HTMLButtonElement;
+function refreshDemoBtn() {
+    demoBtn.innerHTML = demoMode
+        ? `<svg class="ico" viewBox="0 0 24 24"><use href="#i-sparkles"/></svg><span>演示中</span>`
+        : `<svg class="ico" viewBox="0 0 24 24"><use href="#i-sparkles"/></svg><span>演示</span>`;
+    demoBtn.classList.toggle("active", demoMode);
+}
 demoBtn.addEventListener("click", () => {
     demoMode = !demoMode;
-    demoBtn.textContent = demoMode ? "🎭 演示中" : "🎭 演示";
-    demoBtn.classList.toggle("active", demoMode);
+    refreshDemoBtn();
     if (demoMode) {
         const sysEl = appendMessage("ai");
         sysEl.classList.add("sys");
-        sysEl.textContent = "⚠️ 当前是演示模式——回复是预设模板，不会思考、不接上下文。想体验真正的她，请到菜单页设置 DeepSeek API Key 后关闭演示。";
+        sysEl.textContent = "当前是演示模式——回复是预设模板，不会思考、不接上下文。想体验真正的她，请到菜单页设置 DeepSeek API Key 后关闭演示。";
     } else {
         setBusyState(false); // 刷新标题状态
     }
@@ -1085,7 +1101,9 @@ demoBtn.addEventListener("click", () => {
 // 多人模式开关（默认关闭）：控制支线 NPC 动态介入
 const npcToggleBtn = document.getElementById("npc-toggle") as HTMLButtonElement;
 function refreshNpcToggle() {
-    npcToggleBtn.textContent = store.npcEnabled ? "👥 多人:开" : "👥 多人:关";
+    npcToggleBtn.innerHTML = store.npcEnabled
+        ? `<svg class="ico" viewBox="0 0 24 24"><use href="#i-users"/></svg><span>多人:开</span>`
+        : `<svg class="ico" viewBox="0 0 24 24"><use href="#i-users"/></svg><span>多人:关</span>`;
     npcToggleBtn.classList.toggle("active", store.npcEnabled);
 }
 npcToggleBtn.addEventListener("click", () => {
@@ -1098,23 +1116,25 @@ npcToggleBtn.addEventListener("click", () => {
     saveState();
     refreshNpcToggle();
     const npcSys = appendMessage("ai"); npcSys.classList.add("sys"); npcSys.textContent = store.npcEnabled
-        ? "👥 已开启多人模式：支线 NPC 可能会在合适的时机自然地出现（小雨、小美…）。"
-        : "👤 已关闭多人模式：现在是你们两个人的世界，支线角色不会出现。";
+        ? "已开启多人模式：支线 NPC 可能会在合适的时机自然地出现（小雨、小美…）。"
+        : "已关闭多人模式：现在是你们两个人的世界，支线角色不会出现。";
 });
 refreshNpcToggle();
 
 // TTS 语音朗读开关
 const ttsToggleBtn = document.getElementById("tts-toggle") as HTMLButtonElement;
 function refreshTtsToggle() {
-    ttsToggleBtn.textContent = isTtsEnabled() ? "🔊" : "🔇";
+    ttsToggleBtn.innerHTML = isTtsEnabled()
+        ? `<svg class="ico" viewBox="0 0 24 24"><use href="#i-volume-2"/></svg>`
+        : `<svg class="ico" viewBox="0 0 24 24"><use href="#i-volume-x"/></svg>`;
     ttsToggleBtn.classList.toggle("active", isTtsEnabled());
 }
 ttsToggleBtn.addEventListener("click", () => {
     setTtsEnabled(!isTtsEnabled());
     refreshTtsToggle();
     const ttsSys = appendMessage("ai"); ttsSys.classList.add("sys"); ttsSys.textContent = isTtsEnabled()
-        ? "🔊 已开启语音朗读：AI 回复会自动朗读。需要在菜单页上传音色样本。"
-        : "🔇 已关闭语音朗读。";
+        ? "已开启语音朗读：AI 回复会自动朗读。需要在菜单页上传音色样本。"
+        : "已关闭语音朗读。";
 });
 refreshTtsToggle();
 
@@ -1157,7 +1177,7 @@ document.getElementById("reset-state")!.addEventListener("click", () => {
         updateStoryUI();
         updateScheduleUI();
         saveState(); // 重置后立即保存（含新的 NPC 世界）
-        appendMessage("ai").classList.add("sys"); appendMessage("ai").textContent = "🔄 已重置。一切从零开始——新的开始。";
+        appendMessage("ai").classList.add("sys"); appendMessage("ai").textContent = "已重置。一切从零开始——新的开始。";
     }
 });
 
@@ -1204,7 +1224,7 @@ document.getElementById("history-clear")!.addEventListener("click", () => {
         store.chatHistory = [];
         saveState();
         document.getElementById("history-list")!.innerHTML =
-            '<div style="color:rgba(255,255,255,0.5);font-size:12px;text-align:center;padding:20px;">已清空。</div>';
+            '<div style="color:var(--ink-faint);font-size:12px;text-align:center;padding:20px;">已清空。</div>';
     }
 });
 
@@ -1217,13 +1237,13 @@ document.getElementById("char-btn")!.addEventListener("click", () => {
         presetSel.innerHTML = "";
         const customOpt = document.createElement("option");
         customOpt.value = "";
-        customOpt.style.color = "#333";
+        
         customOpt.textContent = "🎨 自定义（非预设）";
         presetSel.appendChild(customOpt);
         for (const [key, p] of Object.entries(PRESETS)) {
             const o = document.createElement("option");
             o.value = key;
-            o.style.color = "#333";
+            
             o.textContent = `${p.name}${p.scene ? ` · ${p.scene.name}` : ""}`;
             presetSel.appendChild(o);
         }
@@ -1257,7 +1277,7 @@ document.getElementById("char-save")!.addEventListener("click", () => {
     initStateForRelation(CHARACTER_REF.relation ?? "");
     updateStateUI();
     charModal.classList.add("hidden");
-    appendMessage("ai").classList.add("sys"); appendMessage("ai").textContent = `🔄 角色设定已更新。我是${CHARACTER_REF.name}，接下来也请多指教。`;
+    appendMessage("ai").classList.add("sys"); appendMessage("ai").textContent = `角色设定已更新。我是${CHARACTER_REF.name}，接下来也请多指教。`;
 });
 
 document.getElementById("char-reset-preset")!.addEventListener("click", () => {
@@ -1369,7 +1389,7 @@ setWizardSavedCallback(() => {
 // 无 API Key：自动进入演示模式并明确提示（避免用户误以为是真实 AI）
 if (!hasApiKey()) {
     demoMode = true;
-    demoBtn.textContent = "🎭 演示中";
+    refreshDemoBtn();
     demoBtn.classList.add("active");
 }
 

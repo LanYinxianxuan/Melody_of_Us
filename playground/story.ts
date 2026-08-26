@@ -393,7 +393,7 @@ export function updateStoryUI() {
     for (const ev of store.storyEvents.slice(-6)) {
         const div = document.createElement("div");
         div.className = "story-event";
-        div.textContent = `📖 ${ev.text}`;
+        div.textContent = ev.text;
         box.appendChild(div);
     }
 }

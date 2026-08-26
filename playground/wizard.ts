@@ -222,20 +222,20 @@ function renderWizard() {
     let subText: string;
 
     if (wizardStep === 0) {
-        h2Text = "✨ 创建你的角色";
+        h2Text = "创建你的角色";
         subText = "先选一个预设直接开始，或点「自定义创建」——先自由写一段她的介绍，AI 会帮你理解并追问细节。";
     } else if (wizardStep === 1) {
         h2Text = "✍️ 介绍她";
         subText = "用一段话自由介绍你的角色——她是谁、长什么样、什么性格、有什么故事……想到什么写什么。写完后 AI 会像访谈一样追问细节。";
     } else if (interviewActive) {
-        h2Text = interviewDone ? "✨ AI 生成的角色卡" : "💬 AI 访谈";
+        h2Text = interviewDone ? "AI 生成的角色卡" : "AI 访谈";
         subText = interviewDone ? "AI 觉得信息足够了，这是它为你整理的角色卡。" : "AI 在读你的介绍并逐步追问细节，直到她足够鲜活。";
     } else if (wizardStep === previewStep) {
-        h2Text = "✨ 确认角色";
+        h2Text = "确认角色";
         subText = "最后确认一下这张角色卡，没问题就完成！";
     } else {
         const field = wizardFieldFor(pendingFields[wizardStep - 2]!)!;
-        h2Text = `✨ ${field.title}`;
+        h2Text = field.title;
         subText = `补全设定（第 ${wizardStep - 1} / ${totalFollowup} 项）：`;
     }
 
@@ -257,7 +257,7 @@ function renderWizard() {
         wizardBody.innerHTML = `
             ${presetBtns}
             <button class="wiz-preset" data-custom="1">
-              <span class="p-name">🎨 自定义创建</span>
+              <span class="p-name">自定义创建</span>
               <span class="p-desc">写一段介绍，让 AI 访谈追问，生成完整角色</span>
             </button>`;
         wizardPrev.style.display = "none";
@@ -285,7 +285,7 @@ function renderWizard() {
     if (wizardStep === previewStep) {
         wizardBody.innerHTML = buildPreviewHTML(wizardDraft);
         wizardPrev.style.display = "";
-        wizardNext.textContent = "✅ 完成，就是她！";
+        wizardNext.textContent = "完成，就是她！";
         return;
     }
 
@@ -351,7 +351,7 @@ function renderInterview() {
         wizardBody.innerHTML = buildPreviewHTML(wizardDraft);
         wizardPrev.style.display = "none";
         wizardNext.style.display = "";
-        wizardNext.textContent = "✅ 保存角色";
+        wizardNext.textContent = "保存角色";
         return;
     }
 
@@ -360,9 +360,9 @@ function renderInterview() {
     if (interviewTurns.length) {
         for (const t of interviewTurns) {
             html += `
-                <div style="margin-bottom:8px;padding:8px 12px;border-radius:10px;background:var(--accent-soft);">
-                  <div style="color:var(--accent);font-size:12px;">🤖 ${escapeHtml(t.q)}</div>
-                  <div style="color:var(--ink-soft);font-size:13px;margin-top:4px;">你：${escapeHtml(t.a) || "（没想好）"}</div>
+                <div style="margin-bottom:8px;padding:8px 12px;background:var(--bg-soft, #f6f6f6);border:1px solid var(--line, #e3e3e3);">
+                  <div style="color:var(--ink, #111);font-size:12px;">${escapeHtml(t.q)}</div>
+                  <div style="color:var(--ink-soft, #555);font-size:13px;margin-top:4px;">你：${escapeHtml(t.a) || "（没想好）"}</div>
                 </div>`;
         }
     }
@@ -371,13 +371,13 @@ function renderInterview() {
         html += `<div style="color:var(--ink-soft);font-size:13px;text-align:center;padding:16px;">AI 正在思考下一个问题…</div>`;
     } else {
         html += `
-            <div style="margin:10px 0;padding:10px 14px;border-radius:12px;background:var(--accent-soft);border:1px solid var(--accent-line);">
-              <div style="color:var(--accent-deep);font-size:12px;margin-bottom:4px;">💡 ${escapeHtml(currentInsight) || "让我想想她是谁…"}</div>
+            <div style="margin:10px 0;padding:10px 14px;background:var(--bg-soft, #f6f6f6);border:1px solid var(--line, #e3e3e3);">
+              <div style="color:var(--ink-soft, #555);font-size:12px;margin-bottom:4px;">${escapeHtml(currentInsight) || "让我想想她是谁…"}</div>
             </div>
-            <div style="font-size:15px;color:var(--ink);line-height:1.7;margin-bottom:10px;font-weight:600;">🤖 ${escapeHtml(currentQuestion)}</div>
+            <div style="font-size:15px;color:var(--ink, #111);line-height:1.7;margin-bottom:10px;font-weight:600;">${escapeHtml(currentQuestion)}</div>
             <textarea class="wiz-input" id="wiz-answer" rows="3" placeholder="回答她的问题…（也可以写『你定吧』让她发挥）"></textarea>
-            <button id="wiz-submit" style="width:100%;margin-top:10px;padding:11px 0;border-radius:999px;border:none;background:linear-gradient(to right, #d65a7e, #b84567);color:#fff;font-size:14px;cursor:pointer;">回答并继续</button>
-            <button id="wiz-finish" style="width:100%;margin-top:8px;padding:9px 0;border-radius:999px;border:1px solid var(--line);background:transparent;color:var(--ink-soft);font-size:12px;cursor:pointer;">✅ 信息够了，结束访谈</button>`;
+            <button id="wiz-submit" style="width:100%;margin-top:10px;height:36px;border-radius:2px;border:none;background:#111;color:#fff;font-size:13px;cursor:pointer;">回答并继续</button>
+            <button id="wiz-finish" style="width:100%;margin-top:8px;height:32px;border-radius:2px;border:1px solid var(--line-strong, #bdbdbd);background:transparent;color:var(--ink-soft, #555);font-size:12px;cursor:pointer;">信息够了，结束访谈</button>`;
     }
 
     wizardBody.innerHTML = html;

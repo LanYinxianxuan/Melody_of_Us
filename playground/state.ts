@@ -10,7 +10,6 @@ export type DimGroup = "personality" | "relation" | "emotion" | "status" | "shad
 export interface DimMeta {
     key: string;
     label: string;
-    color: string;
     group: DimGroup;
     baseline: number;
     regression: number; // 每轮向基线回归比例（人格≈0，情绪高）
@@ -18,48 +17,48 @@ export interface DimMeta {
 
 export const DIMENSIONS: DimMeta[] = [
     // 🎭 人格
-    { key: "openness", label: "🌌 开放", color: "#818cf8", group: "personality", baseline: 60, regression: 0 },
-    { key: "conscientiousness", label: "📋 尽责", color: "#60a5fa", group: "personality", baseline: 65, regression: 0 },
-    { key: "extraversion", label: "🎤 外向", color: "#fbbf24", group: "personality", baseline: 55, regression: 0 },
-    { key: "agreeableness", label: "🕊 宜人", color: "#34d399", group: "personality", baseline: 70, regression: 0 },
-    { key: "neuroticism", label: "🌧 敏感", color: "#94a3b8", group: "personality", baseline: 45, regression: 0 },
+    { key: "openness", label: "🌌 开放", group: "personality", baseline: 60, regression: 0 },
+    { key: "conscientiousness", label: "📋 尽责", group: "personality", baseline: 65, regression: 0 },
+    { key: "extraversion", label: "🎤 外向", group: "personality", baseline: 55, regression: 0 },
+    { key: "agreeableness", label: "🕊 宜人", group: "personality", baseline: 70, regression: 0 },
+    { key: "neuroticism", label: "🌧 敏感", group: "personality", baseline: 45, regression: 0 },
     // ❤️ 关系（初始是刚认识的陌生人，基线低，靠对话慢慢积累）
-    { key: "affection", label: "💕 好感", color: "#ff6b9d", group: "relation", baseline: 25, regression: 0.02 },
-    { key: "trust", label: "🤝 信任", color: "#5b8def", group: "relation", baseline: 15, regression: 0.02 },
-    { key: "intimacy", label: "💞 亲密", color: "#c084fc", group: "relation", baseline: 5, regression: 0.02 },
-    { key: "loyalty", label: "🛡 忠诚", color: "#4ade80", group: "relation", baseline: 10, regression: 0.015 },
-    { key: "dependence", label: "🧲 依赖", color: "#f472b6", group: "relation", baseline: 5, regression: 0.02 },
-    { key: "familiarity", label: "👋 熟悉", color: "#38bdf8", group: "relation", baseline: 5, regression: 0.01 },
+    { key: "affection", label: "💕 好感", group: "relation", baseline: 25, regression: 0.02 },
+    { key: "trust", label: "🤝 信任", group: "relation", baseline: 15, regression: 0.02 },
+    { key: "intimacy", label: "💞 亲密", group: "relation", baseline: 5, regression: 0.02 },
+    { key: "loyalty", label: "🛡 忠诚", group: "relation", baseline: 10, regression: 0.015 },
+    { key: "dependence", label: "🧲 依赖", group: "relation", baseline: 5, regression: 0.02 },
+    { key: "familiarity", label: "👋 熟悉", group: "relation", baseline: 5, regression: 0.01 },
     // 💭 情绪
-    { key: "joy", label: "😊 喜悦", color: "#facc15", group: "emotion", baseline: 40, regression: 0.25 },
-    { key: "sadness", label: "😢 悲伤", color: "#60a5fa", group: "emotion", baseline: 10, regression: 0.22 },
-    { key: "anger", label: "😠 愤怒", color: "#ef4444", group: "emotion", baseline: 0, regression: 0.3 },
-    { key: "fear", label: "😨 恐惧", color: "#8b5cf6", group: "emotion", baseline: 5, regression: 0.2 },
-    { key: "surprise", label: "😲 惊讶", color: "#fb923c", group: "emotion", baseline: 10, regression: 0.35 },
-    { key: "disgust", label: "🤢 厌恶", color: "#84cc16", group: "emotion", baseline: 0, regression: 0.28 },
-    { key: "shyness", label: "😳 害羞", color: "#f472b6", group: "emotion", baseline: 30, regression: 0.2 },
-    { key: "embarrassment", label: "😅 尴尬", color: "#fdba74", group: "emotion", baseline: 8, regression: 0.3 },
-    { key: "jealousy", label: "🍋 嫉妒", color: "#a3e635", group: "emotion", baseline: 3, regression: 0.25 },
-    { key: "loneliness", label: "🌙 孤独", color: "#7dd3fc", group: "emotion", baseline: 12, regression: 0.18 },
-    { key: "anxiety", label: "🌫 焦虑", color: "#94a3b8", group: "emotion", baseline: 15, regression: 0.15 },
-    { key: "anticipation", label: "✨ 期待", color: "#fde047", group: "emotion", baseline: 25, regression: 0.25 },
+    { key: "joy", label: "😊 喜悦", group: "emotion", baseline: 40, regression: 0.25 },
+    { key: "sadness", label: "😢 悲伤", group: "emotion", baseline: 10, regression: 0.22 },
+    { key: "anger", label: "😠 愤怒", group: "emotion", baseline: 0, regression: 0.3 },
+    { key: "fear", label: "😨 恐惧", group: "emotion", baseline: 5, regression: 0.2 },
+    { key: "surprise", label: "😲 惊讶", group: "emotion", baseline: 10, regression: 0.35 },
+    { key: "disgust", label: "🤢 厌恶", group: "emotion", baseline: 0, regression: 0.28 },
+    { key: "shyness", label: "😳 害羞", group: "emotion", baseline: 30, regression: 0.2 },
+    { key: "embarrassment", label: "😅 尴尬", group: "emotion", baseline: 8, regression: 0.3 },
+    { key: "jealousy", label: "🍋 嫉妒", group: "emotion", baseline: 3, regression: 0.25 },
+    { key: "loneliness", label: "🌙 孤独", group: "emotion", baseline: 12, regression: 0.18 },
+    { key: "anxiety", label: "🌫 焦虑", group: "emotion", baseline: 15, regression: 0.15 },
+    { key: "anticipation", label: "✨ 期待", group: "emotion", baseline: 25, regression: 0.25 },
     // 🫀 状态
-    { key: "fatigue", label: "🥱 疲惫", color: "#fbbf24", group: "status", baseline: 10, regression: 0.05 },
-    { key: "energy", label: "🔋 精力", color: "#4ade80", group: "status", baseline: 70, regression: 0.06 },
-    { key: "stress", label: "🔥 压力", color: "#f87171", group: "status", baseline: 15, regression: 0.12 },
-    { key: "nervousness", label: "😰 紧张", color: "#f59e0b", group: "status", baseline: 20, regression: 0.25 },
-    { key: "confidence", label: "💪 自信", color: "#34d399", group: "status", baseline: 45, regression: 0.05 },
+    { key: "fatigue", label: "🥱 疲惫", group: "status", baseline: 10, regression: 0.05 },
+    { key: "energy", label: "🔋 精力", group: "status", baseline: 70, regression: 0.06 },
+    { key: "stress", label: "🔥 压力", group: "status", baseline: 15, regression: 0.12 },
+    { key: "nervousness", label: "😰 紧张", group: "status", baseline: 20, regression: 0.25 },
+    { key: "confidence", label: "💪 自信", group: "status", baseline: 45, regression: 0.05 },
     // 🖤 阴影
-    { key: "greed", label: "💰 贪婪", color: "#f59e0b", group: "shadow", baseline: 15, regression: 0.15 },
-    { key: "lust", label: "💋 色欲", color: "#e11d48", group: "shadow", baseline: 20, regression: 0.15 },
-    { key: "vanity", label: "🪞 虚荣", color: "#d946ef", group: "shadow", baseline: 25, regression: 0.12 },
-    { key: "possessiveness", label: "🔒 占有欲", color: "#be123c", group: "shadow", baseline: 20, regression: 0.1 },
-    { key: "pride", label: "👑 傲慢", color: "#a78bfa", group: "shadow", baseline: 20, regression: 0.12 },
-    { key: "ambition", label: "🎯 野心", color: "#f97316", group: "shadow", baseline: 40, regression: 0.05 },
-    { key: "selfishness", label: "🍰 自私", color: "#fb7185", group: "shadow", baseline: 15, regression: 0.12 },
-    { key: "laziness", label: "🛋 懒惰", color: "#9ca3af", group: "shadow", baseline: 30, regression: 0.08 },
-    { key: "shame", label: "🙈 羞耻", color: "#f472b6", group: "shadow", baseline: 5, regression: 0.2 },
-    { key: "guilt", label: "💔 内疚", color: "#64748b", group: "shadow", baseline: 5, regression: 0.2 },
+    { key: "greed", label: "💰 贪婪", group: "shadow", baseline: 15, regression: 0.15 },
+    { key: "lust", label: "💋 色欲", group: "shadow", baseline: 20, regression: 0.15 },
+    { key: "vanity", label: "🪞 虚荣", group: "shadow", baseline: 25, regression: 0.12 },
+    { key: "possessiveness", label: "🔒 占有欲", group: "shadow", baseline: 20, regression: 0.1 },
+    { key: "pride", label: "👑 傲慢", group: "shadow", baseline: 20, regression: 0.12 },
+    { key: "ambition", label: "🎯 野心", group: "shadow", baseline: 40, regression: 0.05 },
+    { key: "selfishness", label: "🍰 自私", group: "shadow", baseline: 15, regression: 0.12 },
+    { key: "laziness", label: "🛋 懒惰", group: "shadow", baseline: 30, regression: 0.08 },
+    { key: "shame", label: "🙈 羞耻", group: "shadow", baseline: 5, regression: 0.2 },
+    { key: "guilt", label: "💔 内疚", group: "shadow", baseline: 5, regression: 0.2 },
 ];
 
 export const INITIAL_STATE: AIState = Object.fromEntries(DIMENSIONS.map((d) => [d.key, d.baseline]));
