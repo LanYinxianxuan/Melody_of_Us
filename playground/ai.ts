@@ -19,6 +19,8 @@ import type { CharacterProfile } from "./character";
 import { agendaContext } from "./agenda";
 import { FORMAT_INSTRUCTION, NPC_FORMAT_INSTRUCTION } from "./response-template";
 import { fallbackAction, isGenericAction } from "./actions";
+// 类型导入：Agent Mind 的语义修正与策略（运行时无依赖，避免循环）
+import type { RefinedAnalysis, ConversationStrategy, MessageAnalysis } from "./mind";
 
 // ============ 聊天接口 ============
 
@@ -34,6 +36,8 @@ export interface ChatResult {
     memory?: string;
     // 日程：对话中产生了新的约定/事件（加入时间线，由 AI 后续推动）
     agenda?: { add?: { time?: string; title: string; desc?: string }[] };
+    // Agent Mind：LLM 在同一次调用内可选择性回传对用户情绪的语义判断（仅作本地规则的微调）
+    user_analysis?: RefinedAnalysis | null;
 }
 
 export { EMOTION_NAMES };
@@ -451,16 +455,22 @@ export async function* chatWithDeepSeekStream(userText: string): AsyncGenerator<
     yield { content: fullContent, delta: "", done: true, reasoning: fullReasoning };
 }
 
-// 非流式聊天（保留兼容）
-export async function chatWithDeepSeek(userText: string, retry = 2, eventSeed?: string): Promise<ChatResult> {
+// 非流式聊天（保留兼容；agentPrompt = Agent Mind 策略/状态注入块，见 mind.ts）
+export async function chatWithDeepSeek(userText: string, retry = 2, eventSeed?: string, agentPrompt?: string): Promise<ChatResult> {
     const { baseUrl, headers, key, model } = getProviderConfig();
 
     if (!key) {
         throw new Error("请先在菜单页设置 API Key（或点「演示」免 Key 体验）");
     }
 
+    const baseSys = SYSTEM_PROMPT(await getCharacter(), eventSeed);
+    const sysContent = agentPrompt
+        ? baseSys.includes("【最关键：输出格式】")
+            ? baseSys.replace("【最关键：输出格式】", agentPrompt + "\n\n【最关键：输出格式】")
+            : baseSys + "\n" + agentPrompt
+        : baseSys;
     const messages = [
-        { role: "system", content: SYSTEM_PROMPT(await getCharacter(), eventSeed) },
+        { role: "system", content: sysContent },
         ...buildHistoryContext(),
         { role: "user", content: userText },
     ];
@@ -510,13 +520,13 @@ export async function chatWithDeepSeek(userText: string, retry = 2, eventSeed?: 
     // 思考模式下思维链在 reasoning_content；若 content 为空说明模型只思考了没给出最终回答
     if (thinkingActive && !content.trim() && typeof msg.reasoning_content === "string" && msg.reasoning_content.trim()) {
         console.warn("思考模式下 content 为空，重试中…");
-        return chatWithDeepSeek(userText + "\n只输出JSON，不要思考过程。", retry - 1, eventSeed);
+        return chatWithDeepSeek(userText + "\n只输出JSON，不要思考过程。", retry - 1, eventSeed, agentPrompt);
     }
 
     if (!content.trim()) {
         if (retry > 0) {
             console.warn("返回空内容，重试中…");
-            return chatWithDeepSeek(userText + "\n只输出JSON。", retry - 1, eventSeed);
+            return chatWithDeepSeek(userText + "\n只输出JSON。", retry - 1, eventSeed, agentPrompt);
         }
         throw new Error("连续返回为空");
     }
@@ -526,7 +536,7 @@ export async function chatWithDeepSeek(userText: string, retry = 2, eventSeed?: 
     } catch (e) {
         if (retry > 0) {
             console.warn("解析失败，重试中：", content.slice(0, 100));
-            return chatWithDeepSeek(userText + `\n你上次输出了纯文本。必须输出JSON格式：{"dialogue":"...","action":"...","thoughts":"...","delta":{},"user_emotion":"neutral","memory":"","story":{"event":"","progress":0,"thread":"new"}}`, retry - 1, eventSeed);
+            return chatWithDeepSeek(userText + `\n你上次输出了纯文本。必须输出JSON格式：{"dialogue":"...","action":"...","thoughts":"...","delta":{},"user_emotion":"neutral","memory":"","story":{"event":"","progress":0,"thread":"new"}}`, retry - 1, eventSeed, agentPrompt);
         }
 
         // 最终兜底：从纯文本中提取对话
@@ -635,7 +645,34 @@ const DEMO_RESPONSES: Record<string, { dialogue: string; action: string; thought
         delta: { laziness: 8, fatigue: 6, intimacy: 2, affection: 1 },
     },
 };
-export function demoReply(userText: string): ChatResult {
+// 策略感知的演示回复：当本地决策层判到"退避/责怪/开心"时，模板也遵循策略（演示模式同样可见决策效果）
+const DEMO_STRATEGY_REPLIES: Record<string, { dialogue: string; action: string; thoughts: string; delta: Record<string, number> }> = {
+    show_presence: {
+        dialogue: "嗯……那我不说了。我在这。",
+        action: "轻轻点了点头，安静地坐在旁边",
+        thoughts: "他现在不想说话……那就陪着就好",
+        delta: { affection: 1, sadness: 2, anxiety: -2 },
+    },
+    give_space: {
+        dialogue: "好，你先自己待会儿。",
+        action: "没有追问，只是把声音放得很轻",
+        thoughts: "给他一点空间……",
+        delta: { affection: 1, sadness: 1 },
+    },
+    acknowledge: {
+        dialogue: "嗯……你这么说，是我刚才太吵了吧。",
+        action: "抿了抿嘴，没有反驳",
+        thoughts: "他说得对……先别争辩",
+        delta: { sadness: 3, stress: 2, guilt: 2 },
+    },
+    playful: {
+        dialogue: "嘿嘿，也让我高兴一下嘛～再说说看？",
+        action: "眼睛弯起来，凑近了一点",
+        thoughts: "他/她心情好，那就一起开心",
+        delta: { joy: 6, affection: 2 },
+    },
+};
+export function demoReply(userText: string, analysis?: MessageAnalysis, strategy?: ConversationStrategy): ChatResult {
     const userEmo = detectUserEmotion(userText);
 
     // demo 模式也要尽量承接上下文：上一轮她说过话时，优先顺着话题走，而不是跳模板
@@ -644,19 +681,33 @@ export function demoReply(userText: string): ChatResult {
 
     const emo = hadPrior && userEmo === "surprised" && !/[？?]/.test(userText) ? "neutral" : userEmo;
     const tpl = DEMO_RESPONSES[emo] ?? DEMO_RESPONSES.neutral!;
+
+    // 策略感知覆盖：策略层判定"退避/受责/开心"时，让演示回复也遵循策略（验证决策链路）
+    let chosen = tpl;
+    let chosenEmo = emo;
+    if (strategy && analysis) {
+        const has = (id: string) => strategy.choices.some((c) => c.id === id);
+        const withdraw = analysis.intents.find((i) => i.surface_intent === "withdraw")?.score ?? 0;
+        const blame = analysis.intents.find((i) => i.surface_intent === "blame_ai")?.score ?? 0;
+        if (withdraw > 0.5 && has("show_presence")) { chosen = DEMO_STRATEGY_REPLIES.show_presence!; chosenEmo = "sad"; }
+        else if (withdraw > 0.7 && has("give_space")) { chosen = DEMO_STRATEGY_REPLIES.give_space!; chosenEmo = "sad"; }
+        else if (blame > 0.5 && has("acknowledge")) { chosen = DEMO_STRATEGY_REPLIES.acknowledge!; chosenEmo = "sad"; }
+        else if (analysis.emotion.primary_emotion === "joy" && has("playful")) { chosen = DEMO_STRATEGY_REPLIES.playful!; chosenEmo = "joy"; }
+    }
+
     const next: Record<string, number> = { ...aiState };
 
-    for (const key of Object.keys(tpl.delta)) {
-        next[key] = clamp(next[key]! + tpl.delta[key]!);
+    for (const key of Object.keys(chosen.delta)) {
+        next[key] = clamp(next[key]! + chosen.delta[key]!);
     }
 
     return {
-        dialogue: tpl.dialogue,
-        action: tpl.action,
-        thoughts: tpl.thoughts,
+        dialogue: chosen.dialogue,
+        action: chosen.action,
+        thoughts: chosen.thoughts,
         stats: next,
-        delta: tpl.delta,
-        user_emotion: emo,
+        delta: chosen.delta,
+        user_emotion: chosenEmo,
         story: fallbackStory(),
     };
 }

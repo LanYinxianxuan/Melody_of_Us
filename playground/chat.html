@@ -418,6 +418,27 @@
       #mood-history .entry .who.ai { color: var(--ink); }
       #mood-history .entry .emo { color: var(--ink); }
 
+      /* ===== Agent 决策状态（调试） ===== */
+      #agent-debug { font-size: 10.5px; line-height: 1.5; color: var(--ink); }
+      .dbg-block {
+          border: 1px solid var(--line);
+          border-radius: 8px;
+          padding: 6px 8px;
+          margin-bottom: 6px;
+      }
+      .dbg-h { font-weight: 700; font-size: 10px; color: var(--ink-soft); margin-bottom: 3px; letter-spacing: .02em; }
+      .dbg-kv { font-variant-numeric: tabular-nums; color: var(--ink-soft); }
+      .dbg-kv b { color: var(--ink); font-weight: 700; }
+      .dbg-str { font-weight: 700; color: var(--ink); white-space: pre-wrap; }
+      .dbg-trace { display: flex; flex-direction: column; gap: 5px; }
+      .dbg-tr {
+          border-left: 2px solid var(--line);
+          padding: 3px 6px;
+          border-radius: 0 6px 6px 0;
+      }
+      .dbg-tr-meta { color: var(--ink-soft); font-size: 10px; }
+      .dbg-tr-line { color: var(--ink-soft); word-break: break-all; }
+
       /* ===== 全部情感按钮 ===== */
       #emotions-toggle {
           width: 100%;
@@ -1356,6 +1377,7 @@
     <button id="npc-toggle" class="icon-mini" title="支线 NPC 动态介入（默认关闭）"><svg class="ico" viewBox="0 0 24 24"><use href="#i-users"/></svg></button>
     <button id="history-btn" class="icon-mini" title="聊天记录"><svg class="ico" viewBox="0 0 24 24"><use href="#i-history"/></svg></button>
     <button id="char-btn" class="icon-mini" title="角色设定"><svg class="ico" viewBox="0 0 24 24"><use href="#i-user-round"/></svg></button>
+    <button id="agent-toggle" class="icon-mini" title="决策状态（调试）"><svg class="ico" viewBox="0 0 24 24"><use href="#i-brain"/></svg></button>
     <button id="demo-btn" class="icon-mini" title="演示模式"><svg class="ico" viewBox="0 0 24 24"><use href="#i-sparkles"/></svg></button>
     <button id="reset-state" class="icon-mini" title="重置"><svg class="ico" viewBox="0 0 24 24"><use href="#i-rotate-ccw"/></svg></button>
     <a href="./menu.html" class="icon-mini" id="menu-link" title="菜单"><svg class="ico" viewBox="0 0 24 24"><use href="#i-menu"/></svg></a>
@@ -1500,6 +1522,17 @@
       </button>
       <div class="panel-section-content" id="section-mood">
         <div id="mood-history"><b>情绪日志</b><br></div>
+      </div>
+    </div>
+
+    <!-- Agent 决策状态（调试；默认收起，顶部"决策"按钮展开） -->
+    <div class="panel-section">
+      <button class="panel-section-toggle" data-section="agent">
+        <span class="pst-label"><svg class="ico ico-sm" viewBox="0 0 24 24"><use href="#i-brain"/></svg>决策状态（调试）</span>
+        <span class="toggle-arrow"><svg class="ico ico-sm" viewBox="0 0 24 24"><use href="#i-chevron-down"/></svg></span>
+      </button>
+      <div class="panel-section-content" id="section-agent">
+        <div id="agent-debug"></div>
       </div>
     </div>
 

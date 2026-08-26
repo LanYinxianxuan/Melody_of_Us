@@ -55,6 +55,19 @@ import {
 } from "./story";
 import { chatWithDeepSeek, demoReply, setCharacterGetter, SYSTEM_PROMPT, type ChatResult } from "./ai";
 import { npcContext, npcSpeak } from "./ai";
+import {
+    runAgentPipeline,
+    refineWithModelAnalysis,
+    finishAgentTurn,
+    snapshotAgentMind,
+    restoreAgentMind,
+    resetAgentMind,
+    applyTimeDecay,
+    setImperfectionRate,
+    debugSnapshot,
+    type AgentTurn,
+} from "./mind";
+import { renderAgentDebug, updateAgentDebugAfterTurn, installMindDebugHooks } from "./mind-debug";
 import { speak, isTtsEnabled, setTtsEnabled, initTts, generateEmotionStyle } from "./tts";
 import {
     applyAgendaFromAI,
@@ -360,6 +373,7 @@ interface RedoCheckpoint {
     memLen: number;                              // 记忆数
     thread: string | null;                       // 剧情线
     agendaSnap: typeof store.agenda;             // 日程快照
+    agentSnap: ReturnType<typeof snapshotAgentMind>; // Agent Mind 快照（用户状态/AI状态/关系张力/轨迹）
 }
 let turnCheckpoints: RedoCheckpoint[] = [];
 
@@ -379,6 +393,7 @@ async function sendMessage(text: string, opts?: { proactive?: boolean }): Promis
         memLen: store.memories.length,
         thread: store.activeThread,
         agendaSnap: JSON.parse(JSON.stringify(store.agenda)),
+        agentSnap: snapshotAgentMind(),
     });
 
     if (!proactive) {
@@ -397,8 +412,15 @@ async function sendMessage(text: string, opts?: { proactive?: boolean }): Promis
     try {
         let result: ChatResult;
 
+        // ===== Agent Mind：先在回复前完成整条决策链（0 成本本地规则） =====
+        // 分析用户消息 → 上下文 → 用户/AI/关系状态更新（惯性+衰减） → 策略选择 → 紧凑上下文注入 LLM
+        const agentTurn: AgentTurn = runAgentPipeline(text, {
+            proactive,
+            likes: CHARACTER_REF.likes ?? "",
+        });
+
         if (demoMode) {
-            const base = demoReply(text);
+            const base = demoReply(text, agentTurn.analysis, agentTurn.strategy);
             // 被冷落时用专门的文案（proactive 触发）
             const isNeglect = /被冷落|等了你|没有回复|不理你|想你了/.test(text);
             result = proactive
@@ -407,11 +429,17 @@ async function sendMessage(text: string, opts?: { proactive?: boolean }): Promis
         } else {
             // 代码层掷随机事件种子（30% 概率，连续 3 轮强制），注入系统提示词引导 AI 自然融入
             const eventSeed = rollEventSeed();
-            result = await chatWithDeepSeek(text, 2, eventSeed ?? undefined);
+            // 策略块随后的单次 LLM 调用：LLM 是最终语言生成器，决策已在上面完成
+            result = await chatWithDeepSeek(text, 2, eventSeed ?? undefined, agentTurn.prompt);
         }
 
         if (!result.dialogue) {
             throw new Error("AI 返回格式异常，请检查 API Key 或稍后重试");
+        }
+
+        // LLM 同一调用内可选回传 user_analysis → 语义微调（不推翻本地信号）
+        if (!demoMode && result.user_analysis) {
+            refineWithModelAnalysis(agentTurn, result.user_analysis);
         }
 
         applyDelta(result.delta ?? {});
@@ -504,6 +532,10 @@ async function sendMessage(text: string, opts?: { proactive?: boolean }): Promis
         tag.textContent = `${proactive ? "她主动开口｜" : ""}AI 状态：${dominantTrait()}${deltaSummary ? `｜变化：${deltaSummary}` : ""}`;
         msgEl.appendChild(tag);
 
+        // Agent Mind：回填决策轨迹（previous → signal → transition → strategy → response）并刷新调试面板
+        finishAgentTurn(agentTurn, result.dialogue);
+        updateAgentDebugAfterTurn(agentTurn);
+
         // 主角回复完成 → 世界调度层（Director）智能判断（代码层 trigger 命中才调用）
         if (!proactive) {
             void maybeDirector(text);
@@ -565,8 +597,9 @@ async function reAnswerAt(cpIdx: number) {
         node = next;
     }
 
-    // 2. 回滚状态（情感/历史/事件/记忆/剧情线/日程）到该轮开始前
+    // 2. 回滚状态（情感/历史/事件/记忆/剧情线/日程/Agent Mind）到该轮开始前
     Object.assign(aiState, cp.aiStateSnap);
+    restoreAgentMind(cp.agentSnap);
     store.chatHistory.length = cp.historyLen;
     store.storyEvents.length = cp.storyLen;
     store.memories.length = cp.memLen;
@@ -575,6 +608,10 @@ async function reAnswerAt(cpIdx: number) {
     updateStateUI();
     updateStoryUI();
     renderAgendaUI();
+    {
+        const el = document.getElementById("agent-debug");
+        if (el) renderAgentDebug(el);
+    }
 
     // 3. 丢弃该轮及其后的检查点（之后 sendMessage 会重推）
     turnCheckpoints.length = cpIdx;
@@ -1141,6 +1178,36 @@ refreshTtsToggle();
 // 初始化 TTS
 initTts();
 
+// 时间流逝 → Agent Mind 情绪自然衰减（时段切换/跨天/加载时均会触发）
+function applyMindTimeDecay() {
+    const lastAt = (store as any).lastAgentVirtualAt || 0;
+    if (!lastAt) return;
+    const elapsed = store.virtualMs - lastAt;
+    if (elapsed > 60000) {
+        applyTimeDecay(elapsed);
+        const el = document.getElementById("agent-debug");
+        if (el) renderAgentDebug(el);
+    }
+}
+
+// Agent 决策调试按钮：打开状态面板并展开"决策状态（调试）"区
+const agentBtn = document.getElementById("agent-toggle") as HTMLButtonElement | null;
+agentBtn?.addEventListener("click", () => {
+    const panel = document.getElementById("state-panel")!;
+    const wrap = document.getElementById("chat-wrap")!;
+    panel.classList.remove("hidden");
+    wrap.classList.add("panel-open");
+    const toggle = document.querySelector<HTMLElement>('.panel-section-toggle[data-section="agent"]');
+    const section = document.getElementById("section-agent");
+    if (toggle && section) {
+        toggle.classList.remove("collapsed");
+        section.classList.remove("collapsed");
+    }
+    const el = document.getElementById("agent-debug");
+    if (el) renderAgentDebug(el);
+    document.getElementById("chat-input")?.focus();
+});
+
 document.getElementById("reset-state")!.addEventListener("click", () => {
     if (confirm("重置这段故事？会清空：情感、剧情、聊天记录、时间线，且无法恢复。")) {
         resetState();
@@ -1168,6 +1235,7 @@ document.getElementById("reset-state")!.addEventListener("click", () => {
 
         localStorage.removeItem(SAVE_KEY);
         resetEventTracker(); // 重置随机事件防重复窗口
+        resetAgentMind();    // Agent Mind（用户/AI/关系状态）一并归零
 
         chartHistory.length = 0;
         document.getElementById("chat-messages")!.innerHTML = "";
@@ -1315,6 +1383,7 @@ setProactiveGate(() => !busy && !userIsTyping());
 setSlotChangeHandler(() => {
     updateScheduleUI();
     onSlotChanged();
+    applyMindTimeDecay(); // 时段切换 → 情绪自然衰减
 });
 
 setDayChangeHandler((oldDay) => {
@@ -1487,6 +1556,25 @@ document.querySelectorAll<HTMLElement>(".panel-section-toggle").forEach((btn) =>
     });
 });
 
+// ===== Agent Mind 调试面板初始化 =====
+installMindDebugHooks();
+{
+    const el = document.getElementById("agent-debug");
+    if (el) renderAgentDebug(el);
+    // 调试区默认收起（正式界面隐藏；点顶部"决策"按钮可展开查看）
+    const saved = localStorage.getItem("panel.section.agent");
+    if (!saved) {
+        const toggle = document.querySelector<HTMLElement>('.panel-section-toggle[data-section="agent"]');
+        const section = document.getElementById("section-agent");
+        toggle?.classList.add("collapsed");
+        section?.classList.add("collapsed");
+        localStorage.setItem("panel.section.agent", "collapsed");
+    }
+}
+
+// 离线回归：用户情绪按虚拟时间自然衰减（"长时间没有新刺激"）
+applyMindTimeDecay();
+
 // 调试钩子
 (window as any).__debug = {
     next: () => {
@@ -1497,6 +1585,7 @@ document.querySelectorAll<HTMLElement>(".panel-section-toggle").forEach((btn) =>
         if (oldDay !== store.dayIndex) finalizeDay(oldDay);
         updateScheduleUI();
         onSlotChanged();
+        applyMindTimeDecay();
     },
     setTime: (day: number, hhmm: string) => setVirtualTime(day, hhmm),
     setRate: (r: number) => setTimeRate(r),
@@ -1506,6 +1595,15 @@ document.querySelectorAll<HTMLElement>(".panel-section-toggle").forEach((btn) =>
     state: () => aiState,
     time: () => ({ ...currentSchedule(), rate: store.timeRate, day: currentDayIndex() }),
     prompt: () => SYSTEM_PROMPT(CHARACTER_REF),
+    // Agent Mind 调试：查看/测试情感判断与策略决策
+    mind: () => debugSnapshot(),
+    mindDecay: (virtualMinutes: number) => {
+        applyTimeDecay(virtualMinutes * 60000);
+        const el = document.getElementById("agent-debug");
+        if (el) renderAgentDebug(el);
+        return debugSnapshot().user;
+    },
+    mindSetImperfect: (rate: number) => setImperfectionRate(rate),
 };
 
 // 首次进入（无角色设定）：打开角色创建向导

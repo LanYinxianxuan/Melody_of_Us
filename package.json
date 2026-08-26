@@ -6,7 +6,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite --port 5173",
-    "build": "vite build && cp -r public/* dist/playground/ && cp dist/playground/home.html dist/playground/index.html && cp -r dist/assets dist/playground/assets && sed -i 's|\\.\\./assets/|./assets/|g' dist/playground/*.html"
+    "build": "vite build && cp -r public/* dist/playground/ && cp dist/playground/home.html dist/playground/index.html && cp -r dist/assets dist/playground/assets && sed -i 's|\\.\\./assets/|./assets/|g' dist/playground/*.html",
+    "test": "node tests/agent-smoke.mjs"
   },
   "devDependencies": {
     "vite": "^5.0.0"

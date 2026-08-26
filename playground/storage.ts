@@ -3,6 +3,8 @@
 
 import { aiState, INITIAL_STATE } from "./state";
 import { NPCS, createNpcState, applySceneToProfile, type NpcState } from "./npc";
+// 类型导入（编译期擦除，避免 storage↔mind 运行时循环依赖）
+import type { UserMindState, AiMindState, RelMindState } from "./mind";
 
 // ============ 槽位 ============
 
@@ -134,6 +136,22 @@ export const store = {
     userLocation: "家",
     // 深夜发出去、她睡着没看到的消息（等她醒来再送达）
     pendingOvernight: [] as string[],
+    // ===== Agent Mind（情感判断与对话决策系统）持久化状态 =====
+    // 用户持续状态（情绪维度 0~1，跨消息持续演化，含惯性/衰减）
+    userMind: {
+        happiness: 0.42, sadness: 0.10, anger: 0.06, fear: 0.06, anxiety: 0.20,
+        disappointment: 0.12, loneliness: 0.18, embarrassment: 0.06, interest: 0.40,
+        energy: 0.55, social_need: 0.32, willingness_to_talk: 0.60, stress: 0.25, tension: 0.10,
+    } as UserMindState,
+    // AI 对话引擎状态（兴趣/耐心/意愿…，受对话动态影响）
+    aiMind: {
+        interest: 0.55, patience: 0.75, willingness_to_talk: 0.62, social_need: 0.35,
+        curiosity: 0.60, energy: 0.62, topicFatigue: 0, defensiveness: 0.15, comfortCount: 0, lastTopic: "",
+    } as AiMindState,
+    // 关系张力状态（trust/familiarity 仍由 38 维推导，这里只存张力与最近重大事件）
+    relMind: { tension: 0.08, lastMajorLabel: "", lastMajorTurn: 0, lastMajorVirtualAt: 0 } as RelMindState,
+    // Agent Mind 上次结算的虚拟时间（用于跨消息/离线后的情绪衰减计算）
+    lastAgentVirtualAt: 0,
 };
 
 // ============ 存取 ============
@@ -220,6 +238,20 @@ export function loadState(): boolean {
         store.agenda = Array.isArray(data.agenda)
             ? data.agenda.map((d: any) => ({ day: d?.day ?? 1, items: Array.isArray(d?.items) ? d.items : [] }))
             : [];
+
+        // Agent Mind：旧存档没有 → 默认值；有 → 合并（防止新增字段缺失）
+        store.userMind = typeof data.userMind === "object" && data.userMind
+            ? { happiness: 0.42, sadness: 0.10, anger: 0.06, fear: 0.06, anxiety: 0.20, disappointment: 0.12, loneliness: 0.18, embarrassment: 0.06, interest: 0.40, energy: 0.55, social_need: 0.32, willingness_to_talk: 0.60, stress: 0.25, tension: 0.10, ...data.userMind }
+            : { happiness: 0.42, sadness: 0.10, anger: 0.06, fear: 0.06, anxiety: 0.20, disappointment: 0.12, loneliness: 0.18, embarrassment: 0.06, interest: 0.40, energy: 0.55, social_need: 0.32, willingness_to_talk: 0.60, stress: 0.25, tension: 0.10 };
+        store.aiMind = typeof data.aiMind === "object" && data.aiMind
+            ? { interest: 0.55, patience: 0.75, willingness_to_talk: 0.62, social_need: 0.35, curiosity: 0.60, energy: 0.62, topicFatigue: 0, defensiveness: 0.15, comfortCount: 0, lastTopic: "", ...data.aiMind }
+            : { interest: 0.55, patience: 0.75, willingness_to_talk: 0.62, social_need: 0.35, curiosity: 0.60, energy: 0.62, topicFatigue: 0, defensiveness: 0.15, comfortCount: 0, lastTopic: "" };
+        store.relMind = typeof data.relMind === "object" && data.relMind
+            ? { tension: 0.08, lastMajorLabel: "", lastMajorTurn: 0, lastMajorVirtualAt: 0, ...data.relMind }
+            : { tension: 0.08, lastMajorLabel: "", lastMajorTurn: 0, lastMajorVirtualAt: 0 };
+        store.lastAgentVirtualAt = typeof data.lastAgentVirtualAt === "number"
+            ? data.lastAgentVirtualAt
+            : store.virtualMs; // 旧存档：从现在开始计算衰减
 
         return true;
     } catch {
