@@ -41,3 +41,6 @@ android-sdk/
 android/
 MelodyAI.apk
 *.apk
+
+# agent 测试临时产物
+.agent-test-bundle.mjs

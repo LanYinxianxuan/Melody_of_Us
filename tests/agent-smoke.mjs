@@ -3,6 +3,7 @@
 import { buildSync } from "esbuild";
 import { fileURLToPath } from "url";
 import path from "path";
+import os from "os";
 
 // ===== 浏览器 API stub（必须在 import bundle 之前） =====
 const lsMap = new Map();
@@ -16,7 +17,8 @@ globalThis.history = { replaceState: () => {} };
 globalThis.window = globalThis;
 
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
-const outfile = path.join(root, ".agent-test-bundle.mjs");
+// 产物放系统临时目录，避免污染仓库
+const outfile = path.join(os.tmpdir(), `agent-test-bundle-${process.pid}.mjs`);
 buildSync({
     entryPoints: [path.join(root, "playground/mind.ts")],
     bundle: true,
