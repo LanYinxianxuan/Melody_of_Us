@@ -6,15 +6,12 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-  <meta name="theme-color" content="#d65a7e">
+  <meta name="theme-color" content="#111111">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="manifest" href="../manifest.webmanifest">
   <link rel="apple-touch-icon" href="./icons/icon-192.png">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
   <title>情感 AI 聊天 · 38 维情感体系</title>
   <style>
       * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -22,287 +19,448 @@
       html, body { max-width: 100%; overflow-x: hidden; }
       img, canvas, svg, video { max-width: 100%; }
 
-
-      /* ===== 二次元简约高级 · 设计系统 =====
-         设计标准（open-design redesign-skill 审计）：
-         - 单一强调色（降饱和），暖白中性底，无紫粉 AI 渐变
-         - 实色按钮 + tinted 阴影 + 噪点纹理
-         - 字体层次：Outfit(数字/英文) + 系统中文，tabular-nums */
+      /* ===== 设计系统：黑白灰 · 微圆角 ===== */
       :root {
-          --accent: #d65a7e;            /* 樱花莓粉（唯一强调色） */
-          --accent-deep: #b84567;       /* hover/按压深一度 */
-          --accent-soft: rgba(214, 90, 126, 0.10);
-          --accent-line: rgba(214, 90, 126, 0.24);
-          --ink: #2d2a32;               /* 深炭墨（暖黑） */
-          --ink-soft: #6e6a76;          /* 次文字 */
-          --ink-faint: #a39dab;         /* 弱文字 */
-          --card: rgba(255, 255, 255, 0.88);
-          --card-strong: #ffffff;
-          --bg: #faf7f4;                /* 暖白中性底 */
-          --line: rgba(45, 42, 50, 0.08);
-          --shadow: 0 6px 24px rgba(120, 80, 60, 0.10);        /* 暖褐 tinted 阴影 */
-          --shadow-lg: 0 16px 48px rgba(120, 80, 60, 0.16);
-          --shadow-accent: 0 6px 20px rgba(214, 90, 126, 0.28);
-          --radius-lg: 24px;
-          --radius-md: 14px;
-          --radius-sm: 8px;
-          --font-num: "Outfit", "PingFang SC", sans-serif;
+          --ink: #111111;            /* 主文字 / 强调黑 */
+          --ink-soft: #555555;       /* 次文字 */
+          --ink-faint: #8a8a8a;      /* 弱文字 */
+          --bg: #ffffff;             /* 页面底色 */
+          --bg-soft: #f6f6f6;        /* 次级底 */
+          --line: #e3e3e3;           /* 分隔线 */
+          --line-strong: #bdbdbd;    /* 强调线 */
+          --danger: #a32119;
+          --danger-soft: rgba(163, 33, 25, 0.06);
+          --danger-line: rgba(163, 33, 25, 0.4);
+          --r: 2px;                  /* 微圆角 */
+          --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Consolas, monospace;
       }
 
-      /* ===== 背景：图片 + 半透明毛玻璃层 ===== */
       body {
           height: 100vh;
+          height: 100dvh;
           overflow: hidden;
-          background-image: url(./assets/bg-ZvSl1C-y.jpg);
-          background-size: cover;
-          background-position: center;
-          background-attachment: fixed;
-          font-family: "PingFang SC", "HarmonyOS Sans SC", "MiSans", "微软雅黑", "Noto Sans SC", sans-serif;
-          color: var(--ink);
-      }
-
-      /* 背景图片模糊层：图片色彩透过毛玻璃显现 */
-      body::before {
-          content: "";
-          position: fixed;
-          inset: -20px;
-          background-image: url(./assets/bg-ZvSl1C-y.jpg);
-          background-size: cover;
-          background-position: center;
-          filter: blur(14px) saturate(1.25);
-          transform: scale(1.05);
-          z-index: -2;
-      }
-
-      /* 半透明柔光罩：让玻璃面板下的图片有氛围但不抢眼 */
-      body::after {
-          content: "";
-          position: fixed;
-          inset: 0;
-          background:
-              radial-gradient(900px 520px at 12% -4%, rgba(214, 90, 126, 0.18), transparent 55%),
-              radial-gradient(760px 440px at 104% 110%, rgba(140, 150, 200, 0.16), transparent 55%),
-              linear-gradient(to bottom right, rgba(250, 247, 244, 0.42), rgba(243, 238, 233, 0.5));
-          z-index: -1;
-          pointer-events: none;
-      }
-
-      /* 噪点纹理：打破数字扁平感（毛玻璃之上） */
-      .grain {
-          content: "";
-          position: fixed;
-          inset: 0;
-          background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E");
-          pointer-events: none;
-          z-index: 3;
-      }
-
-      /* ===== 聊天显示区（半透明毛玻璃） ===== */
-      #chat-wrap {
-          height: calc(100vh - 90px);
-          margin: 12px 12px 12px 12px;
-          padding: 16px;
           display: flex;
           flex-direction: column;
-          gap: 12px;
-
-          background: rgba(255, 255, 255, 0.4);
-          backdrop-filter: blur(28px) saturate(1.6);
-          -webkit-backdrop-filter: blur(28px) saturate(1.6);
-          border: 1px solid rgba(255, 255, 255, 0.55);
-          box-shadow:
-              inset 0 1px 0 rgba(255, 255, 255, 0.7),
-              inset 0 0 24px rgba(255, 255, 255, 0.25),
-              0 12px 40px rgba(120, 80, 60, 0.16);
-          border-radius: var(--radius-lg);
-          transition: margin-left 0.3s ease;
-          position: relative;
-          z-index: 1;
+          background: var(--bg);
+          font-family: "PingFang SC", "HarmonyOS Sans SC", "MiSans", "微软雅黑", "Noto Sans SC", system-ui, sans-serif;
+          color: var(--ink);
+          -webkit-font-smoothing: antialiased;
       }
 
-      #chat-wrap.panel-open { margin-left: 330px; }
+      /* ===== 顶部应用栏 ===== */
+      #chat-header {
+          flex-shrink: 0;
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 0 14px;
+          height: 52px;
+          border-bottom: 1px solid var(--line);
+          background: var(--bg);
+          z-index: 10;
+      }
 
-      .mini-btn {
-          margin-left: 8px;
-          padding: 5px 13px;
+      .chat-identity { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; }
+
+      .chat-avatar {
+          width: 30px; height: 30px;
+          border: 1px solid var(--line-strong);
+          border-radius: var(--r);
+          background: var(--bg-soft);
+          display: flex; align-items: center; justify-content: center;
+          font-size: 15px;
+          flex-shrink: 0;
+      }
+
+      .chat-name-row { display: flex; align-items: center; gap: 8px; min-width: 0; }
+      .chat-name-row #chat-title-text {
+          font-weight: 700; font-size: 14px; color: var(--ink);
+          white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      }
+      .chat-sub { font-size: 11px; color: var(--ink-faint); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      #chat-header .dot { width: 7px; height: 7px; border: 1px solid var(--ink); border-radius: 50%; background: var(--ink); flex-shrink: 0; }
+      #chat-header .dot.busy { background: transparent; }
+
+      .chat-actions { display: flex; gap: 4px; align-items: center; flex-shrink: 0; }
+
+      /* ===== 图标体系：Lucide 线性 14/16px ===== */
+      .ico {
+          width: 16px;
+          height: 16px;
+          flex-shrink: 0;
+          vertical-align: -0.18em;
+      }
+      .ico-sm { width: 14px; height: 14px; }
+      .icon-mini .ico { width: 15px; height: 15px; }
+
+      .icon-mini {
+          min-width: 30px; height: 30px;
+          padding: 0 8px;
           border: 1px solid transparent;
-          border-radius: 999px;
+          border-radius: var(--r);
           background: transparent;
+          font-size: 12px;
+          color: var(--ink-soft);
+          cursor: pointer;
+          display: inline-flex; align-items: center; justify-content: center;
+          text-decoration: none;
+          white-space: nowrap;
+          transition: background 0.15s, color 0.15s, border-color 0.15s, transform 0.1s;
+      }
+      .icon-mini:hover { background: var(--bg-soft); color: var(--ink); }
+      .icon-mini:active { transform: translateY(1px); }
+      .icon-mini.active { background: var(--ink); color: #fff; border-color: var(--ink); }
+      .icon-mini:disabled { opacity: 0.4; cursor: not-allowed; }
+      .icon-mini:disabled:hover { background: transparent; color: var(--ink-soft); }
+
+      /* ===== 主体：面板 + 聊天区 ===== */
+      #app-body {
+          flex: 1;
+          min-height: 0;
+          display: flex;
+      }
+
+      /* ===== 左侧状态面板 ===== */
+      #state-panel {
+          width: 320px;
+          flex-shrink: 0;
+          overflow-y: auto;
+          border-right: 1px solid var(--line);
+          background: var(--bg);
+          padding: 14px 16px 20px;
+      }
+      #state-panel.hidden { display: none; }
+
+      #state-panel h1 { font-size: 13px; color: var(--ink); margin-bottom: 4px; font-weight: 700; letter-spacing: 0.5px; }
+      #state-panel .hint { font-size: 11px; color: var(--ink-faint); line-height: 1.6; margin-bottom: 10px; }
+
+      /* 面板区块：分隔线划分，不套卡片 */
+      .p-section {
+          padding: 12px 0;
+          border-bottom: 1px solid var(--line);
+      }
+      .p-section:last-child { border-bottom: none; }
+
+      /* ===== 角色卡 ===== */
+      .char-card {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+      }
+      .char-card-avatar {
+          width: 48px; height: 48px;
+          border: 1px solid var(--line-strong);
+          border-radius: var(--r);
+          background: var(--bg-soft);
+          display: flex; align-items: center; justify-content: center;
+          font-size: 24px;
+          flex-shrink: 0;
+      }
+      .char-card-info { flex: 1; min-width: 0; }
+      .char-card-name { font-size: 15px; font-weight: 700; color: var(--ink); }
+      .char-card-stage { font-size: 11px; color: var(--ink-faint); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .char-card-ring { position: relative; flex-shrink: 0; }
+      .char-card-pct {
+          position: absolute; inset: 0;
+          display: flex; align-items: center; justify-content: center;
+          font-size: 9px; font-weight: 700; color: var(--ink);
+          font-family: var(--font-mono);
+      }
+
+      /* ===== 时间胶囊 ===== */
+      .time-capsule-time {
+          font-family: var(--font-mono);
+          font-variant-numeric: tabular-nums;
+          font-size: 30px;
+          font-weight: 600;
+          color: var(--ink);
+          letter-spacing: 0.5px;
+          line-height: 1;
+      }
+      .time-capsule-meta { display: flex; align-items: center; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+      .tc-label {
+          font-size: 11px; font-weight: 600; color: var(--bg);
+          background: var(--ink);
+          padding: 2px 8px;
+          border-radius: var(--r);
+      }
+      .tc-date { font-size: 11px; color: var(--ink-soft); }
+      .tc-day { font-size: 11px; color: var(--ink-faint); }
+      .tc-activity { font-size: 12px; color: var(--ink-soft); margin-top: 10px; line-height: 1.6; }
+      .tc-scene { font-size: 11px; color: var(--ink-faint); margin-top: 4px; line-height: 1.6; }
+      .tc-actions { margin-top: 10px; }
+
+      .tc-btn {
+          display: inline-flex; align-items: center; justify-content: center;
+          padding: 5px 10px;
+          border: 1px solid var(--line-strong);
+          border-radius: var(--r);
+          background: var(--bg);
           color: var(--ink-soft);
           font-size: 11px;
           cursor: pointer;
-          letter-spacing: 1px;
-          transition: all 0.2s ease;
+          font-family: inherit;
+          transition: border-color 0.15s, color 0.15s, background 0.15s, transform 0.1s;
       }
+      .tc-btn:hover { border-color: var(--ink); color: var(--ink); }
+      .tc-btn:active { transform: translateY(1px); }
+      .tc-btn-primary { background: var(--ink); border-color: var(--ink); color: #fff; }
+      .tc-btn-primary:hover { background: #333; color: #fff; }
+      .tc-btn:disabled { opacity: 0.45; cursor: not-allowed; }
 
-      .mini-btn:hover { background: var(--accent-soft); color: var(--accent); }
-      .mini-btn:active { transform: scale(0.96); }
-      .mini-btn.active { background: var(--accent); color: #fff; box-shadow: var(--shadow-accent); }
+      .rate-row { margin-top: 8px; display: flex; gap: 4px; flex-wrap: wrap; }
+      .rate-btn {
+          flex: 1; min-width: 44px;
+          padding: 5px 0;
+          border: 1px solid var(--line);
+          border-radius: var(--r);
+          background: var(--bg);
+          color: var(--ink-soft);
+          font-size: 10px;
+          font-family: var(--font-mono);
+          cursor: pointer;
+          transition: border-color 0.15s, color 0.15s, background 0.15s, transform 0.1s;
+      }
+      .rate-btn:hover { border-color: var(--ink); color: var(--ink); }
+      .rate-btn:active { transform: translateY(1px); }
+      .rate-btn.active { background: var(--ink); border-color: var(--ink); color: #fff; }
 
-      #chat-messages {
-          flex: 1;
-          overflow-y: auto;
-          display: flex;
-          flex-direction: column;
-          gap: 14px;
-          padding: 4px;
-          scroll-behavior: smooth;
-      }
-
-      .msg.ai .action {
-          display: block; font-size: 12px; color: var(--accent); font-style: italic; margin-top: 6px;
-      }
-      .msg.ai .thoughts {
-          display: block; font-size: 12px; color: var(--accent-deep); margin-top: 4px;
-      }
-      .msg.ai .emotion-tag {
-          display: block; font-size: 10px; color: var(--ink-faint); margin-top: 6px;
-      }
-
-      /* 支线 NPC 消息（世界里的其他人） */
-      .msg.npc-msg .npc-name {
+      .tc-field-row { margin-top: 6px; display: flex; gap: 4px; align-items: center; }
+      .tc-field-row input {
+          flex: 1; min-width: 0;
+          height: 26px;
+          padding: 0 6px;
+          border: 1px solid var(--line);
+          border-radius: var(--r);
+          background: var(--bg);
+          color: var(--ink);
           font-size: 11px;
-          color: var(--accent);
-          margin-bottom: 4px;
+          font-family: inherit;
+          outline: none;
+          transition: border-color 0.15s, background 0.15s;
+      }
+      .tc-field-row input:hover { border-color: var(--line-strong); }
+      .tc-field-row input:focus { border-color: var(--ink); background: var(--bg); }
+
+      /* ===== 心情 ===== */
+      #mood-text {
+          font-size: 12px;
+          color: var(--ink-soft);
+          line-height: 1.7;
+          padding: 8px 10px;
+          background: var(--bg-soft);
+          border: 1px solid var(--line);
+          border-radius: var(--r);
+      }
+
+      /* ===== 场景描述 ===== */
+      .scene-header {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          margin-bottom: 8px;
+      }
+      .scene-icon { display: inline-flex; color: var(--ink-soft); }
+      .scene-title { font-size: 13px; font-weight: 700; color: var(--ink); }
+      .scene-location {
+          display: inline-block;
+          font-size: 12px;
+          color: var(--ink);
+          font-weight: 600;
+          margin-bottom: 8px;
+          padding: 4px 8px;
+          background: var(--bg-soft);
+          border-left: 2px solid var(--ink);
+          border-radius: var(--r);
+      }
+      .scene-atmosphere {
+          font-size: 11px;
+          color: var(--ink-soft);
+          line-height: 1.7;
+          margin-bottom: 8px;
+          overflow-wrap: break-word;
+      }
+      .scene-details {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 6px 10px;
+          margin-bottom: 10px;
+      }
+      .scene-detail-item {
+          display: flex;
+          align-items: flex-start;
+          gap: 6px;
+          font-size: 11px;
+          color: var(--ink-soft);
+          line-height: 1.5;
+      }
+      .scene-detail-icon { flex-shrink: 0; width: 14px; text-align: center; }
+      .scene-detail-text { flex: 1; min-width: 0; }
+      .scene-activity {
+          font-size: 11px;
+          color: var(--ink);
+          padding: 8px 10px;
+          background: var(--bg-soft);
+          border: 1px solid var(--line);
+          border-radius: var(--r);
+          line-height: 1.6;
+      }
+
+      /* ===== 可折叠分组 ===== */
+      .panel-section { border-bottom: 1px solid var(--line); }
+      .panel-section:last-child { border-bottom: none; }
+      .panel-section-toggle {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          width: 100%;
+          padding: 12px 0;
+          background: transparent;
+          border: none;
+          color: var(--ink);
+          font-size: 12px;
           font-weight: 700;
           letter-spacing: 0.5px;
-      }
-      .msg.npc-msg .action {
-          color: var(--ink-soft);
-      }
-
-      /* 手机消息（校外：不在一起，只能发消息） */
-      .phone-badge {
-          display: block;
-          font-size: 10px;
-          margin-bottom: 3px;
-          opacity: 0.8;
-      }
-
-      /* 消息时间戳（虚拟时间：体现这条消息是几点发的） */
-      .msg-ts {
-          display: block;
-          font-size: 10px;
-          color: var(--ink-faint);
-          margin-top: 4px;
-          text-align: right;
-          user-select: none;
-          font-family: var(--font-num);
-          font-variant-numeric: tabular-nums;
-      }
-
-      /* 消息旁的重答按钮 */
-      .msg-reanswer {
-          position: absolute;
-          top: 6px;
-          right: 6px;
-          width: 20px;
-          height: 20px;
-          line-height: 20px;
-          text-align: center;
-          font-size: 12px;
-          color: rgba(107, 95, 142, 0.5);
-          background: rgba(255, 255, 255, 0.7);
-          border: 1px solid var(--line);
-          border-radius: 50%;
           cursor: pointer;
-          opacity: 0;
-          transition: opacity 0.2s, background 0.2s;
-          padding: 0;
+          user-select: none;
+          font-family: inherit;
       }
-      .msg:hover .msg-reanswer { opacity: 1; }
-      .msg-reanswer:hover { background: rgba(255, 255, 255, 0.18); color: #fff; }
+      .panel-section-toggle .pst-label {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          color: var(--ink);
+      }
+      .panel-section-toggle .pst-label .ico { color: var(--ink-soft); }
+      .panel-section-toggle .toggle-arrow {
+          display: inline-flex;
+          transition: transform 0.2s;
+          color: var(--ink-faint);
+      }
+      .panel-section-toggle.collapsed .toggle-arrow { transform: rotate(-90deg); }
+      .panel-section-content { padding-bottom: 12px; }
+      .panel-section-content.collapsed { display: none; }
 
-      .msg.phone { font-size: 14px; }
-      .msg.phone .dialogue { font-size: 13px; }
-
-      /* 剧情旁白：插入对话流的事件叙述 */
-      /* ===== 左侧状态面板（半透明毛玻璃浮层，可收起） ===== */
-      #state-panel {
-          position: fixed;
-          left: 12px;
-          top: 12px;
-          bottom: 90px;
-          width: 305px;
-          padding: 14px;
+      /* ===== 剧情卡 ===== */
+      .story-card { padding: 10px 0 0; }
+      .story-head {
           display: flex;
-          flex-direction: column;
-          overflow-y: auto;
-          border-radius: var(--radius-lg);
-          background: rgba(255, 255, 255, 0.42);
-          backdrop-filter: blur(28px) saturate(1.6);
-          -webkit-backdrop-filter: blur(28px) saturate(1.6);
-          border: 1px solid rgba(255, 255, 255, 0.55);
-          box-shadow:
-              inset 0 1px 0 rgba(255, 255, 255, 0.7),
-              inset 0 0 24px rgba(255, 255, 255, 0.22),
-              0 16px 48px rgba(120, 80, 60, 0.18);
-          transition: transform 0.3s ease, opacity 0.3s ease;
-          z-index: 20;
+          justify-content: space-between;
+          font-size: 12px;
+          color: var(--ink);
+          margin-bottom: 2px;
       }
-
-      #state-panel.hidden { transform: translateX(-110%); opacity: 0; pointer-events: none; }
-
-      #state-panel h1 { font-size: 14px; color: var(--accent); margin-bottom: 6px; }
-      #state-panel .hint { font-size: 10px; color: var(--ink-soft); line-height: 1.5; margin-bottom: 8px; }
-
-      #meters-scroll {
-          flex: 1;
-          overflow-y: auto;
-          min-height: 0;
-          margin-top: 8px;
-          padding-right: 4px;
-      }
-
-      #meters-scroll::-webkit-scrollbar { width: 5px; }
-      #meters-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.25); border-radius: 3px; }
-
-      .group-title {
-          font-size: 11px; color: var(--ink-soft);
-          border-bottom: 1px solid var(--line);
-          padding-bottom: 4px; margin-top: 8px; cursor: pointer; user-select: none;
-          font-weight: 700;
-      }
-
-      .meter { margin: 6px 0; }
-
-      .meter .label {
-          display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 3px;
-      }
-      .meter .label .name { color: var(--ink); }
-      .meter .label .val { color: var(--accent); font-family: Consolas, monospace; font-weight: 700; }
-
-      .meter .bar {
-          height: 6px; border-radius: 3px; background: rgba(139, 92, 246, 0.12); overflow: hidden;
-      }
-      .meter .bar .fill {
-          height: 100%; border-radius: 3px; transition: width 0.6s ease;
-      }
-
-      #emotion-chart {
-          margin-top: 10px;
-          background: rgba(255, 255, 255, 0.5);
-          border-radius: 12px;
+      .story-desc { font-size: 11px; color: var(--ink-faint); margin-bottom: 8px; }
+      .story-bar {
+          height: 4px;
+          border-radius: var(--r);
+          background: var(--bg-soft);
           border: 1px solid var(--line);
-          width: 100%;
+          overflow: hidden;
+      }
+      .story-fill {
+          height: 100%;
+          background: var(--ink);
+          transition: width 0.8s ease;
+      }
+      .story-progress-row {
+          display: flex; justify-content: space-between;
+          font-size: 10px; color: var(--ink-faint); margin-top: 4px;
+          font-family: var(--font-mono);
+      }
+      .story-event {
+          overflow-wrap: break-word;
+          font-size: 11px;
+          color: var(--ink-soft);
+          line-height: 1.7;
+          margin-top: 6px;
       }
 
-      /* ===== 全部情感（默认折叠，用户自己点开查看） ===== */
+      /* ===== 日程时间线 ===== */
+      .agenda-empty {
+          font-size: 11px;
+          color: var(--ink-faint);
+          padding: 6px 2px;
+      }
+      .agenda-item {
+          display: flex;
+          flex-wrap: wrap;
+          align-items: baseline;
+          gap: 6px 8px;
+          font-size: 11px;
+          padding: 5px 8px;
+          border-radius: var(--r);
+          border-left: 2px solid var(--line);
+          color: var(--ink);
+          opacity: 0.75;
+      }
+      .agenda-item.active { border-left-color: var(--ink); background: var(--bg-soft); opacity: 1; font-weight: 600; }
+      .agenda-item.done { opacity: 0.4; border-left-color: var(--line-strong); text-decoration: line-through; }
+      .agenda-item .agenda-time { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: 10px; color: var(--ink-faint); flex-shrink: 0; }
+      .agenda-item .agenda-mark { width: 12px; text-align: center; flex-shrink: 0; }
+      .agenda-item .agenda-title { flex: 1; min-width: 0; white-space: normal; word-break: break-word; }
+      .agenda-item .agenda-desc {
+          width: 100%;
+          font-size: 10px;
+          color: var(--ink-soft);
+          padding-left: 28px;
+          line-height: 1.5;
+      }
+
+      /* ===== 情绪日志 ===== */
+      #mood-history {
+          font-size: 11px; color: var(--ink-soft); line-height: 1.7;
+          height: 100px; min-height: 100px; overflow-y: auto;
+          padding-top: 4px;
+      }
+      #mood-history .entry { display: flex; gap: 5px; }
+      #mood-history .entry .who { color: var(--ink-soft); font-weight: 600; }
+      #mood-history .entry .who.ai { color: var(--ink); }
+      #mood-history .entry .emo { color: var(--ink); }
+
+      /* ===== Agent 决策状态（调试） ===== */
+      #agent-debug { font-size: 10.5px; line-height: 1.5; color: var(--ink); }
+      .dbg-block {
+          border: 1px solid var(--line);
+          border-radius: 8px;
+          padding: 6px 8px;
+          margin-bottom: 6px;
+      }
+      .dbg-h { font-weight: 700; font-size: 10px; color: var(--ink-soft); margin-bottom: 3px; letter-spacing: .02em; }
+      .dbg-kv { font-variant-numeric: tabular-nums; color: var(--ink-soft); }
+      .dbg-kv b { color: var(--ink); font-weight: 700; }
+      .dbg-str { font-weight: 700; color: var(--ink); white-space: pre-wrap; }
+      .dbg-trace { display: flex; flex-direction: column; gap: 5px; }
+      .dbg-tr {
+          border-left: 2px solid var(--line);
+          padding: 3px 6px;
+          border-radius: 0 6px 6px 0;
+      }
+      .dbg-tr-meta { color: var(--ink-soft); font-size: 10px; }
+      .dbg-tr-line { color: var(--ink-soft); word-break: break-all; }
+
+      /* ===== 全部情感按钮 ===== */
       #emotions-toggle {
           width: 100%;
-          margin-top: 10px;
-          padding: 9px 0;
-          border: 1px solid var(--accent-line);
-          border-radius: 999px;
-          background: transparent;
-          color: var(--accent);
+          margin-top: 4px;
+          height: 32px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 7px;
+          border: 1px solid var(--ink);
+          border-radius: var(--r);
+          background: var(--bg);
+          color: var(--ink);
           font-size: 12px;
           cursor: pointer;
-          transition: all 0.2s ease;
           font-weight: 600;
+          letter-spacing: 1px;
+          font-family: inherit;
+          transition: background 0.15s, color 0.15s, transform 0.1s;
       }
-      #emotions-toggle:hover { background: var(--accent-soft); }
-      #emotions-toggle.open { background: var(--accent); color: #fff; border-color: transparent; box-shadow: var(--shadow-accent); }
+      #emotions-toggle:hover { background: var(--ink); color: #fff; }
+      #emotions-toggle:active { background: #000; color: #fff; transform: translateY(1px); }
 
       /* ===== 全屏情感明细浮层 ===== */
       #emotions-modal {
@@ -310,875 +468,865 @@
           inset: 0;
           display: flex;
           flex-direction: column;
-          background: linear-gradient(160deg, rgba(58, 42, 90, 0.98), rgba(40, 30, 66, 0.98));
-          backdrop-filter: blur(12px);
+          background: var(--bg);
           z-index: 105;
-          padding: 16px 20px calc(16px + env(safe-area-inset-bottom));
+          padding-bottom: env(safe-area-inset-bottom);
       }
       #emotions-modal.hidden { display: none; }
+
       .em-modal-head {
           display: flex; justify-content: space-between; align-items: center;
-          font-size: 16px; color: #e8d5ff; margin-bottom: 6px;
+          padding: 14px 18px;
+          border-bottom: 1px solid var(--line);
+          font-size: 14px; color: var(--ink);
+          font-weight: 700;
       }
+      .em-title { display: inline-flex; align-items: center; gap: 8px; }
+      .em-title .ico { color: var(--ink-soft); }
       .em-close {
-          width: 34px; height: 34px; border-radius: 50%;
-          border: 1px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.1);
-          color: #fff; font-size: 14px; cursor: pointer;
+          width: 30px; height: 30px;
+          border: 1px solid var(--line-strong);
+          border-radius: var(--r);
+          background: var(--bg);
+          color: var(--ink);
+          font-size: 13px;
+          cursor: pointer;
+          transition: background 0.15s, transform 0.1s;
       }
-      .em-close:active { background: rgba(255,255,255,0.25); }
+      .em-close:hover { background: var(--bg-soft); }
+      .em-close:active { transform: translateY(1px); }
       .em-sub {
-          font-size: 11px; color: rgba(255,255,255,0.55);
-          line-height: 1.5; margin-bottom: 10px;
+          font-size: 11px; color: var(--ink-faint);
+          line-height: 1.6; padding: 10px 18px 6px;
+          border-bottom: 1px solid var(--line);
       }
+
+      #emotions-modal #emotion-chart {
+          width: 100%;
+          flex-shrink: 0;
+          background: var(--bg);
+          border-bottom: 1px solid var(--line);
+      }
+
       #emotions-modal #meters-scroll {
           flex: 1;
           overflow-y: auto;
           min-height: 0;
-          margin-top: 0;
+          padding: 4px 18px 18px;
       }
-      #emotions-modal #emotion-chart {
-          width: 100%;
-          margin: 0 0 4px;
-          flex-shrink: 0;
-      }
+      #emotions-modal #meters-scroll::-webkit-scrollbar { width: 6px; }
+      #emotions-modal #meters-scroll::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: 3px; }
 
-      #mood-text {
-          font-size: 11px; color: #ffd08a; line-height: 1.6;
-          background: rgba(0,0,0,0.25); padding: 8px; border-radius: 8px; margin-top: 8px;
-      }
-
-      /* ===== 时间卡（她的生活） ===== */
-      .clock-card {
+      .group-title {
+          display: flex; align-items: center; gap: 6px;
+          font-size: 12px; color: var(--ink);
+          border-bottom: 1px solid var(--line);
+          padding: 10px 0 6px;
           margin-top: 10px;
-          padding: 12px;
-          background: var(--bg);
+          cursor: pointer;
+          user-select: none;
+          font-weight: 700;
+      }
+      .group-title .ico { color: var(--ink-soft); }
+
+      .meter { margin: 8px 0; }
+      .meter .label {
+          display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 4px;
+      }
+      .meter .label .name { color: var(--ink-soft); }
+      .meter .label .val { color: var(--ink); font-family: var(--font-mono); font-weight: 700; font-variant-numeric: tabular-nums; }
+      .meter .bar {
+          height: 5px;
+          border-radius: var(--r);
+          background: var(--bg-soft);
           border: 1px solid var(--line);
-          border-radius: var(--radius-md);
-      }
-
-      .clock-row {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          font-size: 12px;
-          gap: 8px;
-      }
-
-      /* ===== 剧情卡 ===== */
-      .story-card {
-          margin-top: 10px;
-          padding: 12px;
-          background: var(--bg);
-          border: 1px solid var(--line);
-          border-radius: var(--radius-md);
-      }
-
-      .story-head {
-          display: flex;
-          justify-content: space-between;
-          font-size: 12px;
-          color: #fff;
-          margin-bottom: 2px;
-      }
-
-      .story-desc {
-          font-size: 10px;
-          color: rgba(255, 255, 255, 0.55);
-          margin-bottom: 8px;
-      }
-
-      .story-bar {
-          height: 6px;
-          border-radius: 3px;
-          background: rgba(255, 255, 255, 0.15);
           overflow: hidden;
       }
-
-      .story-fill {
+      .meter .bar .fill {
           height: 100%;
-          border-radius: 3px;
-          background: linear-gradient(to right, #fad831, #eba345);
-          transition: width 0.8s ease;
+          transition: width 0.6s ease;
       }
 
-      .story-event {
-          overflow-wrap: break-word;
-          font-size: 10px;
-          color: var(--ink-soft);
-          line-height: 1.6;
-          margin-top: 5px;
-          padding-left: 2px;
-      }
-
-      /* 今日日程时间线 */
-      .agenda-empty {
-          font-size: 10px;
-          color: rgba(255, 255, 255, 0.35);
-          padding: 6px 2px;
-      }
-
-      /* ===== 可折叠分组 ===== */
-      .panel-section {
-          border-radius: var(--radius-md);
-          margin-bottom: 6px;
-      }
-      .panel-section-toggle {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          width: 100%;
-          padding: 8px 10px;
-          background: rgba(255, 255, 255, 0.3);
-          border: 1px solid rgba(255, 255, 255, 0.4);
-          border-radius: var(--radius-sm);
-          color: var(--ink-soft);
-          font-size: 12px;
-          font-weight: 600;
-          cursor: pointer;
-          transition: all 0.2s;
-          user-select: none;
-          position: sticky;
-          top: 0;
-          z-index: 2;
-      }
-      .panel-section-toggle:hover { background: rgba(255, 255, 255, 0.5); }
-      .panel-section-toggle .toggle-arrow {
-          transition: transform 0.25s;
-          font-size: 10px;
-      }
-      .panel-section-toggle.collapsed .toggle-arrow { transform: rotate(-90deg); }
-      .panel-section-content {
-          padding-top: 4px;
-          display: block;
-      }
-      .panel-section-content.collapsed {
-          display: none;
-      }
-
-      #mood-history {
-          font-size: 10px; color: var(--ink-soft); line-height: 1.6;
-          border-top: 1px solid rgba(255,255,255,0.15); padding-top: 8px; margin-top: 8px;
-          height: 90px; min-height: 90px; overflow-y: auto;
-      }
-
-      #mood-history .entry { display: flex; gap: 5px; }
-      #mood-history .entry .who { color: #7db4f0; }
-      #mood-history .entry .who.ai { color: #9ff0b8; }
-      #mood-history .entry .emo { color: #ffd08a; }
-
-      #state-config {
-          border-top: 1px solid rgba(255,255,255,0.15);
-          padding-top: 8px; margin-top: 8px;
-          display: flex; flex-direction: column; gap: 6px;
-      }
-
-      #state-config input, #state-config select {
-          padding: 7px 10px; border: none; border-radius: 8px;
-          background: rgba(255,255,255,0.9); color: #333; font-size: 12px; outline: none;
-      }
-
-      #state-config button {
-          padding: 8px; border: none; border-radius: 8px;
-          background: rgba(255,255,255,0.2); color: #fff; font-size: 12px; cursor: pointer;
-      }
-
-      #state-config button:hover { background: rgba(255,255,255,0.3); }
-      #reset-state { background: rgba(255, 184, 107, 0.35) !important; }
-
-      /* ===== 面板开关按钮 ===== */
-      #panel-toggle {
-          position: fixed;
-          left: 12px;
-          top: calc(50% - 22px);
-          width: 44px; height: 44px;
-          border-radius: 50%;
-          border: none;
-          background: var(--card-strong);
-          color: var(--accent);
-          box-shadow: var(--shadow);
-          cursor: pointer;
-          transition: 0.25s, left 0.3s ease;
-          z-index: 30;
-          font-size: 18px;
-      }
-
-      #panel-toggle:hover { transform: scale(1.08); box-shadow: var(--shadow-lg); }
-      #panel-toggle.panel-open { left: 329px; }
-
-      /* ===== 角色设定弹层 ===== */
-      #char-modal {
+      /* ===== 弹层 ===== */
+      #char-modal, #history-modal, #wizard-modal {
           position: fixed;
           inset: 0;
           display: flex;
           justify-content: center;
           align-items: center;
-          background: rgba(0, 0, 0, 0.55);
-          backdrop-filter: blur(6px);
+          background: rgba(17, 17, 17, 0.5);
           z-index: 100;
+          padding: 16px;
+      }
+      #char-modal.hidden, #history-modal.hidden, #wizard-modal.hidden { display: none; }
+      #wizard-modal { z-index: 110; }
+
+      .modal-box {
+          width: 100%;
+          max-width: 480px;
+          max-height: 86vh;
+          overflow-y: auto;
+          padding: 20px 22px;
+          border-radius: var(--r);
+          background: var(--bg);
+          border: 1px solid var(--line-strong);
+      }
+      .modal-box h2 {
+          color: var(--ink);
+          font-size: 15px;
+          letter-spacing: 0.5px;
+          margin-bottom: 6px;
+          font-weight: 700;
+      }
+      .modal-box .sub {
+          color: var(--ink-soft);
+          font-size: 12px;
+          margin-bottom: 14px;
+          line-height: 1.7;
       }
 
       /* ===== 角色创建向导 ===== */
-      #wizard-modal {
-          position: fixed;
-          inset: 0;
-          display: flex;
-          justify-content: center;
-          align-items: center;
-          background: rgba(0, 0, 0, 0.6);
-          backdrop-filter: blur(6px);
-          z-index: 110;
-      }
-
-      #wizard-modal.hidden { display: none; }
-
-      #wizard-modal .box {
-          max-height: 86vh;
-          overflow-y: auto;
-          padding: 26px 30px;
-          border-radius: var(--radius-lg);
-          background: var(--card-strong);
-          border: 1px solid rgba(255, 255, 255, 0.7);
-          box-shadow: var(--shadow-lg);
-      }
-
-      #wizard-modal h2 { color: var(--accent); font-size: 16px; letter-spacing: 2px; margin-bottom: 6px; }
-      #wizard-modal .sub { color: var(--ink-soft); font-size: 11px; margin-bottom: 14px; line-height: 1.6; }
-
       .wiz-preset {
           display: block;
           width: 100%;
           text-align: left;
-          padding: 14px 18px;
-          margin-bottom: 10px;
-          border-radius: 14px;
+          padding: 12px 14px;
+          margin-bottom: 8px;
+          border-radius: var(--r);
           border: 1px solid var(--line);
-          background: var(--card);
+          border-left: 2px solid var(--line);
+          background: var(--bg);
           color: var(--ink);
           cursor: pointer;
-          transition: all 0.2s;
+          font-family: inherit;
+          transition: border-color 0.15s, background 0.15s, border-left-color 0.15s, transform 0.1s;
       }
-
-      .wiz-preset:hover { background: var(--accent-soft); border-color: var(--accent-line); transform: translateY(-1px); }
-      .wiz-preset .p-name { font-size: 15px; font-weight: 700; color: var(--accent); }
+      .wiz-preset:hover { border-color: var(--line-strong); background: var(--bg-soft); border-left-color: var(--ink); }
+      .wiz-preset:active { transform: translateY(1px); background: #eeeeee; }
+      .wiz-preset .p-name { font-size: 14px; font-weight: 700; color: var(--ink); }
       .wiz-preset .p-desc { font-size: 11px; color: var(--ink-soft); margin-top: 4px; line-height: 1.6; }
 
-      .wiz-q { font-size: 14px; color: var(--ink); margin-bottom: 12px; line-height: 1.6; font-weight: 600; }
-      .wiz-q small { display: block; color: var(--ink-soft); font-size: 11px; margin-top: 4px; font-weight: 400; }
+      .wiz-q { font-size: 13px; color: var(--ink); margin-bottom: 12px; line-height: 1.6; font-weight: 600; }
+      .wiz-q small { display: block; color: var(--ink-soft); font-size: 11px; margin-top: 4px; font-weight: 400; line-height: 1.7; }
 
       .wiz-input {
           width: 100%;
-          padding: 11px 14px;
-          border: 1px solid var(--line);
-          border-radius: 12px;
-          background: var(--card);
+          padding: 9px 10px;
+          border: 1px solid var(--line-strong);
+          border-radius: var(--r);
+          background: var(--bg);
           color: var(--ink);
-          font-size: 14px;
+          font-size: 13px;
           outline: none;
           font-family: inherit;
-          transition: border-color 0.2s, box-shadow 0.2s;
+          transition: border-color 0.15s, background 0.15s;
       }
-      .wiz-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(192, 132, 252, 0.15); }
+      .wiz-input:hover { background: #fcfcfc; }
+      .wiz-input:focus { border-color: var(--ink); background: var(--bg); }
 
-      .wiz-chips { display: flex; flex-wrap: wrap; gap: 8px; }
-
+      .wiz-chips { display: flex; flex-wrap: wrap; gap: 6px; }
       .wiz-chip {
-          padding: 7px 16px;
-          border-radius: 999px;
-          border: 1px solid var(--line);
-          background: var(--card);
+          padding: 6px 12px;
+          border-radius: var(--r);
+          border: 1px solid var(--line-strong);
+          background: var(--bg);
           color: var(--ink-soft);
-          font-size: 13px;
+          font-size: 12px;
           cursor: pointer;
-          transition: all 0.15s;
+          transition: border-color 0.15s, color 0.15s, background 0.15s, transform 0.1s;
           user-select: none;
       }
-
-      .wiz-chip:hover { background: var(--accent-soft); color: var(--accent); }
+      .wiz-chip:hover { border-color: var(--ink); color: var(--ink); }
+      .wiz-chip:active { transform: translateY(1px); }
       .wiz-chip.selected {
-          background: var(--accent);
+          background: var(--ink);
           color: #fff;
-          border-color: transparent;
+          border-color: var(--ink);
           font-weight: 600;
-          box-shadow: var(--shadow-accent);
       }
 
       .wiz-preview {
           overflow-wrap: break-word;
-          background: var(--card);
-          border: 1px dashed var(--accent);
-          border-radius: 12px;
-          padding: 14px 16px;
+          background: var(--bg);
+          border: 1px dashed var(--line-strong);
+          border-radius: var(--r);
+          padding: 12px 14px;
           font-size: 12px;
           line-height: 1.9;
-          color: var(--ink);
+          color: var(--ink-soft);
       }
+      .wiz-preview b { color: var(--ink); }
 
       .wiz-nav {
           flex: 1;
-          padding: 10px 0;
-          border-radius: 999px;
-          border: 1px solid var(--line);
-          background: var(--card);
+          height: 36px;
+          border-radius: var(--r);
+          border: 1px solid var(--line-strong);
+          background: var(--bg);
           color: var(--ink-soft);
           font-size: 13px;
           cursor: pointer;
           font-weight: 600;
-          transition: all 0.2s;
+          font-family: inherit;
+          transition: border-color 0.15s, color 0.15s, background 0.15s, transform 0.1s;
       }
-      .wiz-nav:hover { background: var(--accent-soft); color: var(--accent); }
-      .wiz-nav-primary { flex: 2; background: var(--accent); color: #fff; border-color: transparent; box-shadow: var(--shadow-accent); }
-      .wiz-nav-primary:hover { background: var(--accent-deep); color: #fff; transform: translateY(-1px); }
-      .wiz-nav-danger { color: #e87979; border-color: rgba(232, 121, 121, 0.4); background: rgba(232, 121, 121, 0.06); }
-      .wiz-nav-danger:hover { background: rgba(232, 121, 121, 0.14); color: #ef4444; }
+      .wiz-nav:hover { border-color: var(--ink); color: var(--ink); }
+      .wiz-nav:active { transform: translateY(1px); }
+      .wiz-nav-primary { flex: 2; background: var(--ink); color: #fff; border-color: var(--ink); }
+      .wiz-nav-primary:hover { background: #333; color: #fff; }
+      .wiz-nav-primary:active { background: #000; }
+      .wiz-nav-danger { color: var(--danger); border-color: var(--danger-line); background: var(--danger-soft); }
+      .wiz-nav-danger:hover { color: var(--danger); background: rgba(163, 33, 25, 0.12); border-color: var(--danger-line); }
 
-      .wiz-preview b { color: #fad831; }
-
-      #char-modal.hidden { display: none; }
-
-      #char-modal .box {
-          width: 560px;
-          max-height: 86vh;
-          overflow-y: auto;
-          padding: 26px 30px;
-          border-radius: 24px;
-          background: var(--card-strong);
-          border: 1px solid var(--line);
-          box-shadow: var(--shadow-lg);
-      }
-
-      #char-modal h2 { color: var(--accent); font-size: 16px; letter-spacing: 2px; margin-bottom: 6px; }
-      #char-modal .sub { color: var(--ink-soft); font-size: 11px; margin-bottom: 16px; }
-
-      #char-modal .field { margin-bottom: 10px; }
-      #char-modal .field label {
+      /* ===== 角色设定表单 ===== */
+      .field { margin-bottom: 10px; }
+      .field label {
           display: block;
           color: var(--ink-soft);
           font-size: 11px;
           margin-bottom: 4px;
-          letter-spacing: 1px;
+          letter-spacing: 0.5px;
       }
-      #char-modal .field input, #char-modal .field textarea {
+      .field input, .field textarea, .field select {
           width: 100%;
-          padding: 9px 12px;
-          border: 1px solid var(--line);
-          border-radius: 12px;
-          background: var(--card);
+          padding: 8px 10px;
+          border: 1px solid var(--line-strong);
+          border-radius: var(--r);
+          background: var(--bg);
           color: var(--ink);
           font-size: 13px;
           outline: none;
           font-family: inherit;
           resize: vertical;
-          transition: border-color 0.2s;
+          transition: border-color 0.15s, background 0.15s;
       }
-      #char-modal .field input:focus, #char-modal .field textarea:focus { border-color: var(--accent); }
-      #char-modal .field textarea { min-height: 56px; }
+      .field input:hover, .field textarea:hover, .field select:hover { background: #fcfcfc; }
+      .field input:focus, .field textarea:focus, .field select:focus { border-color: var(--ink); background: var(--bg); }
+      .field textarea { min-height: 56px; }
 
-      #char-modal .row { display: flex; gap: 10px; margin-top: 14px; }
-      #char-modal .row button {
+      .row { display: flex; gap: 8px; margin-top: 14px; }
+      .row button {
           flex: 1;
-          padding: 10px 0;
-          border-radius: 999px;
-          border: none;
-          font-size: 14px;
-          letter-spacing: 2px;
+          height: 34px;
+          border-radius: var(--r);
+          border: 1px solid var(--line-strong);
+          font-size: 12px;
+          letter-spacing: 1px;
           cursor: pointer;
           font-weight: 600;
+          font-family: inherit;
+          background: var(--bg);
+          color: var(--ink-soft);
+          transition: border-color 0.15s, color 0.15s, background 0.15s, transform 0.1s;
       }
-      #char-save { background: var(--accent); color: #fff; box-shadow: var(--shadow-accent); }
-      #char-cancel { background: var(--card); color: var(--ink-soft); border: 1px solid var(--line) !important; }
-      #char-reset-preset { background: var(--accent-soft); color: var(--accent); }
+      .row button:hover { border-color: var(--ink); color: var(--ink); }
+      .row button:active { transform: translateY(1px); }
+      #char-save { background: var(--ink); color: #fff; border-color: var(--ink); }
+      #char-save:hover { background: #333; color: #fff; }
+      #char-cancel { background: var(--bg); color: var(--ink-soft); border-color: var(--line-strong); }
+      #char-reset-preset { background: var(--bg-soft); color: var(--ink); border-color: var(--line); }
 
       /* ===== 聊天记录 ===== */
       .history-divider {
           align-self: center;
-          color: rgba(107, 95, 142, 0.55);
+          color: var(--ink-faint);
           font-size: 11px;
           margin: 6px 0;
       }
-
-      #history-modal {
-          background: rgba(88, 64, 130, 0.35);
-          position: fixed;
-          inset: 0;
-          display: flex;
-          justify-content: center;
-          align-items: center;
-          background: rgba(0, 0, 0, 0.55);
-          backdrop-filter: blur(6px);
-          z-index: 100;
-      }
-
-      #history-modal.hidden { display: none; }
-
-      #history-modal .box {
-          width: 560px;
-          max-height: 82vh;
-          overflow-y: auto;
-          padding: 26px 30px;
-          border-radius: 24px;
-          background: var(--card-strong);
-          border: 1px solid var(--line);
-          box-shadow: var(--shadow-lg);
-      }
-
-      #history-modal h2 { color: var(--accent); font-size: 16px; letter-spacing: 2px; margin-bottom: 6px; }
-      #history-modal .sub { color: var(--ink-soft); font-size: 11px; margin-bottom: 14px; }
-
       #history-list { display: flex; flex-direction: column; gap: 8px; max-height: 56vh; overflow-y: auto; padding-right: 4px; }
-
       .history-day {
-          color: var(--accent);
+          color: var(--ink);
           font-size: 12px;
           margin-top: 8px;
           border-bottom: 1px solid var(--line);
           padding-bottom: 4px;
           font-weight: 700;
       }
-
-      .history-msg {
-          font-size: 13px;
-          line-height: 1.6;
-      }
-
-      .history-msg.user { color: var(--accent); }
-      .history-msg.assistant { color: var(--ink); }
-
+      .history-msg { font-size: 13px; line-height: 1.6; }
+      .history-msg.user { color: var(--ink); font-weight: 500; }
+      .history-msg.assistant { color: var(--ink-soft); }
       .history-msg .h-role {
           display: inline-block;
           font-size: 11px;
-          color: var(--ink-soft);
+          color: var(--ink-faint);
           margin-right: 6px;
           font-weight: 600;
       }
-
       .history-msg .h-time {
           font-size: 10px;
-          color: rgba(107, 95, 142, 0.5);
-          font-family: Consolas, monospace;
+          color: var(--ink-faint);
+          font-family: var(--font-mono);
       }
-
       .history-msg .h-content {
           margin-top: 2px;
           white-space: pre-wrap;
           word-break: break-word;
       }
 
-      /* ===== 移动端适配 ===== */
-      @media (max-width: 767px) {
-          #state-panel {
-              width: 84%;
-              left: 0;
-              right: auto;
-              top: 0;
-              bottom: 0;
-              border-radius: 0 18px 18px 0;
-              transform: translateX(-105%);
-              opacity: 0;
-          }
-          #state-panel.hidden { transform: translateX(-105%); opacity: 0; }
-          #state-panel:not(.hidden) { transform: translateX(0); opacity: 1; }
-          #chat-wrap { margin: 8px; }
-          #chat-wrap.panel-open { margin-left: 8px; }
-          #panel-toggle {
-              left: 8px;
-              top: auto;
-              bottom: calc(78px + env(safe-area-inset-bottom));
-              width: 42px;
-              height: 42px;
-              font-size: 17px;
-          }
-          #panel-toggle.panel-open { left: auto; right: 10px; top: 10px; }
-          .msg { max-width: 88%; }
-          #chat-input { font-size: 16px; }
-          #chat-input-row { padding: 10px 12px calc(10px + env(safe-area-inset-bottom)); }
-          #chat-header { flex-wrap: wrap; gap: 6px; }
-          .mini-btn { margin-left: 0; }
-          #chat-header a { font-size: 11px; }
-          #chat-messages { padding: 10px; }
-      }
-
-      /* ===== 新 UI 组件：角色卡 / 时间胶囊 / 图标按钮 / 输入胶囊 ===== */
-
-      /* 聊天头部：头像 + 身份 + 图标操作 */
-      #chat-header {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          padding: 2px 4px 10px;
-          border-bottom: 1px solid var(--line);
-          font-size: 13px;
-          color: var(--ink-soft);
-      }
-      .chat-avatar {
-          width: 42px; height: 42px;
-          border-radius: 50%;
-          background: linear-gradient(140deg, #f8c8d8, #f2a8c0);
-          box-shadow: 0 4px 14px rgba(214, 90, 126, 0.3), inset 0 0 0 2px rgba(255,255,255,0.6);
-          display: flex; align-items: center; justify-content: center;
-          font-size: 22px;
-          flex-shrink: 0;
-      }
-      .chat-identity { flex: 1; min-width: 0; }
-      .chat-name-row { display: flex; align-items: center; gap: 8px; }
-      .chat-name-row #chat-title-text { font-weight: 700; font-size: 15px; color: var(--ink); letter-spacing: 0.5px; }
-      .chat-sub { font-size: 11px; color: var(--ink-faint); margin-top: 1px; }
-      #chat-header .dot { width: 8px; height: 8px; border-radius: 50%; background: #4caf7d; box-shadow: 0 0 8px rgba(76,175,125,0.55); flex-shrink: 0; }
-      #chat-header .dot.busy { background: #e8a13c; box-shadow: 0 0 8px rgba(232,161,60,0.55); }
-      .chat-actions { display: flex; gap: 2px; align-items: center; flex-shrink: 0; }
-      .icon-mini {
-          width: 32px; height: 32px;
-          border: none; background: transparent;
-          border-radius: 10px;
-          font-size: 15px;
-          cursor: pointer;
-          display: flex; align-items: center; justify-content: center;
-          color: var(--ink-soft);
-          text-decoration: none;
-          transition: all 0.2s ease;
-      }
-      .icon-mini:hover { background: var(--accent-soft); transform: translateY(-1px); }
-      .icon-mini:active { transform: scale(0.92); }
-      .icon-mini.active { background: var(--accent); color: #fff; }
-
-      /* 左侧：角色卡 */
-      .char-card {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          padding: 14px;
-          background: rgba(255, 255, 255, 0.5);
-          border: 1px solid rgba(255, 255, 255, 0.6);
-          border-radius: var(--radius-md);
-          margin-bottom: 10px;
-          box-shadow: inset 0 1px 0 rgba(255,255,255,0.6);
-      }
-      .char-card-avatar {
-          width: 48px; height: 48px;
-          border-radius: 16px;
-          background: linear-gradient(140deg, #f8c8d8, #f2a8c0);
-          box-shadow: 0 4px 14px rgba(214, 90, 126, 0.25);
-          display: flex; align-items: center; justify-content: center;
-          font-size: 26px;
-          flex-shrink: 0;
-      }
-      .char-card-info { flex: 1; min-width: 0; }
-      .char-card-name { font-size: 15px; font-weight: 700; color: var(--ink); letter-spacing: 0.5px; }
-      .char-card-stage { font-size: 10px; color: var(--ink-faint); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-      .char-card-ring { position: relative; flex-shrink: 0; }
-      .char-card-pct {
-          position: absolute; inset: 0;
-          display: flex; align-items: center; justify-content: center;
-          font-size: 9px; font-weight: 700; color: var(--accent);
-          font-family: var(--font-num);
-      }
-
-      /* 时间胶囊 */
-      .time-capsule {
-          padding: 14px;
-          background: rgba(255, 255, 255, 0.5);
-          border: 1px solid rgba(255, 255, 255, 0.6);
-          border-radius: var(--radius-md);
-          margin-bottom: 10px;
-          box-shadow: inset 0 1px 0 rgba(255,255,255,0.6);
-      }
-      .time-capsule-time {
-          font-family: var(--font-num);
-          font-variant-numeric: tabular-nums;
-          font-size: 34px;
-          font-weight: 600;
-          color: var(--ink);
-          letter-spacing: 1px;
-          line-height: 1;
-      }
-      .time-capsule-meta { display: flex; align-items: center; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
-      .tc-label {
-          font-size: 11px; font-weight: 600; color: var(--accent);
-          background: var(--accent-soft);
-          padding: 2px 10px;
-          border-radius: 999px;
-      }
-      .tc-date { font-size: 11px; color: var(--ink-soft); }
-      .tc-day { font-size: 10px; color: var(--ink-faint); }
-      .tc-activity { font-size: 11px; color: var(--ink-soft); margin-top: 8px; line-height: 1.5; }
-      .tc-scene { font-size: 10px; color: var(--accent); margin-top: 4px; line-height: 1.5; }
-      .tc-actions { margin-top: 8px; }
-      .tc-btn {
-          padding: 5px 12px;
-          border: 1px solid var(--line);
-          border-radius: 999px;
-          background: var(--card-strong);
-          color: var(--ink-soft);
-          font-size: 10px;
-          cursor: pointer;
-          transition: all 0.2s;
-      }
-      .tc-btn:hover { color: var(--accent); border-color: var(--accent-line); }
-      .tc-btn-primary { background: var(--accent); color: #fff; border-color: transparent; }
-      .tc-btn-primary:hover { background: var(--accent-deep); color: #fff; }
-      .rate-btn.active { background: var(--accent) !important; color: #fff !important; border-color: transparent !important; font-weight: 600; }
-
-      /* 场景描述卡 */
-      .scene-card {
-          padding: 12px;
-          background: rgba(255, 255, 255, 0.5);
-          border: 1px solid rgba(255, 255, 255, 0.6);
-          border-radius: var(--radius-md);
-          margin-bottom: 10px;
-          box-shadow: inset 0 1px 0 rgba(255,255,255,0.6);
-      }
-      .scene-header {
-          display: flex;
-          align-items: center;
-          gap: 6px;
-          margin-bottom: 8px;
-      }
-      .scene-icon { font-size: 14px; }
-      .scene-title {
-          font-size: 13px;
-          font-weight: 700;
-          color: var(--ink);
-          letter-spacing: 0.5px;
-      }
-      .scene-location {
-          font-size: 12px;
-          color: var(--accent);
-          font-weight: 600;
-          margin-bottom: 6px;
-          padding: 4px 8px;
-          background: var(--accent-soft);
-          border-radius: 6px;
-          display: inline-block;
-      }
-      .scene-atmosphere {
-          font-size: 11px;
-          color: var(--ink-soft);
-          line-height: 1.6;
-          margin-bottom: 8px;
-          font-style: italic;
-          overflow-wrap: break-word;
-      }
-      .scene-details {
-          display: flex;
-          flex-direction: column;
-          gap: 4px;
-          margin-bottom: 8px;
-      }
-      .scene-detail-item {
-          display: flex;
-          align-items: flex-start;
-          gap: 6px;
-          font-size: 10px;
-          color: var(--ink-soft);
-          line-height: 1.4;
-      }
-      .scene-detail-icon {
-          flex-shrink: 0;
-          width: 14px;
-          text-align: center;
-      }
-      .scene-detail-text {
-          flex: 1;
-      }
-      .scene-activity {
-          font-size: 11px;
-          color: var(--ink);
-          padding: 6px 8px;
-          background: rgba(255, 255, 255, 0.5);
-          border-radius: 6px;
-          border-left: 3px solid var(--accent);
-          line-height: 1.5;
-      }
-
-      /* 输入胶囊（悬浮） */
-      #chat-input-row {
-          position: fixed;
-          bottom: 0; left: 0;
-          width: 100%;
-          padding: 14px 16px calc(14px + env(safe-area-inset-bottom));
-          display: flex;
-          justify-content: center;
-          background: linear-gradient(to top, rgba(250,247,244,0.95) 60%, rgba(250,247,244,0));
-          z-index: 5;
-          pointer-events: none;
-      }
-      #chat-input-pill {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          max-width: 900px;
-          width: 100%;
-          padding: 6px 6px 6px 22px;
-          background: var(--card-strong);
-          border: 1px solid rgba(255,255,255,0.8);
-          border-radius: 999px;
-          box-shadow: 0 8px 32px rgba(120, 80, 60, 0.18);
-          pointer-events: auto;
-          transition: box-shadow 0.25s;
-      }
-      #chat-input-pill:focus-within { box-shadow: 0 10px 40px rgba(214, 90, 126, 0.22); }
-      #chat-input {
+      /* ===== 聊天区 ===== */
+      #chat-wrap {
           flex: 1;
           min-width: 0;
-          height: 38px;
-          border: none;
-          outline: none;
-          font-size: 15px;
-          background: transparent;
-          color: var(--ink);
-      }
-      #chat-input::placeholder { color: var(--ink-faint); }
-      .icon-btn {
-          width: 44px; height: 44px;
-          border-radius: 50%;
-          border: none;
-          background: var(--accent);
-          box-shadow: var(--shadow-accent);
           display: flex;
-          justify-content: center;
-          align-items: center;
-          cursor: pointer;
-          transition: all 0.2s ease;
-          flex-shrink: 0;
+          flex-direction: column;
+          background: var(--bg);
       }
-      .icon-btn:hover { background: var(--accent-deep); transform: scale(1.05); }
-      .icon-btn:active { transform: scale(0.93); }
-      .icon-btn:disabled { opacity: 0.5; transform: none; }
 
-      /* 消息：AI 带头像 */
-      .msg { position: relative; max-width: 78%; padding: 11px 16px; border-radius: 18px; font-size: 15px; line-height: 1.7; white-space: pre-wrap; word-break: break-word; overflow-wrap: anywhere; letter-spacing: 0.3px; }
+      #chat-messages {
+          flex: 1;
+          overflow-y: auto;
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+          padding: 18px 20px;
+          width: 100%;
+          max-width: 860px;
+          margin: 0 auto;
+          scroll-behavior: smooth;
+          /* 静态微网格：极低对比的纹理层次，不随时间变化 */
+          background-image:
+              linear-gradient(to right, rgba(17, 17, 17, 0.025) 1px, transparent 1px),
+              linear-gradient(to bottom, rgba(17, 17, 17, 0.025) 1px, transparent 1px),
+              linear-gradient(to right, rgba(17, 17, 17, 0.018) 1px, transparent 1px),
+              linear-gradient(to bottom, rgba(17, 17, 17, 0.018) 1px, transparent 1px);
+          background-size: 40px 40px, 40px 40px, 200px 200px, 200px 200px;
+          background-position: 0 0, 0 0, 0 0, 0 0;
+          background-attachment: local;
+      }
+
+      /* ===== 消息 ===== */
+      @keyframes msg-in {
+          from { opacity: 0; transform: translateY(3px); }
+          to   { opacity: 1; transform: none; }
+      }
+      .msg {
+          position: relative;
+          max-width: 78%;
+          padding: 10px 14px;
+          border-radius: var(--r);
+          font-size: 14px;
+          line-height: 1.75;
+          white-space: pre-wrap;
+          word-break: break-word;
+          overflow-wrap: anywhere;
+          letter-spacing: 0.2px;
+          animation: msg-in 0.22s ease-out both;
+      }
+
       .msg.user {
           align-self: flex-end;
-          background: var(--accent);
+          background: var(--ink);
           color: #fff;
-          border-bottom-right-radius: var(--radius-sm);
-          box-shadow: var(--shadow-accent);
       }
+
       .msg.ai {
           align-self: flex-start;
-          background: rgba(255, 255, 255, 0.62);
-          backdrop-filter: blur(12px);
-          -webkit-backdrop-filter: blur(12px);
+          background: var(--bg);
+          border: 1px solid var(--line);
           color: var(--ink);
-          border: 1px solid rgba(255, 255, 255, 0.7);
-          border-bottom-left-radius: var(--radius-sm);
-          box-shadow: 0 3px 14px rgba(120, 80, 60, 0.08);
-          margin-left: 46px;
+          margin-left: 44px;
       }
+
       .msg.ai .msg-avatar {
           position: absolute;
-          left: -46px;
-          top: 4px;
-          width: 36px; height: 36px;
-          border-radius: 50%;
-          background: linear-gradient(140deg, #f8c8d8, #f2a8c0);
-          box-shadow: 0 3px 10px rgba(214, 90, 126, 0.25);
+          left: -44px;
+          top: 6px;
+          width: 34px; height: 34px;
+          border: 1px solid var(--line-strong);
+          border-radius: var(--r);
+          background: var(--bg-soft);
           display: flex; align-items: center; justify-content: center;
-          font-size: 18px;
+          font-size: 17px;
       }
+
       .msg.npc-msg {
           align-self: flex-start;
-          background: rgba(214, 90, 126, 0.08);
+          background: var(--bg-soft);
           color: var(--ink);
-          border: 1px solid var(--accent-line);
-          border-bottom-left-radius: var(--radius-sm);
-          margin-left: 46px;
+          border: 1px solid var(--line);
+          border-left: 2px solid var(--ink);
+          margin-left: 44px;
       }
       .msg.npc-msg .msg-avatar {
           position: absolute;
-          left: -46px;
-          top: 4px;
-          width: 36px; height: 36px;
-          border-radius: 50%;
-          background: linear-gradient(140deg, #d8ccf5, #c4b5f0);
-          box-shadow: 0 3px 10px rgba(140, 110, 200, 0.22);
+          left: -44px;
+          top: 6px;
+          width: 34px; height: 34px;
+          border: 1px solid var(--line-strong);
+          border-radius: var(--r);
+          background: var(--bg);
           display: flex; align-items: center; justify-content: center;
-          font-size: 18px;
+          font-size: 17px;
+      }
+      .msg.npc-msg .npc-name {
+          font-size: 11px;
+          color: var(--ink);
+          margin-bottom: 4px;
+          font-weight: 700;
       }
 
-      /* 系统提示消息（隐藏头像，居中弱化） */
-      .msg.sys { align-self: center; background: transparent; border: 1px dashed var(--line); color: var(--ink-faint); font-size: 12px; box-shadow: none; padding: 6px 16px; max-width: 92%; }
-      .msg.sys .msg-avatar { display: none; }
-      .msg.sys { margin-left: 0; }
+      .msg.ai .action { display: block; font-size: 12px; color: var(--ink-soft); margin-top: 6px; }
+      .msg.ai .thoughts { display: block; font-size: 12px; color: var(--ink-faint); margin-top: 4px; }
+      .msg.ai .emotion-tag { display: block; font-size: 10px; color: var(--ink-faint); margin-top: 6px; }
 
-      /* 系统事件：居中胶囊 */
+      .msg-ts {
+          display: block;
+          font-size: 10px;
+          color: var(--ink-faint);
+          margin-top: 4px;
+          text-align: right;
+          user-select: none;
+          font-family: var(--font-mono);
+          font-variant-numeric: tabular-nums;
+      }
+      .msg.user .msg-ts { color: rgba(255, 255, 255, 0.55); }
+
+      .msg-reanswer {
+          position: absolute;
+          top: 6px;
+          right: 6px;
+          width: 22px; height: 22px;
+          border: 1px solid var(--line-strong);
+          border-radius: var(--r);
+          background: var(--bg);
+          color: var(--ink-faint);
+          font-size: 11px;
+          cursor: pointer;
+          opacity: 0;
+          transition: opacity 0.15s, background 0.15s, color 0.15s;
+          padding: 0;
+      }
+      .msg:hover .msg-reanswer { opacity: 1; }
+      .msg.user .msg-reanswer { border-color: rgba(255,255,255,0.4); background: transparent; color: rgba(255,255,255,0.7); }
+      .msg-reanswer:hover { background: var(--bg-soft); color: var(--ink); }
+      .msg.user .msg-reanswer:hover { background: rgba(255,255,255,0.15); color: #fff; }
+
+      .msg.phone { font-size: 14px; }
+      .msg.phone .dialogue { font-size: 13px; }
+
+      /* 系统提示消息：居中弱化 */
+      .msg.sys {
+          align-self: center;
+          background: transparent;
+          border: none;
+          color: var(--ink-faint);
+          font-size: 12px;
+          padding: 4px 8px;
+          max-width: 92%;
+          margin-left: 0;
+          text-align: center;
+      }
+      .msg.sys .msg-avatar { display: none; }
+
+      /* 剧情旁白 */
       .story-line {
           align-self: center;
           font-size: 11px;
           color: var(--ink-soft);
           text-align: center;
           max-width: 90%;
-          padding: 5px 18px;
-          background: var(--bg);
-          border: 1px solid var(--line);
-          border-radius: 999px;
-          line-height: 1.6;
-          font-style: italic;
-      }
-
-      /* 日程：竖向时间线 */
-      .agenda-item {
-          display: flex;
-          flex-wrap: wrap;
-          align-items: baseline;
-          gap: 6px 8px;
-          font-size: 11px;
           padding: 4px 8px;
-          border-radius: 8px;
+          line-height: 1.7;
+          border: none;
           background: transparent;
-          border-left: 2px solid var(--line);
-          color: var(--ink);
-          opacity: 0.8;
-      }
-      .agenda-item.active { border-left-color: var(--accent); background: var(--accent-soft); opacity: 1; font-weight: 600; }
-      .agenda-item.done { opacity: 0.4; border-left-color: #34d399; }
-      .agenda-item .agenda-time { font-family: var(--font-num); font-variant-numeric: tabular-nums; font-size: 10px; color: var(--ink-faint); flex-shrink: 0; }
-      .agenda-item .agenda-mark { width: 12px; text-align: center; flex-shrink: 0; }
-      .agenda-item .agenda-title { flex: 1; min-width: 0; white-space: normal; word-break: break-word; }
-      .agenda-item .agenda-desc {
-          width: 100%;
-          font-size: 9px;
-          color: var(--ink-soft);
-          padding-left: 30px;
-          line-height: 1.4;
       }
 
+      /* ===== 底部输入栏 ===== */
+      #chat-input-row {
+          flex-shrink: 0;
+          border-top: 1px solid var(--line);
+          background: var(--bg);
+          padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+      }
+      #chat-input-pill {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          max-width: 860px;
+          width: 100%;
+          margin: 0 auto;
+          padding: 4px 4px 4px 12px;
+          border: 1px solid var(--line-strong);
+          border-radius: var(--r);
+          background: var(--bg);
+      }
+      #chat-input-pill:focus-within { border-color: var(--ink); }
+      #chat-input {
+          flex: 1;
+          min-width: 0;
+          height: 38px;
+          border: none;
+          outline: none;
+          font-size: 14px;
+          background: transparent;
+          color: var(--ink);
+          font-family: inherit;
+      }
+      #chat-input::placeholder { color: var(--ink-faint); }
+      .icon-btn {
+          width: 34px; height: 34px;
+          border-radius: var(--r);
+          border: none;
+          background: var(--ink);
+          color: #fff;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          cursor: pointer;
+          transition: background 0.15s, transform 0.1s;
+          flex-shrink: 0;
+      }
+      .icon-btn:hover { background: #333; }
+      .icon-btn:active { background: #000; transform: translateY(1px); }
+      .icon-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+      .icon-btn:disabled:hover { background: var(--ink); }
+
+      /* ===== 焦点可见性 ===== */
+      :where(a, button, input, select, textarea, [tabindex]):focus-visible {
+          outline: 1px solid var(--ink);
+          outline-offset: 2px;
+      }
+
+      /* ===== 减少动态效果：保留淡入但关闭渲染负担 / 保持静态 ===== */
+      @media (prefers-reduced-motion: reduce) {
+          .msg { animation: none; }
+          .panel-section-toggle .toggle-arrow { transition: none; }
+          .rate-btn, .tc-btn, .icon-mini, .btn, .row button, .wiz-nav, .wiz-chip, .icon-btn, .em-close, .save-card {
+              transition-duration: 0.15s;
+          }
+          #chat-messages { scroll-behavior: auto; }
+      }
+
+      /* ===== 移动端遮罩（仅小屏生效） ===== */
+      @media (max-width: 767px) {
+          #panel-mask {
+              display: none;
+              position: fixed;
+              inset: 0;
+              background: rgba(17, 17, 17, 0.4);
+              z-index: 39;
+          }
+          #panel-mask.show { display: block; }
+      }
+
+      /* ===== 移动端 ===== */
+      @media (max-width: 767px) {
+          #chat-header {
+              height: auto;
+              min-height: 48px;
+              flex-wrap: wrap;
+              gap: 6px 8px;
+              padding: 8px 10px;
+              align-items: center;
+          }
+          .chat-sub { display: none; }
+          .icon-mini { min-width: 28px; height: 28px; font-size: 11px; padding: 0 6px; }
+
+          /* 面板：左侧抽屉 + 遮罩 */
+          #state-panel {
+              position: fixed;
+              top: 0; left: 0; bottom: 0;
+              width: min(320px, 84vw);
+              z-index: 40;
+              transform: translateX(-100%);
+              visibility: hidden;
+              transition: transform 0.25s ease, visibility 0.25s ease;
+              padding: 12px 14px 20px;
+          }
+          #state-panel.hidden { display: block; }
+          #state-panel:not(.hidden) { transform: translateX(0); visibility: visible; }
+
+          #chat-messages { padding: 14px 12px; gap: 10px; max-width: 100%; }
+          .msg { max-width: 88%; padding: 9px 12px; font-size: 14px; }
+          .msg.ai { margin-left: 40px; }
+          .msg.ai .msg-avatar, .msg.npc-msg .msg-avatar { left: -40px; width: 32px; height: 32px; }
+          .msg.npc-msg { margin-left: 40px; }
+          #chat-input-row { padding: 8px 10px calc(8px + env(safe-area-inset-bottom)); }
+          #chat-input { height: 36px; font-size: 16px; }
+          .em-modal-head { padding: 12px 14px; }
+          .em-sub { padding: 10px 14px 6px; }
+          #emotions-modal #meters-scroll { padding: 4px 14px 14px; }
+      }
   </style>
-  <script type="module" crossorigin src="./assets/chat-i0ytu6xM.js"></script>
-  <link rel="modulepreload" crossorigin href="./assets/tts-mZod1DWQ.js">
+  <script type="module" crossorigin src="./assets/chat-ix24q8KL.js"></script>
+  <link rel="modulepreload" crossorigin href="./assets/tts-SBoKlwZU.js">
 </head>
 <body>
 
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
+        <symbol id="i-activity" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2" />
+
+        </symbol>
+        <symbol id="i-arrow-left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <path d="m12 19-7-7 7-7" />
+  <path d="M19 12H5" />
+
+        </symbol>
+        <symbol id="i-arrow-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M5 12h14" />
+  <path d="m12 5 7 7-7 7" />
+
+        </symbol>
+        <symbol id="i-book-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M12 7v14" />
+  <path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z" />
+
+        </symbol>
+        <symbol id="i-bot" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M12 8V4H8" />
+  <rect width="16" height="12" x="4" y="8" rx="2" />
+  <path d="M2 14h2" />
+  <path d="M20 14h2" />
+  <path d="M15 13v2" />
+  <path d="M9 13v2" />
+
+        </symbol>
+        <symbol id="i-brain" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z" />
+  <path d="M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z" />
+  <path d="M15 13a4.5 4.5 0 0 1-3-4 4.5 4.5 0 0 1-3 4" />
+  <path d="M17.599 6.5a3 3 0 0 0 .399-1.375" />
+  <path d="M6.003 5.125A3 3 0 0 0 6.401 6.5" />
+  <path d="M3.477 10.896a4 4 0 0 1 .585-.396" />
+  <path d="M19.938 10.5a4 4 0 0 1 .585.396" />
+  <path d="M6 18a4 4 0 0 1-1.967-.516" />
+  <path d="M19.967 17.484A4 4 0 0 1 18 18" />
+
+        </symbol>
+        <symbol id="i-calendar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M8 2v4" />
+  <path d="M16 2v4" />
+  <rect width="18" height="18" x="3" y="4" rx="2" />
+  <path d="M3 10h18" />
+
+        </symbol>
+        <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M20 6 9 17l-5-5" />
+
+        </symbol>
+        <symbol id="i-chevron-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <path d="m6 9 6 6 6-6" />
+
+        </symbol>
+        <symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <circle cx="12" cy="12" r="10" />
+  <polyline points="12 6 12 12 16 14" />
+
+        </symbol>
+        <symbol id="i-database" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <ellipse cx="12" cy="5" rx="9" ry="3" />
+  <path d="M3 5V19A9 3 0 0 0 21 19V5" />
+  <path d="M3 12A9 3 0 0 0 21 12" />
+
+        </symbol>
+        <symbol id="i-github" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4" />
+  <path d="M9 18c-4.51 2-5-2-7-2" />
+
+        </symbol>
+        <symbol id="i-heart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
+
+        </symbol>
+        <symbol id="i-history" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+  <path d="M3 3v5h5" />
+  <path d="M12 7v5l4 2" />
+
+        </symbol>
+        <symbol id="i-key-round" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z" />
+  <circle cx="16.5" cy="7.5" r=".5" fill="currentColor" />
+
+        </symbol>
+        <symbol id="i-lightbulb" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5" />
+  <path d="M9 18h6" />
+  <path d="M10 22h4" />
+
+        </symbol>
+        <symbol id="i-loader-circle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+
+        </symbol>
+        <symbol id="i-map-pin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0" />
+  <circle cx="12" cy="10" r="3" />
+
+        </symbol>
+        <symbol id="i-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <line x1="4" x2="20" y1="12" y2="12" />
+  <line x1="4" x2="20" y1="6" y2="6" />
+  <line x1="4" x2="20" y1="18" y2="18" />
+
+        </symbol>
+        <symbol id="i-message-circle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z" />
+
+        </symbol>
+        <symbol id="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
+
+        </symbol>
+        <symbol id="i-palette" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <circle cx="13.5" cy="6.5" r=".5" fill="currentColor" />
+  <circle cx="17.5" cy="10.5" r=".5" fill="currentColor" />
+  <circle cx="8.5" cy="7.5" r=".5" fill="currentColor" />
+  <circle cx="6.5" cy="12.5" r=".5" fill="currentColor" />
+  <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z" />
+
+        </symbol>
+        <symbol id="i-panel-left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <rect width="18" height="18" x="3" y="3" rx="2" />
+  <path d="M9 3v18" />
+
+        </symbol>
+        <symbol id="i-play" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <polygon points="6 3 20 12 6 21 6 3" />
+
+        </symbol>
+        <symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M5 12h14" />
+  <path d="M12 5v14" />
+
+        </symbol>
+        <symbol id="i-rotate-ccw" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+  <path d="M3 3v5h5" />
+
+        </symbol>
+        <symbol id="i-save" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z" />
+  <path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7" />
+  <path d="M7 3v4a1 1 0 0 0 1 1h7" />
+
+        </symbol>
+        <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <circle cx="11" cy="11" r="8" />
+  <path d="m21 21-4.3-4.3" />
+
+        </symbol>
+        <symbol id="i-send" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z" />
+  <path d="m21.854 2.147-10.94 10.939" />
+
+        </symbol>
+        <symbol id="i-settings" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+  <circle cx="12" cy="12" r="3" />
+
+        </symbol>
+        <symbol id="i-sliders-horizontal" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <line x1="21" x2="14" y1="4" y2="4" />
+  <line x1="10" x2="3" y1="4" y2="4" />
+  <line x1="21" x2="12" y1="12" y2="12" />
+  <line x1="8" x2="3" y1="12" y2="12" />
+  <line x1="21" x2="16" y1="20" y2="20" />
+  <line x1="12" x2="3" y1="20" y2="20" />
+  <line x1="14" x2="14" y1="2" y2="6" />
+  <line x1="8" x2="8" y1="10" y2="14" />
+  <line x1="16" x2="16" y1="18" y2="22" />
+
+        </symbol>
+        <symbol id="i-smile" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <circle cx="12" cy="12" r="10" />
+  <path d="M8 14s1.5 2 4 2 4-2 4-2" />
+  <line x1="9" x2="9.01" y1="9" y2="9" />
+  <line x1="15" x2="15.01" y1="9" y2="9" />
+
+        </symbol>
+        <symbol id="i-sparkles" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" />
+  <path d="M20 3v4" />
+  <path d="M22 5h-4" />
+  <path d="M4 17v2" />
+  <path d="M5 18H3" />
+
+        </symbol>
+        <symbol id="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <circle cx="12" cy="12" r="4" />
+  <path d="M12 2v2" />
+  <path d="M12 20v2" />
+  <path d="m4.93 4.93 1.41 1.41" />
+  <path d="m17.66 17.66 1.41 1.41" />
+  <path d="M2 12h2" />
+  <path d="M20 12h2" />
+  <path d="m6.34 17.66-1.41 1.41" />
+  <path d="m19.07 4.93-1.41 1.41" />
+
+        </symbol>
+        <symbol id="i-trash-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M3 6h18" />
+  <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+  <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+  <line x1="10" x2="10" y1="11" y2="17" />
+  <line x1="14" x2="14" y1="11" y2="17" />
+
+        </symbol>
+        <symbol id="i-user-round" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <circle cx="12" cy="8" r="5" />
+  <path d="M20 21a8 8 0 0 0-16 0" />
+
+        </symbol>
+        <symbol id="i-users" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+  <circle cx="9" cy="7" r="4" />
+  <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+  <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+
+        </symbol>
+        <symbol id="i-volume-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z" />
+  <path d="M16 9a5 5 0 0 1 0 6" />
+  <path d="M19.364 18.364a9 9 0 0 0 0-12.728" />
+
+        </symbol>
+        <symbol id="i-volume-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z" />
+  <line x1="22" x2="16" y1="9" y2="15" />
+  <line x1="16" x2="22" y1="9" y2="15" />
+
+        </symbol>
+        <symbol id="i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M18 6 6 18" />
+  <path d="m6 6 12 12" />
+
+        </symbol>
+    </svg>
+
 <!-- 角色创建向导 -->
 <div id="wizard-modal" class="hidden">
-  <div class="box" style="width:620px;">
-    <h2 id="wizard-title">✨ 创建你的角色</h2>
+  <div class="modal-box">
+    <h2 id="wizard-title">创建你的角色</h2>
     <div class="sub" id="wizard-sub">先选一个预设，或自定义创建——像聊天一样，一步一步回答我的问题，最后生成她的角色卡。</div>
 
     <div id="wizard-body"></div>
 
-    <div class="row" style="margin-top:16px;">
+    <div class="row">
       <button id="wizard-prev" class="wiz-nav">上一步</button>
       <button id="wizard-next" class="wiz-nav wiz-nav-primary">下一步</button>
     </div>
-    <div style="display:flex;gap:8px;margin-top:10px;">
-      <button id="wizard-skip" class="wiz-nav" style="flex:1;">跳过（用默认角色）</button>
-      <button id="wizard-cancel" class="wiz-nav wiz-nav-danger" style="flex:1;">取消</button>
+    <div style="display:flex;gap:8px;margin-top:8px;">
+      <button id="wizard-skip" class="wiz-nav">跳过（用默认角色）</button>
+      <button id="wizard-cancel" class="wiz-nav wiz-nav-danger">取消</button>
     </div>
   </div>
 </div>
 
 <!-- 角色设定弹层 -->
-<div id="char-modal" class="hidden">  <div class="box">
-    <h2>👤 角色设定</h2>
+<div id="char-modal" class="hidden">
+  <div class="modal-box">
+    <h2>角色设定</h2>
     <div class="sub">定义 AI 是谁（名字/性格/背景/关系…）。保存即生效。对话中可能出现其他人（朋友/熟人/家人），由 AI 根据上下文自行应变扮演。</div>
 
     <div style="text-align:right;margin-bottom:10px;">
-      <button id="char-wizard-reopen" style="padding:6px 14px;border:1px solid rgba(250,216,49,0.5);border-radius:999px;background:rgba(250,216,49,0.12);color:#fad831;font-size:11px;cursor:pointer;">✨ 重新引导创建</button>
+      <button id="char-wizard-reopen" class="tc-btn">重新引导创建</button>
     </div>
 
     <div class="field">
       <label>预设</label>
-      <select id="char-preset" style="width:100%;padding:9px 12px;border:1px solid rgba(255,255,255,0.2);border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;font-size:13px;outline:none;"></select>
+      <select id="char-preset"></select>
     </div>
 
     <div class="field"><label>名字</label><input id="char-name" type="text"></div>
@@ -1193,7 +1341,7 @@
     <div class="field"><label>秘密 / 隐藏设定</label><textarea id="char-secrets"></textarea></div>
 
     <div class="row">
-      <button id="char-reset-preset">↺ 恢复预设</button>
+      <button id="char-reset-preset">恢复预设</button>
       <button id="char-cancel">取消</button>
       <button id="char-save">保存</button>
     </div>
@@ -1202,155 +1350,218 @@
 
 <!-- 聊天记录弹层 -->
 <div id="history-modal" class="hidden">
-  <div class="box">
-    <h2>📜 聊天记录</h2>
+  <div class="modal-box">
+    <h2>聊天记录</h2>
     <div class="sub">按虚拟日期分组，全部记录存于本地浏览器。</div>
     <div id="history-list"></div>
     <div class="row">
-      <button id="history-clear" style="background:rgba(255,107,107,0.3);color:#ffb0b0;">🗑 清空记录</button>
-      <button id="history-close" style="background:var(--card);color:var(--ink-soft);border:1px solid var(--line);border-radius:999px;padding:5px 16px;cursor:pointer;">关闭</button>
+      <button id="history-clear">清空记录</button>
+      <button id="history-close">关闭</button>
     </div>
   </div>
 </div>
 
-<!-- 左侧情感状态面板 -->
-<div id="state-panel">
-  <!-- 角色卡 -->
-  <div class="char-card">
-    <div class="char-card-avatar" id="panel-avatar">🎀</div>
-    <div class="char-card-info">
-      <div class="char-card-name" id="panel-char-name">角色</div>
-      <div class="char-card-stage" id="panel-char-stage">初识 · 开始你们的故事</div>
-    </div>
-    <div class="char-card-ring">
-      <svg viewBox="0 0 44 44" width="44" height="44">
-        <circle cx="22" cy="22" r="18" fill="none" stroke="var(--accent-soft)" stroke-width="4"/>
-        <circle id="stage-ring" cx="22" cy="22" r="18" fill="none" stroke="var(--accent)" stroke-width="4" stroke-linecap="round" stroke-dasharray="113" stroke-dashoffset="113" transform="rotate(-90 22 22)"/>
-      </svg>
-      <span class="char-card-pct" id="panel-char-pct">0%</span>
+<!-- 顶部应用栏 -->
+<header id="chat-header">
+  <button id="panel-toggle" class="icon-mini" title="状态面板"><svg class="ico" viewBox="0 0 24 24"><use href="#i-panel-left"/></svg></button>
+  <div class="chat-identity">
+    <div class="chat-avatar" id="chat-avatar">🎀</div>
+    <div style="min-width:0;">
+      <div class="chat-name-row">
+        <span id="chat-title-text">情感 AI</span>
+        <span class="dot" id="status-dot"></span>
+      </div>
+      <div class="chat-sub" id="chat-subtitle">准备就绪</div>
     </div>
   </div>
-
-  <!-- 时间胶囊 -->
-  <div class="time-capsule">
-    <div class="time-capsule-time" id="clock-time">07:30</div>
-    <div class="time-capsule-meta">
-      <span id="clock-label" class="tc-label">早晨</span>
-      <span id="clock-date" class="tc-date">9月12日 周五</span>
-      <span id="clock-day" class="tc-day">第 1 天</span>
-    </div>
-    <div id="clock-activity" class="tc-activity">在上学路上</div>
-    <div id="clock-scene" class="tc-scene">📍 你们在……</div>
-    <div class="tc-actions">
-      <button id="clock-more" class="tc-btn">⏱ 调整时间 / 倍率</button>
-    </div>
-    <div id="clock-detail" style="display:none;">
-      <div class="rate-row" style="margin-top:7px;display:flex;gap:4px;flex-wrap:wrap;">
-      <button class="rate-btn" data-rate="0.5" style="flex:1;padding:3px 0;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink-soft);font-size:10px;cursor:pointer;">0.5×</button>
-      <button class="rate-btn active" data-rate="1" style="flex:1;padding:3px 0;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink-soft);font-size:10px;cursor:pointer;">1×</button>
-      <button class="rate-btn" data-rate="10" style="flex:1;padding:3px 0;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink-soft);font-size:10px;cursor:pointer;">10×</button>
-      <button class="rate-btn" data-rate="30" style="flex:1;padding:3px 0;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink-soft);font-size:10px;cursor:pointer;">30×</button>
-      <button class="rate-btn" data-rate="60" style="flex:1;padding:3px 0;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink-soft);font-size:10px;cursor:pointer;">60×</button>
-      <button class="rate-btn" data-rate="1440" style="flex:1;padding:3px 0;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink-soft);font-size:10px;cursor:pointer;">1440×</button>
-      </div>
-      <div style="margin-top:4px;display:flex;gap:4px;align-items:center;">
-        <input id="rate-custom" type="number" min="0.01" max="100000" step="0.5" placeholder="自定义倍率(0.01~100000)"
-          style="flex:1;min-width:0;padding:4px 8px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink);font-size:10px;outline:none;">
-        <button id="rate-set" class="tc-btn tc-btn-primary">设定</button>
-      </div>
-      <div style="margin-top:4px;display:flex;gap:4px;align-items:center;">
-        <input id="day-input" type="number" min="1" placeholder="第几天" style="flex:1;min-width:0;padding:4px 8px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink);font-size:10px;outline:none;">
-        <input id="time-input" type="time" value="07:30" style="flex:1;min-width:0;padding:4px 6px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink);font-size:10px;outline:none;">
-        <button id="time-set" class="tc-btn">跳转</button>
-        <button id="today-btn" class="tc-btn">今天</button>
-      </div>
-      <div style="margin-top:4px;display:flex;gap:4px;align-items:center;">
-        <input id="date-input" type="date" style="flex:1;min-width:0;padding:4px 8px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink);font-size:10px;outline:none;">
-        <button id="date-set" class="tc-btn">设为第1天</button>
-      </div>
-    </div>
+  <div class="chat-actions">
+    <button id="tts-toggle" class="icon-mini" title="语音朗读（TTS）"><svg class="ico" viewBox="0 0 24 24"><use href="#i-volume-x"/></svg></button>
+    <button id="npc-toggle" class="icon-mini" title="支线 NPC 动态介入（默认关闭）"><svg class="ico" viewBox="0 0 24 24"><use href="#i-users"/></svg></button>
+    <button id="history-btn" class="icon-mini" title="聊天记录"><svg class="ico" viewBox="0 0 24 24"><use href="#i-history"/></svg></button>
+    <button id="char-btn" class="icon-mini" title="角色设定"><svg class="ico" viewBox="0 0 24 24"><use href="#i-user-round"/></svg></button>
+    <button id="agent-toggle" class="icon-mini" title="决策状态（调试）"><svg class="ico" viewBox="0 0 24 24"><use href="#i-brain"/></svg></button>
+    <button id="demo-btn" class="icon-mini" title="演示模式"><svg class="ico" viewBox="0 0 24 24"><use href="#i-sparkles"/></svg></button>
+    <button id="reset-state" class="icon-mini" title="重置"><svg class="ico" viewBox="0 0 24 24"><use href="#i-rotate-ccw"/></svg></button>
+    <a href="./menu.html" class="icon-mini" id="menu-link" title="菜单"><svg class="ico" viewBox="0 0 24 24"><use href="#i-menu"/></svg></a>
   </div>
+</header>
 
-  <div id="mood-text">—</div>
-
-  <!-- 场景描述（常显，详细） -->
-  <div class="scene-card" id="scene-card">
-    <div class="scene-header">
-      <span class="scene-icon">📍</span>
-      <span class="scene-title" id="scene-title">场景</span>
-    </div>
-    <div class="scene-location" id="scene-location">—</div>
-    <div class="scene-atmosphere" id="scene-atmosphere">—</div>
-    <div class="scene-details">
-      <div class="scene-detail-item" id="scene-weather">
-        <span class="scene-detail-icon">🌤</span>
-        <span class="scene-detail-text">—</span>
-      </div>
-      <div class="scene-detail-item" id="scene-people">
-        <span class="scene-detail-icon">👥</span>
-        <span class="scene-detail-text">—</span>
-      </div>
-      <div class="scene-detail-item" id="scene-sound">
-        <span class="scene-detail-icon">🔊</span>
-        <span class="scene-detail-text">—</span>
-      </div>
-      <div class="scene-detail-item" id="scene-light">
-        <span class="scene-detail-icon">💡</span>
-        <span class="scene-detail-text">—</span>
-      </div>
-    </div>
-    <div class="scene-activity" id="scene-activity">—</div>
-  </div>
-
-  <!-- 剧情卡（可折叠） -->
-  <div class="panel-section">
-    <button class="panel-section-toggle" data-section="story">
-      <span>📖 剧情进展</span>
-      <span class="toggle-arrow">▼</span>
-    </button>
-    <div class="panel-section-content" id="section-story">
-      <div class="story-card">
-        <div class="story-head">
-          <span>📖 剧情</span>
-          <span id="story-stage-name" style="color:var(--gold);">初识</span>
+<!-- 主体：左侧面板 + 聊天区 -->
+<div id="app-body">
+  <!-- 左侧情感状态面板 -->
+  <div id="state-panel">
+    <!-- 角色卡 -->
+    <div class="p-section">
+      <div class="char-card">
+        <div class="char-card-avatar" id="panel-avatar">🎀</div>
+        <div class="char-card-info">
+          <div class="char-card-name" id="panel-char-name">角色</div>
+          <div class="char-card-stage" id="panel-char-stage">初识 · 开始你们的故事</div>
         </div>
-        <div class="story-desc" id="story-stage-desc">转学第一周</div>
-        <div class="story-bar"><div class="story-fill" id="story-progress-bar" style="width:0%"></div></div>
-        <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--ink-soft);margin-top:3px;">
-          <span>这段日子</span><span id="story-progress-val">0%</span>
+        <div class="char-card-ring">
+          <svg viewBox="0 0 44 44" width="44" height="44">
+            <circle cx="22" cy="22" r="18" fill="none" stroke="var(--line)" stroke-width="4"/>
+            <circle id="stage-ring" cx="22" cy="22" r="18" fill="none" stroke="var(--ink)" stroke-width="4" stroke-linecap="square" stroke-dasharray="113" stroke-dashoffset="113" transform="rotate(-90 22 22)"/>
+          </svg>
+          <span class="char-card-pct" id="panel-char-pct">0%</span>
         </div>
-        <div id="story-events"></div>
       </div>
     </div>
-  </div>
 
-  <!-- 今日日程（可折叠） -->
-  <div class="panel-section">
-    <button class="panel-section-toggle" data-section="agenda">
-      <span>📅 今日日程</span>
-      <span class="toggle-arrow">▼</span>
-    </button>
-    <div class="panel-section-content" id="section-agenda">
-      <div class="clock-card" style="margin-top:4px;">
-        <div class="clock-row" style="justify-content:flex-end;">
-          <span id="agenda-day" style="color:var(--ink-soft);font-size:10px;">第 1 天</span>
+    <!-- 时间胶囊 -->
+    <div class="p-section">
+      <div class="time-capsule-time" id="clock-time">07:30</div>
+      <div class="time-capsule-meta">
+        <span id="clock-label" class="tc-label">早晨</span>
+        <span id="clock-date" class="tc-date">9月12日 周五</span>
+        <span id="clock-day" class="tc-day">第 1 天</span>
+      </div>
+      <div id="clock-activity" class="tc-activity">在上学路上</div>
+      <div id="clock-scene" class="tc-scene">你们在……</div>
+      <div class="tc-actions">
+        <button id="clock-more" class="tc-btn">调整时间 / 倍率</button>
+      </div>
+      <div id="clock-detail" style="display:none;">
+        <div class="rate-row">
+          <button class="rate-btn" data-rate="0.5">0.5×</button>
+          <button class="rate-btn active" data-rate="1">1×</button>
+          <button class="rate-btn" data-rate="10">10×</button>
+          <button class="rate-btn" data-rate="30">30×</button>
+          <button class="rate-btn" data-rate="60">60×</button>
+          <button class="rate-btn" data-rate="1440">1440×</button>
+        </div>
+        <div class="tc-field-row">
+          <input id="rate-custom" type="number" min="0.01" max="100000" step="0.5" placeholder="自定义倍率(0.01~100000)">
+          <button id="rate-set" class="tc-btn tc-btn-primary">设定</button>
+        </div>
+        <div class="tc-field-row">
+          <input id="day-input" type="number" min="1" placeholder="第几天">
+          <input id="time-input" type="time" value="07:30">
+          <button id="time-set" class="tc-btn">跳转</button>
+          <button id="today-btn" class="tc-btn">今天</button>
+        </div>
+        <div class="tc-field-row">
+          <input id="date-input" type="date">
+          <button id="date-set" class="tc-btn">设为第1天</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 心情 + 场景 -->
+    <div class="p-section">
+      <div id="mood-text">—</div>
+
+      <div class="scene-card" id="scene-card" style="margin-top:12px;">
+        <div class="scene-header">
+          <span class="scene-icon"><svg class="ico ico-sm" viewBox="0 0 24 24"><use href="#i-map-pin"/></svg></span>
+          <span class="scene-title" id="scene-title">场景</span>
+        </div>
+        <div class="scene-location" id="scene-location">—</div>
+        <div class="scene-atmosphere" id="scene-atmosphere">—</div>
+        <div class="scene-details">
+          <div class="scene-detail-item" id="scene-weather">
+            <span class="scene-detail-icon"><svg class="ico ico-sm" viewBox="0 0 24 24"><use href="#i-sun"/></svg></span>
+            <span class="scene-detail-text">—</span>
+          </div>
+          <div class="scene-detail-item" id="scene-people">
+            <span class="scene-detail-icon"><svg class="ico ico-sm" viewBox="0 0 24 24"><use href="#i-users"/></svg></span>
+            <span class="scene-detail-text">—</span>
+          </div>
+          <div class="scene-detail-item" id="scene-sound">
+            <span class="scene-detail-icon"><svg class="ico ico-sm" viewBox="0 0 24 24"><use href="#i-volume-2"/></svg></span>
+            <span class="scene-detail-text">—</span>
+          </div>
+          <div class="scene-detail-item" id="scene-light">
+            <span class="scene-detail-icon"><svg class="ico ico-sm" viewBox="0 0 24 24"><use href="#i-lightbulb"/></svg></span>
+            <span class="scene-detail-text">—</span>
+          </div>
+        </div>
+        <div class="scene-activity" id="scene-activity">—</div>
+      </div>
+    </div>
+
+    <!-- 剧情（可折叠） -->
+    <div class="panel-section">
+      <button class="panel-section-toggle" data-section="story">
+        <span class="pst-label"><svg class="ico ico-sm" viewBox="0 0 24 24"><use href="#i-book-open"/></svg>剧情进展</span>
+        <span class="toggle-arrow"><svg class="ico ico-sm" viewBox="0 0 24 24"><use href="#i-chevron-down"/></svg></span>
+      </button>
+      <div class="panel-section-content" id="section-story">
+        <div class="story-card">
+          <div class="story-head">
+            <span>剧情</span>
+            <span id="story-stage-name" style="font-weight:700;">初识</span>
+          </div>
+          <div class="story-desc" id="story-stage-desc">转学第一周</div>
+          <div class="story-bar"><div class="story-fill" id="story-progress-bar" style="width:0%"></div></div>
+          <div class="story-progress-row">
+            <span>这段日子</span><span id="story-progress-val">0%</span>
+          </div>
+          <div id="story-events"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 今日日程（可折叠） -->
+    <div class="panel-section">
+      <button class="panel-section-toggle" data-section="agenda">
+        <span class="pst-label"><svg class="ico ico-sm" viewBox="0 0 24 24"><use href="#i-calendar"/></svg>今日日程</span>
+        <span class="toggle-arrow"><svg class="ico ico-sm" viewBox="0 0 24 24"><use href="#i-chevron-down"/></svg></span>
+      </button>
+      <div class="panel-section-content" id="section-agenda">
+        <div style="text-align:right;">
+          <span id="agenda-day" style="color:var(--ink-faint);font-size:10px;">第 1 天</span>
         </div>
         <div id="agenda-list" style="display:flex;flex-direction:column;gap:4px;margin-top:6px;"></div>
       </div>
     </div>
+
+    <!-- 情绪日志（可折叠） -->
+    <div class="panel-section">
+      <button class="panel-section-toggle" data-section="mood">
+        <span class="pst-label"><svg class="ico ico-sm" viewBox="0 0 24 24"><use href="#i-activity"/></svg>情绪日志</span>
+        <span class="toggle-arrow"><svg class="ico ico-sm" viewBox="0 0 24 24"><use href="#i-chevron-down"/></svg></span>
+      </button>
+      <div class="panel-section-content" id="section-mood">
+        <div id="mood-history"><b>情绪日志</b><br></div>
+      </div>
+    </div>
+
+    <!-- Agent 决策状态（调试；默认收起，顶部"决策"按钮展开） -->
+    <div class="panel-section">
+      <button class="panel-section-toggle" data-section="agent">
+        <span class="pst-label"><svg class="ico ico-sm" viewBox="0 0 24 24"><use href="#i-brain"/></svg>决策状态（调试）</span>
+        <span class="toggle-arrow"><svg class="ico ico-sm" viewBox="0 0 24 24"><use href="#i-chevron-down"/></svg></span>
+      </button>
+      <div class="panel-section-content" id="section-agent">
+        <div id="agent-debug"></div>
+      </div>
+    </div>
+
+    <!-- 查看全部情感 -->
+    <div class="p-section" style="border-bottom:none;padding-top:14px;">
+      <button id="emotions-toggle">
+        <svg class="ico" viewBox="0 0 24 24"><use href="#i-brain"/></svg>
+        查看全部情感（38 维）
+      </button>
+    </div>
   </div>
 
-  <!-- 查看全部情感：打开全屏浮层 -->
-  <button id="emotions-toggle">🧠 查看全部情感（38 维）</button>
+  <!-- 移动端遮罩 -->
+  <div id="panel-mask"></div>
 
-  <!-- 情绪日志（可折叠） -->
-  <div class="panel-section">
-    <button class="panel-section-toggle" data-section="mood">
-      <span>📊 情绪日志</span>
-      <span class="toggle-arrow">▼</span>
-    </button>
-    <div class="panel-section-content" id="section-mood">
-      <div id="mood-history"><b>情绪日志</b><br></div>
+  <!-- 聊天区 -->
+  <div id="chat-wrap">
+    <div id="chat-messages"></div>
+
+    <!-- 底部输入栏 -->
+    <div id="chat-input-row">
+      <div id="chat-input-pill">
+        <input id="chat-input" type="text" placeholder="说点什么…（动作和话可以一起：如「我抱住她，说：想你」）">
+        <button id="chat-send" class="icon-btn" title="发送">
+          <svg class="ico" viewBox="0 0 24 24" style="width:17px;height:17px;"><use href="#i-send"/></svg>
+        </button>
+      </div>
     </div>
   </div>
 </div>
@@ -1358,66 +1569,26 @@
 <!-- 全屏情感明细浮层 -->
 <div id="emotions-modal" class="hidden">
   <div class="em-modal-head">
-    <span>🧠 38 维情感体系</span>
-    <button id="emotions-close" class="em-close">✕</button>
+    <span class="em-title"><svg class="ico" viewBox="0 0 24 24"><use href="#i-brain"/></svg>38 维情感体系</span>
+    <button id="emotions-close" class="em-close"><svg class="ico" viewBox="0 0 24 24"><use href="#i-x"/></svg></button>
   </div>
   <div class="em-sub">五层：人格（底色）→ 关系（积累）→ 情绪（波动）→ 状态（漂移）→ 阴影（潜伏）。点击组标题可折叠。</div>
   <canvas id="emotion-chart" width="1000" height="200"></canvas>
   <div id="meters-scroll">
-    <div class="group-title" data-group="personality">🎭 人格（性格底色）</div>
+    <div class="group-title" data-group="personality"><svg class="ico ico-sm" viewBox="0 0 24 24"><use href="#i-smile"/></svg>人格（性格底色）</div>
     <div id="group-personality"></div>
 
-    <div class="group-title" data-group="relation">❤️ 关系（缓慢积累）</div>
+    <div class="group-title" data-group="relation"><svg class="ico ico-sm" viewBox="0 0 24 24"><use href="#i-heart"/></svg>关系（缓慢积累）</div>
     <div id="group-relation"></div>
 
-    <div class="group-title" data-group="emotion">💭 情绪（快速波动）</div>
+    <div class="group-title" data-group="emotion"><svg class="ico ico-sm" viewBox="0 0 24 24"><use href="#i-activity"/></svg>情绪（快速波动）</div>
     <div id="group-emotion"></div>
 
-    <div class="group-title" data-group="status">🫀 状态（随时间漂移）</div>
+    <div class="group-title" data-group="status"><svg class="ico ico-sm" viewBox="0 0 24 24"><use href="#i-activity"/></svg>状态（随时间漂移）</div>
     <div id="group-status"></div>
 
-    <div class="group-title" data-group="shadow">🖤 阴影（欲望与阴暗面）</div>
+    <div class="group-title" data-group="shadow"><svg class="ico ico-sm" viewBox="0 0 24 24"><use href="#i-moon"/></svg>阴影（欲望与阴暗面）</div>
     <div id="group-shadow"></div>
-  </div>
-</div>
-
-<!-- 面板开关 -->
-<button id="panel-toggle" class="panel-open" title="收起/展开状态面板">🧠</button>
-
-<!-- 聊天区 -->
-<div id="chat-wrap" class="panel-open">
-  <div id="chat-header">
-    <div class="chat-avatar" id="chat-avatar">🎀</div>
-    <div class="chat-identity">
-      <div class="chat-name-row">
-        <span id="chat-title-text">情感 AI</span>
-        <span class="dot" id="status-dot"></span>
-      </div>
-      <div class="chat-sub" id="chat-subtitle">准备就绪</div>
-    </div>
-    <div class="chat-actions">
-      <button id="tts-toggle" class="icon-mini" title="语音朗读（TTS）">🔇</button>
-      <button id="npc-toggle" class="icon-mini" title="支线 NPC 动态介入（默认关闭）">👥</button>
-      <button id="history-btn" class="icon-mini" title="聊天记录">📜</button>
-      <button id="char-btn" class="icon-mini" title="角色设定">👤</button>
-      <button id="demo-btn" class="icon-mini" title="演示模式">🎭</button>
-      <button id="reset-state" class="icon-mini" title="重置">↺</button>
-      <a href="./menu.html" class="icon-mini" id="menu-link" title="菜单">☰</a>
-    </div>
-  </div>
-
-  <div id="chat-messages"></div>
-</div>
-
-<!-- 底部输入栏：悬浮胶囊 -->
-<div id="chat-input-row">
-  <div id="chat-input-pill">
-    <input id="chat-input" type="text" placeholder="说点什么…（动作和话可以一起：如「我抱住她，说：想你」）">
-    <button id="chat-send" class="icon-btn">
-      <svg viewBox="0 0 1024 1024" width="20" height="20">
-        <path d="M925.6 559.2L152 145.6c-11.2-5.6-24.8 3.2-23.2 15.2l60 714.4c0.8 11.2 12 17.6 22.4 13.6L460.8 784l136.8 155.2c8.8 9.6 24 5.6 27.2-6.4l65.6-245.6 235.2-99.2c11.2-5.6 12-22.4 0-28.8z" fill="#ffffff"/>
-      </svg>
-    </button>
   </div>
 </div>
 

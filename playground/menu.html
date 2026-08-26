@@ -6,324 +6,1010 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-  <meta name="theme-color" content="#d65a7e">
+  <meta name="theme-color" content="#111111">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="manifest" href="../manifest.webmanifest">
   <link rel="apple-touch-icon" href="./icons/icon-192.png">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <title>菜单 · MeloAI</title>
+  <title>菜单 · Melody of Us</title>
   <style>
       * { box-sizing: border-box; margin: 0; padding: 0; }
       /* 全局溢出保护：任何子元素不产生横向滚动/溢出 */
       html, body { max-width: 100%; overflow-x: hidden; }
       img, canvas, svg, video { max-width: 100%; }
 
-
       :root {
-          --accent: #d65a7e;
-          --accent-deep: #b84567;
-          --accent-soft: rgba(214, 90, 126, 0.10);
-          --accent-line: rgba(214, 90, 126, 0.24);
-          --ink: #2d2a32;
-          --ink-soft: #6e6a76;
-          --ink-faint: #a39dab;
-          --card: rgba(255, 255, 255, 0.88);
-          --card-strong: #ffffff;
-          --bg: #faf7f4;
-          --line: rgba(45, 42, 50, 0.08);
-          --shadow: 0 6px 24px rgba(120, 80, 60, 0.10);
-          --shadow-lg: 0 16px 48px rgba(120, 80, 60, 0.16);
-          --shadow-accent: 0 6px 20px rgba(214, 90, 126, 0.28);
-          --radius-lg: 24px;
-          --radius-md: 14px;
-          --radius-sm: 8px;
+          --ink: #111111;
+          --ink-soft: #555555;
+          --ink-faint: #8a8a8a;
+          --bg: #ffffff;
+          --bg-soft: #f6f6f6;
+          --line: #e3e3e3;
+          --line-strong: #bdbdbd;
+          --danger: #a32119;
+          --danger-soft: rgba(163, 33, 25, 0.06);
+          --danger-line: rgba(163, 33, 25, 0.4);
+          --r: 2px;
+      }
+
+      /* ===== 背景层：网格 + 噪点（低对比，服务内容） ===== */
+      .bg-parallax {
+          position: fixed;
+          inset: -120px;
+          z-index: -3;
+          pointer-events: none;
+          will-change: transform;
+      }
+
+      .bg-grid {
+          position: absolute;
+          inset: 0;
+          background-image:
+              linear-gradient(to right, rgba(17, 17, 17, 0.03) 1px, transparent 1px),
+              linear-gradient(to bottom, rgba(17, 17, 17, 0.03) 1px, transparent 1px);
+          background-size: 40px 40px;
+          animation: bg-drift 90s linear infinite;
+      }
+
+      @keyframes bg-drift {
+          from { transform: translate3d(0, 0, 0); }
+          to   { transform: translate3d(-40px, 40px, 0); }
+      }
+
+      .bg-noise {
+          position: fixed;
+          inset: 0;
+          z-index: -2;
+          pointer-events: none;
+          opacity: 0.05;
+          background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+      }
+
+      /* 流体扰动层：速度场 Canvas（扰动源；覆盖内容的“水面”，极淡） */
+      .bg-fluid {
+          position: fixed;
+          inset: 0;
+          z-index: 1;
+          pointer-events: none;
+          opacity: 0.55;
+          filter: blur(2px);
       }
 
       body {
           min-height: 100vh;
           display: flex;
           flex-direction: column;
-          align-items: center;
-          background-image: url(./assets/bg-ZvSl1C-y.jpg);
-          background-size: cover;
-          background-position: center;
-          background-attachment: fixed;
-          font-family: "PingFang SC", "HarmonyOS Sans SC", "MiSans", "微软雅黑", "Noto Sans SC", sans-serif;
+          background: var(--bg);
+          font-family: "PingFang SC", "HarmonyOS Sans SC", "MiSans", "微软雅黑", "Noto Sans SC", system-ui, sans-serif;
           color: var(--ink);
-          padding: 30px 0;
+          padding: 0 20px 32px;
+          -webkit-font-smoothing: antialiased;
       }
 
-      body::before {
-          content: "";
-          position: fixed;
-          inset: 0;
-          background:
-              radial-gradient(1200px 600px at 20% -10%, rgba(192, 132, 252, 0.28), transparent 60%),
-              radial-gradient(1000px 500px at 100% 110%, rgba(244, 114, 182, 0.22), transparent 60%),
-              linear-gradient(to bottom right, rgba(255, 255, 255, 0.62), rgba(240, 230, 255, 0.72));
-          backdrop-filter: blur(6px);
-          z-index: -1;
+      /* ===== 图标体系：Lucide 线性 14/16px ===== */
+      .ico {
+          width: 16px;
+          height: 16px;
+          flex-shrink: 0;
+          vertical-align: -0.18em;
       }
+      .ico-sm { width: 14px; height: 14px; }
 
-      .wrap {
-          width: 560px;
+      /* ===== 页头 ===== */
+      .page-header {
+          width: 100%;
+          max-width: 1060px;
+          margin: 0 auto;
           display: flex;
-          flex-direction: column;
-          gap: 16px;
+          align-items: center;
+          gap: 20px;
+          height: 56px;
+          border-bottom: 1px solid var(--line);
+          flex-shrink: 0;
       }
 
-      .card {
-          padding: 22px 26px;
-          background: rgba(255, 255, 255, 0.42);
-          border: 1px solid rgba(255, 255, 255, 0.55);
-          border-radius: var(--radius-lg);
-          box-shadow: inset 0 1px 0 rgba(255,255,255,0.7), 0 12px 40px rgba(120, 80, 60, 0.16);
-          backdrop-filter: blur(28px) saturate(1.6);
-          -webkit-backdrop-filter: blur(28px) saturate(1.6);
+      .back {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          font-size: 12px;
+          color: var(--ink-soft);
+          text-decoration: none;
+          padding: 6px 10px;
+          border: 1px solid var(--line);
+          border-radius: var(--r);
+          background: var(--bg);
+          transition: border-color 0.15s, color 0.15s, background 0.15s;
+      }
+      .back:hover { border-color: var(--ink); color: var(--ink); background: var(--bg-soft); }
+      .back:active { transform: translateY(1px); }
+
+      .page-header h1 { font-size: 15px; font-weight: 700; letter-spacing: 1px; }
+
+      /* ===== 两栏布局 ===== */
+      .layout {
+          width: 100%;
+          max-width: 1060px;
+          margin: 24px auto 0;
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) 420px;
+          gap: 20px;
+          align-items: start;
       }
 
-      .card-title {
-          color: var(--accent);
+      .col-main { display: flex; flex-direction: column; gap: 20px; }
+      .col-side { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+
+      /* ===== 面板 ===== */
+      .panel {
+          background: var(--bg);
+          border: 1px solid var(--line);
+          border-radius: var(--r);
+          padding: 18px 20px;
+      }
+
+      .panel-title {
           font-size: 13px;
-          letter-spacing: 2px;
+          font-weight: 700;
+          letter-spacing: 0.5px;
+          padding-bottom: 10px;
           margin-bottom: 14px;
+          border-bottom: 1px solid var(--line);
           display: flex;
           align-items: center;
           gap: 8px;
       }
 
-      .card-title::after {
-          content: "";
-          flex: 1;
-          height: 1px;
-          background: linear-gradient(to right, var(--line), transparent);
+      .panel-title .ico { color: var(--ink-soft); }
+
+      .panel-title .tip {
+          font-size: 11px;
+          font-weight: 400;
+          color: var(--ink-faint);
+          margin-left: auto;
       }
 
-      /* 存档摘要 */
-      #save-summary { color: var(--ink); font-size: 13px; line-height: 1.9; }
-      #save-summary b { color: var(--accent-2); }
+      /* ===== 存档卡列表 ===== */
+      #save-list { display: flex; flex-direction: column; gap: 10px; }
 
-      /* 存档卡列表 */
       .save-card {
-          padding: 12px 16px;
-          border-radius: 14px;
+          padding: 12px 14px 12px 12px;
           border: 1px solid var(--line);
-          background: var(--card);
+          border-left: 3px solid var(--line);
+          border-radius: var(--r);
+          background: var(--bg);
           cursor: pointer;
-          transition: background 0.2s, border-color 0.2s;
+          transition: border-color 0.15s, background 0.15s, border-left-color 0.15s;
       }
 
-      .save-card:hover { background: var(--card-strong); border-color: var(--accent); box-shadow: var(--shadow); }
-
-      .save-card.active { border-color: var(--accent); background: var(--accent-soft); }
+      .save-card:hover { border-color: var(--line-strong); background: var(--bg-soft); }
+      .save-card.active { border-left-color: var(--ink); border-color: var(--line-strong); background: var(--bg-soft); }
+      .save-card:active { background: #eeeeee; }
 
       .save-card .s-head {
           display: flex;
           justify-content: space-between;
           align-items: center;
+          gap: 10px;
           margin-bottom: 6px;
       }
 
-      .save-card .s-name { color: var(--accent); font-size: 14px; font-weight: 600; }
-      .save-card .s-tag { color: var(--ink-soft); font-size: 10px; }
-
-      .save-card .s-info { color: var(--ink); font-size: 12px; line-height: 1.7; }
-      .save-card .s-empty { color: var(--ink-soft); font-size: 12px; }
-      .save-card .s-go { color: #34d399; font-size: 11px; margin-top: 6px; }
-      .save-card .s-del {
-          padding: 3px 10px;
-          border-radius: 999px;
-          border: 1px solid rgba(255,107,107,0.5);
-          background: rgba(255,107,107,0.12);
-          color: #ffb0b0;
+      .save-card .s-name { color: var(--ink); font-size: 13px; font-weight: 600; }
+      .save-card .s-tag {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          color: var(--ink-faint);
           font-size: 10px;
-          cursor: pointer;
+          white-space: nowrap;
       }
-      .save-card .s-del:hover { background: rgba(255,107,107,0.3); }
 
-      .btn-row { display: flex; gap: 12px; margin-top: 16px; }
+      .save-card .s-info { color: var(--ink-soft); font-size: 12px; line-height: 1.8; }
+      .save-card .s-info b { color: var(--ink); font-weight: 600; }
+      .save-card .s-empty { color: var(--ink-faint); font-size: 12px; }
 
+      .save-card .s-actions { display: flex; gap: 8px; margin-top: 10px; }
+
+      .s-del {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          height: 30px;
+          padding: 0 10px;
+          border-radius: var(--r);
+          border: 1px solid var(--danger-line);
+          background: var(--danger-soft);
+          color: var(--danger);
+          font-size: 11px;
+          font-family: inherit;
+          cursor: pointer;
+          transition: background 0.15s, transform 0.1s;
+      }
+      .s-del:hover { background: rgba(163, 33, 25, 0.12); }
+      .s-del:active { transform: translateY(1px); }
+
+      /* ===== 按钮 ===== */
       .btn {
-          flex: 1;
-          padding: 11px 0;
-          text-align: center;
-          font-size: 15px;
-          letter-spacing: 3px;
-          color: #fff;
-          border-radius: 999px;
-          border: none;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 5px;
+          border-radius: var(--r);
+          border: 1px solid var(--ink);
+          font-family: inherit;
+          font-size: 12px;
           cursor: pointer;
-          text-decoration: none;
-          background: var(--accent);
-          box-shadow: 0 8px 22px rgba(235, 163, 69, 0.3);
-          transition: transform 0.2s;
+          padding: 0 14px;
+          height: 30px;
+          letter-spacing: 1px;
+          transition: background 0.15s, color 0.15s, border-color 0.15s, transform 0.1s;
       }
 
-      .btn:hover { transform: translateY(-2px) scale(1.02); }
+      .btn-primary { background: var(--ink); color: #fff; }
+      .btn-primary:hover { background: #333333; }
+      .btn-primary:active { background: #000000; transform: translateY(1px); }
+      .btn-ghost { background: var(--bg); color: var(--ink); }
+      .btn-ghost:hover { background: var(--bg-soft); }
+      .btn-ghost:active { background: #ededed; transform: translateY(1px); }
 
-      .btn.ghost {
-          background: var(--card);
+      .btn-row { display: flex; gap: 10px; margin-top: 16px; }
+      .btn-row .btn { flex: 1; }
+
+      .btn-danger {
+          background: var(--danger-soft);
+          color: var(--danger);
+          border-color: var(--danger-line);
+      }
+      .btn-danger:hover { background: rgba(163, 33, 25, 0.12); }
+      .btn-danger:active { transform: translateY(1px); }
+
+      .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+      /* ===== 设置表单 ===== */
+      .setting { margin-bottom: 12px; }
+      .setting label {
+          display: block;
           color: var(--ink-soft);
-          box-shadow: none;
-          border: 1px solid var(--line);
+          font-size: 11px;
+          margin-bottom: 5px;
+          letter-spacing: 0.5px;
       }
-
-      .btn.ghost:hover { background: var(--accent-soft); color: var(--accent); }
-
-      /* 设置 */
-      .setting { margin-bottom: 10px; }
-      .setting label { display: block; color: var(--ink-soft); font-size: 11px; margin-bottom: 5px; letter-spacing: 1px; }
       .setting input, .setting select {
           width: 100%;
-          padding: 10px 14px;
-          border: 1px solid var(--line);
-          border-radius: 12px;
-          background: var(--card);
+          height: 34px;
+          padding: 0 10px;
+          border: 1px solid var(--line-strong);
+          border-radius: var(--r);
+          background: var(--bg);
           color: var(--ink);
-          font-size: 13px;
+          font-size: 12px;
+          font-family: inherit;
           outline: none;
+          transition: border-color 0.15s, background 0.15s;
       }
-      .setting select option { color: #333; }
-      #save-hint { color: #34d399; font-size: 11px; margin-top: 8px; display: none; }
+      .setting input:hover, .setting select:hover { border-color: var(--line-strong); background: #fcfcfc; }
+      .setting input:focus, .setting select:focus { border-color: var(--ink); background: var(--bg); }
+      .setting select option { color: var(--ink); }
+      .setting textarea { font-family: inherit; }
+      .setting input:disabled, .setting select:disabled { opacity: 0.45; cursor: not-allowed; }
 
-      .back {
+      .input-row { display: flex; gap: 8px; align-items: stretch; }
+      .input-row input { flex: 1; min-width: 0; }
+
+      .hint-box {
+          font-size: 11px;
           color: var(--ink-soft);
-          font-size: 13px;
-          text-decoration: none;
-          align-self: flex-start;
-          letter-spacing: 1px;
-          padding: 6px 14px;
-          border-radius: 999px;
-          border: 1px solid var(--line);
-          background: var(--card);
-          transition: all 0.2s;
+          margin-bottom: 12px;
+          padding: 8px 10px;
+          background: var(--bg-soft);
+          border-radius: var(--r);
+          line-height: 1.7;
       }
-      .back:hover { background: var(--accent-soft); color: var(--accent); }
+
+      #api-status, #tts-voice-status, #tts-test-status {
+          font-size: 11px;
+          margin-top: 6px;
+          line-height: 1.6;
+      }
+
+      #save-hint {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          color: var(--ink);
+          font-size: 11px;
+          margin-top: 8px;
+          display: none;
+      }
+
+      .slot-badge {
+          font-size: 11px;
+          color: var(--ink);
+          margin-bottom: 14px;
+          padding: 6px 10px;
+          background: var(--bg-soft);
+          border: 1px solid var(--line);
+          border-radius: var(--r);
+      }
+
+      /* ===== 页脚 ===== */
+      .site-footer {
+          width: 100%;
+          max-width: 1060px;
+          margin: 24px auto 0;
+          border-top: 1px solid var(--line);
+          padding-top: 14px;
+          font-size: 11px;
+          color: var(--ink-faint);
+          line-height: 1.9;
+      }
+      .site-footer a { color: var(--ink-soft); text-decoration: none; transition: color 0.15s ease; }
+      .site-footer a:hover { color: var(--ink); }
+
+      /* ===== 焦点可见性 ===== */
+      :where(a, button, input, select, textarea, [tabindex]):focus-visible {
+          outline: 1px solid var(--ink);
+          outline-offset: 2px;
+      }
+
+      /* ===== 减少动态效果：静态背景，保留交互状态 ===== */
+      @media (prefers-reduced-motion: reduce) {
+          .bg-grid { animation: none; }
+          .bg-fluid { display: none; }
+          .save-card { transition: border-color 0.15s, background 0.15s; }
+      }
 
       /* ===== 移动端适配 ===== */
-      @media (max-width: 767px) {
-          body { padding: 10px 0; }
-          .wrap { width: 100%; padding: 10px 12px; }
-          .card { padding: 16px; }
-          .back { margin-left: 12px; }
-          .mode-row { flex-direction: column; }
+      @media (max-width: 900px) {
+          .layout { grid-template-columns: minmax(0, 1fr); }
+          .page-header { height: 52px; }
+          .bg-fluid { display: none; }
+          /* 移动端为触摸交互，降低背景流体优先级 */
+          .bg-noise { display: none; }
+      }
+
+      @media (max-width: 520px) {
+          body { padding: 0 12px 24px; }
+          .panel { padding: 14px; }
+          .btn-row { flex-direction: column; }
+          .save-card .s-actions { flex-direction: column; }
+          .save-card .s-actions .btn { width: 100%; }
+          .save-card .s-actions .s-del { justify-content: center; width: 100%; }
+          .input-row { flex-wrap: wrap; }
       }
   </style>
-  <script type="module" crossorigin src="./assets/menu-4VZrHyJ9.js"></script>
-  <link rel="modulepreload" crossorigin href="./assets/tts-mZod1DWQ.js">
+  <script type="module" crossorigin src="./assets/menu-KYaR2lo5.js"></script>
+  <link rel="modulepreload" crossorigin href="./assets/tts-SBoKlwZU.js">
 </head>
 <body>
-<div class="wrap">
-  <a class="back" href="./home.html">← 返回首页</a>
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
+        <symbol id="i-activity" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2" />
 
-  <!-- 存档卡 -->
-  <div class="card">
-    <div class="card-title">🗂 存档（每个独立：情感/剧情/时间线/角色）</div>
-    <div id="save-list" style="display:flex;flex-direction:column;gap:10px;"></div>
-  </div>
+        </symbol>
+        <symbol id="i-arrow-left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <path d="m12 19-7-7 7-7" />
+  <path d="M19 12H5" />
 
-  <!-- 设置卡 -->
-  <div class="card">
-    <div class="card-title">⚙️ 设置</div>
-    <div id="slot-label" style="font-size:12px;color:var(--accent);margin-bottom:12px;padding:6px 10px;background:var(--accent-soft);border-radius:8px;">存档 1 的 API 设置</div>
-    <div class="setting">
-      <label>模型供应商</label>
-      <select id="provider-select">
-        <option value="deepseek">DeepSeek</option>
-        <option value="openai">OpenAI（GPT）</option>
-        <option value="claude">Claude（Anthropic）</option>
-        <option value="gemini">Google Gemini</option>
-        <option value="moonshot">Moonshot（Kimi）</option>
-        <option value="qwen">通义千问（阿里）</option>
-        <option value="zhipu">智谱（GLM）</option>
-        <option value="xiaomi">小米 MiMo</option>
-        <option value="custom">自定义（OpenAI 兼容）</option>
-      </select>
-    </div>
-    <div class="setting">
-      <label>API Key</label>
-      <div style="display:flex;gap:8px;">
-        <input id="api-key" type="password" placeholder="sk-…（仅存本地浏览器）" style="flex:1;">
-        <button id="api-test" style="padding:10px 16px;border-radius:12px;border:1px solid var(--accent-line);background:var(--accent-soft);color:var(--accent);font-size:12px;cursor:pointer;white-space:nowrap;">🔍 测试</button>
+        </symbol>
+        <symbol id="i-arrow-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M5 12h14" />
+  <path d="m12 5 7 7-7 7" />
+
+        </symbol>
+        <symbol id="i-book-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M12 7v14" />
+  <path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z" />
+
+        </symbol>
+        <symbol id="i-bot" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M12 8V4H8" />
+  <rect width="16" height="12" x="4" y="8" rx="2" />
+  <path d="M2 14h2" />
+  <path d="M20 14h2" />
+  <path d="M15 13v2" />
+  <path d="M9 13v2" />
+
+        </symbol>
+        <symbol id="i-brain" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z" />
+  <path d="M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z" />
+  <path d="M15 13a4.5 4.5 0 0 1-3-4 4.5 4.5 0 0 1-3 4" />
+  <path d="M17.599 6.5a3 3 0 0 0 .399-1.375" />
+  <path d="M6.003 5.125A3 3 0 0 0 6.401 6.5" />
+  <path d="M3.477 10.896a4 4 0 0 1 .585-.396" />
+  <path d="M19.938 10.5a4 4 0 0 1 .585.396" />
+  <path d="M6 18a4 4 0 0 1-1.967-.516" />
+  <path d="M19.967 17.484A4 4 0 0 1 18 18" />
+
+        </symbol>
+        <symbol id="i-calendar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M8 2v4" />
+  <path d="M16 2v4" />
+  <rect width="18" height="18" x="3" y="4" rx="2" />
+  <path d="M3 10h18" />
+
+        </symbol>
+        <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M20 6 9 17l-5-5" />
+
+        </symbol>
+        <symbol id="i-chevron-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <path d="m6 9 6 6 6-6" />
+
+        </symbol>
+        <symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <circle cx="12" cy="12" r="10" />
+  <polyline points="12 6 12 12 16 14" />
+
+        </symbol>
+        <symbol id="i-database" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <ellipse cx="12" cy="5" rx="9" ry="3" />
+  <path d="M3 5V19A9 3 0 0 0 21 19V5" />
+  <path d="M3 12A9 3 0 0 0 21 12" />
+
+        </symbol>
+        <symbol id="i-github" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4" />
+  <path d="M9 18c-4.51 2-5-2-7-2" />
+
+        </symbol>
+        <symbol id="i-heart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
+
+        </symbol>
+        <symbol id="i-history" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+  <path d="M3 3v5h5" />
+  <path d="M12 7v5l4 2" />
+
+        </symbol>
+        <symbol id="i-key-round" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z" />
+  <circle cx="16.5" cy="7.5" r=".5" fill="currentColor" />
+
+        </symbol>
+        <symbol id="i-lightbulb" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5" />
+  <path d="M9 18h6" />
+  <path d="M10 22h4" />
+
+        </symbol>
+        <symbol id="i-loader-circle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+
+        </symbol>
+        <symbol id="i-map-pin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0" />
+  <circle cx="12" cy="10" r="3" />
+
+        </symbol>
+        <symbol id="i-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <line x1="4" x2="20" y1="12" y2="12" />
+  <line x1="4" x2="20" y1="6" y2="6" />
+  <line x1="4" x2="20" y1="18" y2="18" />
+
+        </symbol>
+        <symbol id="i-message-circle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z" />
+
+        </symbol>
+        <symbol id="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
+
+        </symbol>
+        <symbol id="i-palette" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <circle cx="13.5" cy="6.5" r=".5" fill="currentColor" />
+  <circle cx="17.5" cy="10.5" r=".5" fill="currentColor" />
+  <circle cx="8.5" cy="7.5" r=".5" fill="currentColor" />
+  <circle cx="6.5" cy="12.5" r=".5" fill="currentColor" />
+  <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z" />
+
+        </symbol>
+        <symbol id="i-panel-left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <rect width="18" height="18" x="3" y="3" rx="2" />
+  <path d="M9 3v18" />
+
+        </symbol>
+        <symbol id="i-play" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <polygon points="6 3 20 12 6 21 6 3" />
+
+        </symbol>
+        <symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M5 12h14" />
+  <path d="M12 5v14" />
+
+        </symbol>
+        <symbol id="i-rotate-ccw" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+  <path d="M3 3v5h5" />
+
+        </symbol>
+        <symbol id="i-save" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z" />
+  <path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7" />
+  <path d="M7 3v4a1 1 0 0 0 1 1h7" />
+
+        </symbol>
+        <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <circle cx="11" cy="11" r="8" />
+  <path d="m21 21-4.3-4.3" />
+
+        </symbol>
+        <symbol id="i-send" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z" />
+  <path d="m21.854 2.147-10.94 10.939" />
+
+        </symbol>
+        <symbol id="i-settings" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+  <circle cx="12" cy="12" r="3" />
+
+        </symbol>
+        <symbol id="i-sliders-horizontal" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <line x1="21" x2="14" y1="4" y2="4" />
+  <line x1="10" x2="3" y1="4" y2="4" />
+  <line x1="21" x2="12" y1="12" y2="12" />
+  <line x1="8" x2="3" y1="12" y2="12" />
+  <line x1="21" x2="16" y1="20" y2="20" />
+  <line x1="12" x2="3" y1="20" y2="20" />
+  <line x1="14" x2="14" y1="2" y2="6" />
+  <line x1="8" x2="8" y1="10" y2="14" />
+  <line x1="16" x2="16" y1="18" y2="22" />
+
+        </symbol>
+        <symbol id="i-smile" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <circle cx="12" cy="12" r="10" />
+  <path d="M8 14s1.5 2 4 2 4-2 4-2" />
+  <line x1="9" x2="9.01" y1="9" y2="9" />
+  <line x1="15" x2="15.01" y1="9" y2="9" />
+
+        </symbol>
+        <symbol id="i-sparkles" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" />
+  <path d="M20 3v4" />
+  <path d="M22 5h-4" />
+  <path d="M4 17v2" />
+  <path d="M5 18H3" />
+
+        </symbol>
+        <symbol id="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <circle cx="12" cy="12" r="4" />
+  <path d="M12 2v2" />
+  <path d="M12 20v2" />
+  <path d="m4.93 4.93 1.41 1.41" />
+  <path d="m17.66 17.66 1.41 1.41" />
+  <path d="M2 12h2" />
+  <path d="M20 12h2" />
+  <path d="m6.34 17.66-1.41 1.41" />
+  <path d="m19.07 4.93-1.41 1.41" />
+
+        </symbol>
+        <symbol id="i-trash-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M3 6h18" />
+  <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+  <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+  <line x1="10" x2="10" y1="11" y2="17" />
+  <line x1="14" x2="14" y1="11" y2="17" />
+
+        </symbol>
+        <symbol id="i-user-round" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <circle cx="12" cy="8" r="5" />
+  <path d="M20 21a8 8 0 0 0-16 0" />
+
+        </symbol>
+        <symbol id="i-users" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+  <circle cx="9" cy="7" r="4" />
+  <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+  <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+
+        </symbol>
+        <symbol id="i-volume-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z" />
+  <path d="M16 9a5 5 0 0 1 0 6" />
+  <path d="M19.364 18.364a9 9 0 0 0 0-12.728" />
+
+        </symbol>
+        <symbol id="i-volume-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z" />
+  <line x1="22" x2="16" y1="9" y2="15" />
+  <line x1="16" x2="22" y1="9" y2="15" />
+
+        </symbol>
+        <symbol id="i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M18 6 6 18" />
+  <path d="m6 6 12 12" />
+
+        </symbol>
+    </svg>
+  <div class="bg-parallax" id="bg-parallax" aria-hidden="true"><div class="bg-grid"></div></div>
+  <div class="bg-noise" aria-hidden="true"></div>
+  <canvas class="bg-fluid" id="bg-fluid" aria-hidden="true"></canvas>
+
+  <header class="page-header">
+    <a class="back" href="./home.html">
+      <svg class="ico ico-sm" viewBox="0 0 24 24"><use href="#i-arrow-left"/></svg>
+      返回首页
+    </a>
+    <h1>菜单</h1>
+  </header>
+
+  <main class="layout">
+    <!-- 左栏：存档 -->
+    <section class="col-main">
+      <div class="panel">
+        <div class="panel-title">
+          <svg class="ico" viewBox="0 0 24 24"><use href="#i-database"/></svg>
+          <span>存档</span>
+          <span class="tip">每个存档独立：情感 / 剧情 / 时间线 / 角色</span>
+        </div>
+        <div id="save-list"></div>
       </div>
-      <div id="api-status" style="font-size:11px;margin-top:6px;display:none;"></div>
-    </div>
-    <div class="setting" id="custom-url-setting" style="display:none;">
-      <label>自定义 API 地址</label>
-      <input id="custom-url" type="text" placeholder="https://your-api.com/v1">
-    </div>
-    <div class="setting">
-      <label>模型</label>
-      <select id="model-select">
-        <option value="deepseek-chat">deepseek-chat</option>
-      </select>
-    </div>
-    <div class="setting">
-      <label>思考等级（回得更聪明，但更慢更贵）</label>
-      <select id="effort-select">
-        <option value="disabled">关闭（最快，逻辑一般）</option>
-        <option value="low">低（快，略好）</option>
-        <option value="high" selected>高（推荐，更像人话）</option>
-        <option value="max">最大（最聪明，最慢）</option>
-      </select>
-    </div>
-    <div style="margin-top:12px;display:flex;gap:8px;">
-      <button id="clear-data" style="flex:1;padding:9px 0;border-radius:999px;border:1px solid rgba(255,107,107,0.5);background:rgba(255,107,107,0.12);color:#ffb0b0;font-size:13px;cursor:pointer;">🗑 清空所有数据</button>
-    </div>
-    <div id="save-hint">✓ 已保存</div>
-  </div>
+    </section>
 
-  <!-- TTS 语音设置卡 -->
-  <div class="card">
-    <div class="card-title">🎤 语音朗读（TTS）</div>
-    <div style="font-size:11px;color:var(--ink-faint);margin-bottom:12px;padding:8px;background:var(--accent-soft);border-radius:8px;">
-      💡 TTS 使用小米 MiMo VoiceClone API，需在上方「API 设置」中选择「小米 MiMo」供应商并填写 API Key。
-    </div>
-    <div class="setting">
-      <label>TTS 专用 API Key（可选，留空则使用上方的 Key）</label>
-      <input id="tts-api-key" type="password" placeholder="sk-…（仅存本地浏览器）">
-    </div>
-    <div class="setting">
-      <label>音色样本（上传 MP3/WAV，10MB 以内，将克隆此音色）</label>
-      <div style="display:flex;gap:8px;align-items:center;">
-        <input id="tts-voice-file" type="file" accept="audio/mp3,audio/mpeg,audio/wav" style="flex:1;font-size:12px;">
-        <button id="tts-voice-clear" style="padding:8px 12px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink-soft);font-size:11px;cursor:pointer;">清除</button>
-      </div>
-      <div id="tts-voice-status" style="font-size:11px;margin-top:4px;color:var(--ink-soft);">未上传</div>
-    </div>
-    <div class="setting">
-      <label>合成语言（中文会自动翻译成日文再合成）</label>
-      <select id="tts-lang">
-        <option value="zh">🇨🇳 中文（原声）</option>
-        <option value="ja">🇯🇵 日本語（自动翻译）</option>
-      </select>
-    </div>
-    <div class="setting">
-      <label>风格指令（可选，控制语气/情感/语速，如「温柔轻声」「活泼元气」）</label>
-      <input id="tts-style" type="text" placeholder="如：温柔轻声，带一点害羞">
-    </div>
-    <div class="setting">
-      <label>TTS 测试</label>
-      <div style="display:flex;gap:8px;">
-        <input id="tts-test-text" type="text" placeholder="输入要朗读的文字（中文）" style="flex:1;">
-        <button id="tts-test-btn" style="padding:8px 16px;border-radius:8px;border:1px solid var(--accent-line);background:var(--accent-soft);color:var(--accent);font-size:12px;cursor:pointer;">🔊 试听</button>
-      </div>
-      <div id="tts-test-status" style="font-size:11px;margin-top:4px;color:var(--ink-soft);"></div>
-    </div>
-  </div>
+    <!-- 右栏：设置 -->
+    <aside class="col-side">
+      <div class="panel" id="settings-panel">
+        <div class="panel-title">
+          <svg class="ico" viewBox="0 0 24 24"><use href="#i-sliders-horizontal"/></svg>
+          <span>API 设置</span>
+        </div>
+        <div id="slot-label" class="slot-badge">存档 1 的 API 设置</div>
 
-  <footer style="text-align:center;padding:24px 16px;color:var(--ink-faint);font-size:11px;line-height:2;">
-    <div style="margin-bottom:4px;">Melody of Us · 情感 AI 聊天 · 38 维情感体系</div>
-    <div>作者：<a href="https://github.com/LanYinxianxuan" target="_blank" style="color:var(--accent);text-decoration:none;">LanYinxianxuan</a> ｜ GitHub：<a href="https://github.com/LanYinxianxuan/Melody_of_Us" target="_blank" style="color:var(--accent);text-decoration:none;">Melody_of_Us</a> ｜ 分支：melody-ai</div>
-    <div style="margin-top:2px;">开源协议：MIT License</div>
+        <div class="setting">
+          <label>模型供应商</label>
+          <select id="provider-select">
+            <option value="deepseek">DeepSeek</option>
+            <option value="openai">OpenAI（GPT）</option>
+            <option value="claude">Claude（Anthropic）</option>
+            <option value="gemini">Google Gemini</option>
+            <option value="moonshot">Moonshot（Kimi）</option>
+            <option value="qwen">通义千问（阿里）</option>
+            <option value="zhipu">智谱（GLM）</option>
+            <option value="xiaomi">小米 MiMo</option>
+            <option value="custom">自定义（OpenAI 兼容）</option>
+          </select>
+        </div>
+
+        <div class="setting">
+          <label>API Key</label>
+          <div class="input-row">
+            <input id="api-key" type="password" placeholder="sk-…（仅存本地浏览器）">
+            <button id="api-test" class="btn btn-ghost" style="flex-shrink:0;">
+              <svg class="ico ico-sm" viewBox="0 0 24 24"><use href="#i-search"/></svg>
+              测试
+            </button>
+          </div>
+          <div id="api-status" style="display:none;"></div>
+        </div>
+
+        <div class="setting" id="custom-url-setting" style="display:none;">
+          <label>自定义 API 地址</label>
+          <input id="custom-url" type="text" placeholder="https://your-api.com/v1">
+        </div>
+
+        <div class="setting">
+          <label>模型</label>
+          <select id="model-select">
+            <option value="deepseek-chat">deepseek-chat</option>
+          </select>
+        </div>
+
+        <div class="setting">
+          <label>思考等级（回得更聪明，但更慢更贵）</label>
+          <select id="effort-select">
+            <option value="disabled">关闭（最快，逻辑一般）</option>
+            <option value="low">低（快，略好）</option>
+            <option value="high" selected>高（推荐，更像人话）</option>
+            <option value="max">最大（最聪明，最慢）</option>
+          </select>
+        </div>
+
+        <div class="btn-row">
+          <button id="clear-data" class="btn btn-danger">
+            <svg class="ico ico-sm" viewBox="0 0 24 24"><use href="#i-trash-2"/></svg>
+            清空所有数据
+          </button>
+        </div>
+        <div id="save-hint">
+          <svg class="ico ico-sm" viewBox="0 0 24 24"><use href="#i-check"/></svg>
+          已保存
+        </div>
+      </div>
+
+      <!-- TTS 语音设置 -->
+      <div class="panel">
+        <div class="panel-title">
+          <svg class="ico" viewBox="0 0 24 24"><use href="#i-volume-2"/></svg>
+          <span>语音朗读（TTS）</span>
+        </div>
+        <div class="hint-box">
+          TTS 使用小米 MiMo VoiceClone API，需在上方「API 设置」中选择「小米 MiMo」供应商并填写 API Key。
+        </div>
+
+        <div class="setting">
+          <label>TTS 专用 API Key（可选，留空则使用上方的 Key）</label>
+          <input id="tts-api-key" type="password" placeholder="sk-…（仅存本地浏览器）">
+        </div>
+
+        <div class="setting">
+          <label>音色样本（上传 MP3/WAV，10MB 以内，将克隆此音色）</label>
+          <div class="input-row">
+            <input id="tts-voice-file" type="file" accept="audio/mp3,audio/mpeg,audio/wav" style="flex:1;min-width:0;font-size:12px;">
+            <button id="tts-voice-clear" class="btn btn-ghost" style="flex-shrink:0;">
+              <svg class="ico ico-sm" viewBox="0 0 24 24"><use href="#i-x"/></svg>
+              清除
+            </button>
+          </div>
+          <div id="tts-voice-status">未上传</div>
+        </div>
+
+        <div class="setting">
+          <label>合成语言（中文会自动翻译成日文再合成）</label>
+          <select id="tts-lang">
+            <option value="zh">中文（原声）</option>
+            <option value="ja">日本語（自动翻译）</option>
+          </select>
+        </div>
+
+        <div class="setting">
+          <label>风格指令（可选，控制语气/情感/语速，如「温柔轻声」「活泼元气」）</label>
+          <input id="tts-style" type="text" placeholder="如：温柔轻声，带一点害羞">
+        </div>
+
+        <div class="setting">
+          <label>TTS 测试</label>
+          <div class="input-row">
+            <input id="tts-test-text" type="text" placeholder="输入要朗读的文字（中文）">
+            <button id="tts-test-btn" class="btn btn-ghost" style="flex-shrink:0;">
+              <svg class="ico ico-sm" viewBox="0 0 24 24"><use href="#i-play"/></svg>
+              试听
+            </button>
+          </div>
+          <div id="tts-test-status"></div>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <footer class="site-footer">
+    <div>Melody of Us · 情感 AI 聊天 · 38 维情感体系</div>
+    <div>作者：<a href="https://github.com/LanYinxianxuan" target="_blank" rel="noopener">LanYinxianxuan</a> ｜ GitHub：<a href="https://github.com/LanYinxianxuan/Melody_of_Us" target="_blank" rel="noopener">Melody_of_Us</a> ｜ 分支：melody-ai</div>
+    <div>开源协议：MIT License</div>
   </footer>
-</div>
 
 <script>
+  // ===== 背景交互一：网格层鼠标惯性偏移 + 滚动视差（rAF 节流，GPU transform） =====
+  (function () {
+      const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      if (reduced) return;
+
+      const parallax = document.getElementById("bg-parallax");
+      if (!parallax) return;
+
+      let tx = 0, ty = 0, cx = 0, cy = 0, raf = 0, active = false;
+
+      function tick() {
+          cx += (tx - cx) * 0.06;
+          cy += (ty - cy) * 0.06;
+
+          const scrollY = window.scrollY;
+          const px = cx * 10;
+          const py = cy * 8 - scrollY * 0.05;
+          parallax.style.transform = `translate3d(${px.toFixed(2)}px, ${py.toFixed(2)}px, 0)`;
+
+          if (Math.abs(tx - cx) > 0.001 || Math.abs(ty - cy) > 0.001) {
+              raf = requestAnimationFrame(tick);
+          } else {
+              active = false;
+          }
+      }
+
+      document.addEventListener("pointermove", (e) => {
+          tx = (e.clientX / window.innerWidth - 0.5) * 2;
+          ty = (e.clientY / window.innerHeight - 0.5) * 2;
+          if (!active) {
+              active = true;
+              raf = requestAnimationFrame(tick);
+          }
+      }, { passive: true });
+
+      let scrollRaf = 0;
+      window.addEventListener("scroll", () => {
+          if (scrollRaf) return;
+          scrollRaf = requestAnimationFrame(() => {
+              scrollRaf = 0;
+              if (!active) {
+                  active = true;
+                  raf = requestAnimationFrame(tick);
+              }
+          });
+      }, { passive: true });
+
+      document.addEventListener("pointerleave", () => {
+          tx = 0; ty = 0;
+          if (!active) {
+              active = true;
+              raf = requestAnimationFrame(tick);
+          }
+      });
+
+      window.addEventListener("blur", () => {
+          cancelAnimationFrame(raf);
+          active = false;
+          parallax.style.transform = "translate3d(0, 0, 0)";
+      });
+  })();
+
+  // ===== 背景交互二：流体扰动场（Canvas 速度场 · 水域搅动感） =====
+  (function () {
+      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+      const canvas = document.getElementById("bg-fluid");
+      if (!canvas) return;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+
+      const coarse = window.matchMedia("(pointer: coarse)").matches;
+      const QUALITY = coarse ? 0.55 : 1.0;
+
+      let W = 0, H = 0;
+      let gw = 0, gh = 0;
+      let vel = null, vel2 = null;
+      let buf = null, imageData = null;
+
+      function alloc() {
+          W = Math.max(1, Math.floor(window.innerWidth));
+          H = Math.max(1, Math.floor(window.innerHeight));
+          canvas.width = W;
+          canvas.height = H;
+          gw = Math.max(24, Math.floor(W / 8));
+          gh = Math.max(18, Math.floor(H / 8));
+          vel = new Float32Array(gw * gh * 2);
+          vel2 = new Float32Array(gw * gh * 2);
+          buf = document.createElement("canvas");
+          buf.width = gw;
+          buf.height = gh;
+          imageData = buf.getContext("2d").createImageData(gw, gh);
+      }
+      alloc();
+      window.addEventListener("resize", alloc, { passive: true });
+
+      let hasPointer = false;
+      let prevX = 0, prevY = 0;
+      let dirX = 0, dirY = 0;
+      let speed = 0;
+
+      const DIFFUSE = 0.06;
+      const DAMP = 0.965;
+      const INJECT = 8.0;
+      const SMOOTH_DIR = 0.18;
+      const OUT_R = 4;
+
+      function inject(x, y, ddx, ddy, strength) {
+          const cx = Math.round(x), cy = Math.round(y);
+          for (let gy = cy - OUT_R; gy <= cy + OUT_R; gy++) {
+              if (gy < 0 || gy >= gh) continue;
+              for (let gx = cx - OUT_R; gx <= cx + OUT_R; gx++) {
+                  if (gx < 0 || gx >= gw) continue;
+                  const dx = gx - x, dy = gy - y;
+                  const d2 = dx * dx + dy * dy;
+                  if (d2 > OUT_R * OUT_R) continue;
+                  const fall = 1 - Math.sqrt(d2) / OUT_R;
+                  const i = (gy * gw + gx) * 2;
+                  const k = fall * fall * strength;
+                  vel[i] += ddx * k;
+                  vel[i + 1] += ddy * k;
+              }
+          }
+      }
+
+      let raf = 0;
+      let running = false;
+      let idleSince = 0;
+
+      function step() {
+          for (let y = 0; y < gh; y++) {
+              const row = y * gw;
+              for (let x = 0; x < gw; x++) {
+                  const i = (row + x) * 2;
+                  let sx = 0, sy = 0, n = 0;
+                  if (x > 0) { sx += vel[i - 2]; sy += vel[i - 1]; n++; }
+                  if (x < gw - 1) { sx += vel[i + 2]; sy += vel[i + 3]; n++; }
+                  if (y > 0) { const j = (row + x - gw) * 2; sx += vel[j]; sy += vel[j + 1]; n++; }
+                  if (y < gh - 1) { const j = (row + x + gw) * 2; sx += vel[j]; sy += vel[j + 1]; n++; }
+                  if (n > 0) {
+                      vel2[i] = vel[i] + (sx / n - vel[i]) * DIFFUSE;
+                      vel2[i + 1] = vel[i + 1] + (sy / n - vel[i + 1]) * DIFFUSE;
+                  } else {
+                      vel2[i] = vel[i]; vel2[i + 1] = vel[i + 1];
+                  }
+              }
+          }
+          for (let i = 0; i < vel.length; i++) vel[i] = vel2[i] * DAMP;
+
+          const data = imageData.data;
+          const nCells = gw * gh;
+          for (let p = 0; p < nCells; p++) {
+              const vx = vel[p * 2], vy = vel[p * 2 + 1];
+              const mag = Math.sqrt(vx * vx + vy * vy);
+              const a = mag < 0.5 ? 0 : Math.min(1, mag * 0.06);
+              const g = Math.max(150, Math.min(255, 255 - mag * 7 - vx * 2.0));
+              const o = p * 4;
+              data[o] = g;
+              data[o + 1] = g;
+              data[o + 2] = g;
+              data[o + 3] = Math.round(a * 255);
+          }
+          const bctx = buf.getContext("2d");
+          bctx.putImageData(imageData, 0, 0);
+          ctx.clearRect(0, 0, W, H);
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = "high";
+          ctx.drawImage(buf, 0, 0, gw, gh, 0, 0, W, H);
+
+          let alive = false;
+          for (let i = 0; i < vel.length; i += 7) {
+              if (vel[i] > 0.004 || vel[i + 1] > 0.004) { alive = true; break; }
+          }
+          const t = performance.now();
+
+          if (alive || t - idleSince < 1200) {
+              raf = requestAnimationFrame(step);
+          } else {
+              running = false;
+              ctx.clearRect(0, 0, W, H);
+          }
+      }
+
+      function wake() {
+          if (!running) {
+              running = true;
+              raf = requestAnimationFrame(step);
+          }
+      }
+
+      document.addEventListener("pointermove", (e) => {
+          const nx = (e.clientX / window.innerWidth) * gw;
+          const ny = (e.clientY / window.innerHeight) * gh;
+          if (hasPointer) {
+              const dx = nx - prevX, dy = ny - prevY;
+              const dist = Math.sqrt(dx * dx + dy * dy);
+              if (dist > 0.02) {
+                  const ndx = dx / dist, ndy = dy / dist;
+                  dirX += (ndx - dirX) * SMOOTH_DIR;
+                  dirY += (ndy - dirY) * SMOOTH_DIR;
+                  speed += (Math.min(dist, 10) - speed) * 0.3;
+
+                  const steps = Math.max(1, Math.min(6, Math.ceil(dist / 2.5)));
+                  const k = INJECT * (0.55 + speed * 0.12) * QUALITY;
+                  for (let s = 1; s <= steps; s++) {
+                      const t = s / steps;
+                      inject(prevX + dx * t, prevY + dy * t, dirX, dirY, k);
+                  }
+                  idleSince = performance.now();
+              }
+          }
+          hasPointer = true;
+          prevX = nx;
+          prevY = ny;
+          wake();
+      }, { passive: true });
+
+      document.addEventListener("pointerleave", () => { hasPointer = false; wake(); });
+
+      window.addEventListener("blur", () => {
+          cancelAnimationFrame(raf);
+          running = false;
+          ctx.clearRect(0, 0, W, H);
+          if (vel) vel.fill(0);
+          if (vel2) vel2.fill(0);
+          hasPointer = false;
+      });
+  })();
+
   if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register("./sw.js").catch(() => {});
   }
