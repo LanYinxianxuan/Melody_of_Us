@@ -67,7 +67,7 @@ import {
     debugSnapshot,
     type AgentTurn,
 } from "./mind";
-import { renderAgentDebug, updateAgentDebugAfterTurn, installMindDebugHooks } from "./mind-debug";
+import { renderAgentDebug, updateAgentDebugAfterTurn, installMindDebugHooks, logAgentTurnToConsole, logAgentTurnResponseToConsole, setAgentConsoleLog } from "./mind-debug";
 import { speak, isTtsEnabled, setTtsEnabled, initTts, generateEmotionStyle } from "./tts";
 import {
     applyAgendaFromAI,
@@ -418,6 +418,8 @@ async function sendMessage(text: string, opts?: { proactive?: boolean }): Promis
             proactive,
             likes: CHARACTER_REF.likes ?? "",
         });
+        // 主流程决策链 → 控制台调试（正式用户不可见；__debug.mindConsole(false) 可关）
+        logAgentTurnToConsole(agentTurn);
 
         if (demoMode) {
             const base = demoReply(text, agentTurn.analysis, agentTurn.strategy);
@@ -534,6 +536,7 @@ async function sendMessage(text: string, opts?: { proactive?: boolean }): Promis
 
         // Agent Mind：回填决策轨迹（previous → signal → transition → strategy → response）并刷新调试面板
         finishAgentTurn(agentTurn, result.dialogue);
+        logAgentTurnResponseToConsole(agentTurn, result.dialogue);
         updateAgentDebugAfterTurn(agentTurn);
 
         // 主角回复完成 → 世界调度层（Director）智能判断（代码层 trigger 命中才调用）
@@ -1604,6 +1607,7 @@ applyMindTimeDecay();
         return debugSnapshot().user;
     },
     mindSetImperfect: (rate: number) => setImperfectionRate(rate),
+    mindConsole: (on: boolean) => setAgentConsoleLog(on), // Agent Mind 决策链 → 控制台 开关
 };
 
 // 首次进入（无角色设定）：打开角色创建向导
