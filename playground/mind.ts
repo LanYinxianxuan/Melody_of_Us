@@ -486,10 +486,10 @@ export function applyTimeDecay(elapsedVirtualMs: number): string[] {
     const transitions: string[] = [];
 
     for (const key of Object.keys(user) as (keyof UserMindState)[]) {
-        const rate = HOUR_DECAY[key] * (majorRecent && (key === "sadness" || key === "disappointment") ? 0.35 : 1);
+        const rate = (HOUR_DECAY[key] ?? 0) * (majorRecent && (key === "sadness" || key === "disappointment") ? 0.35 : 1);
         const f = Math.exp(-rate * hours);
-        const base = STATE_BASE[key]!;
-        const before = user[key];
+        const base = STATE_BASE[key] ?? 0;
+        const before = user[key] ?? 0;
         const after = base + (before - base) * f;
         user[key] = after;
         if (Math.abs(after - before) >= 0.04) transitions.push(`${key} ${fmt(before)}→${fmt(after)}`);
@@ -516,12 +516,13 @@ export function updateUserState(prev: UserMindState, analysis: MessageAnalysis, 
         let s = signal;
         if (s > 0 && NEG_DIMS.has(key) && trends === "falling") s *= negBoost;
         if (s > 0 && NEG_DIMS.has(key) && emo.calmMask) s *= calmFactor;
+        const cur = next[key] ?? 0;
         if (EMOTION_DIMS.has(key)) {
             // 情绪型：先惯性衰减，再加信号（衰减≠归零；重大事件经 lastMajor 拉低衰减率）
-            next[key] = clamp01(next[key] * (1 - TURN_DECAY[key]) + s * influence);
+            next[key] = clamp01(cur * (1 - (TURN_DECAY[key] ?? 0)) + s * influence);
         } else {
             // 状态型：向基线回归 + 信号
-            next[key] = clamp01(next[key] + (STATE_BASE[key] - next[key]) * 0.10 + s * influence);
+            next[key] = clamp01(cur + ((STATE_BASE[key] ?? 0) - cur) * 0.10 + s * influence);
         }
     };
 
@@ -570,7 +571,9 @@ export function updateUserState(prev: UserMindState, analysis: MessageAnalysis, 
     // 记录转移（供调试/测试）
     const transitions: string[] = [];
     for (const key of Object.keys(next) as (keyof UserMindState)[]) {
-        if (Math.abs(next[key] - prev[key]) >= 0.06) transitions.push(`${key} ${fmt(prev[key])}→${fmt(next[key])}`);
+        const before = prev[key] ?? 0;
+        const after = next[key] ?? 0;
+        if (Math.abs(after - before) >= 0.06) transitions.push(`${key} ${fmt(before)}→${fmt(after)}`);
     }
     return { next, transitions, majorEventLabel };
 }
@@ -630,9 +633,12 @@ export function updateAiMind(prev: AiMindState, analysis: MessageAnalysis, ctx: 
     // 连续安慰计数器在本轮结束后由策略层调整（选择 comfort 时 +1，否则回退）
 
     const transitions: string[] = [];
-    const keys: (keyof AiMindState)[] = ["interest", "patience", "willingness_to_talk", "social_need", "curiosity", "energy", "topicFatigue", "defensiveness"];
+    // 显式字面量联合：避免 keyof 含 lastTopic(string) 导致 number|string 类型错误
+    const keys = ["interest", "patience", "willingness_to_talk", "social_need", "curiosity", "energy", "topicFatigue", "defensiveness"] as const;
     for (const k of keys) {
-        if (Math.abs(next[k] - prev[k]) >= 0.09) transitions.push(`${k} ${fmt(prev[k])}→${fmt(next[k])}`);
+        const before = prev[k] ?? 0;
+        const after = next[k] ?? 0;
+        if (Math.abs(after - before) >= 0.09) transitions.push(`${k} ${fmt(before)}→${fmt(after)}`);
     }
     return { next, transitions };
 }
@@ -658,9 +664,9 @@ export function updateRelationship(prev: RelMindState, analysis: MessageAnalysis
 
 // 关系集合（从 38 维推导 + 张力）
 export function relationshipView(rel: RelMindState): { familiarity: number; trust: number; comfort: number; closeness: number; tension: number } {
-    const familiarity = aiState.familiarity / 100;
-    const trust = aiState.trust / 100;
-    const closeness = Math.min(1, (aiState.intimacy / 100) * 0.5 + (aiState.affection / 100) * 0.5);
+    const familiarity = (aiState.familiarity ?? 0) / 100;
+    const trust = (aiState.trust ?? 0) / 100;
+    const closeness = Math.min(1, ((aiState.intimacy ?? 0) / 100) * 0.5 + ((aiState.affection ?? 0) / 100) * 0.5);
     const tension = rel.tension;
     const comfort = clamp01((trust * 0.4 + closeness * 0.35 + familiarity * 0.25) - tension * 0.35);
     return { familiarity, trust, comfort, closeness, tension };
@@ -669,12 +675,13 @@ export function relationshipView(rel: RelMindState): { familiarity: number; trus
 // ============ AI 状态视图（38 维 → 决策状态；参与策略决策） ============
 
 export function aiStateView(mind: AiMindState): { mood: number; energy: number; confidence: number; arousal: number } {
+    const g = (k: string) => aiState[k] ?? 0;
     const mood = clamp01(
-        (aiState.joy * 0.5 - aiState.sadness * 0.42 - aiState.anger * 0.5 - aiState.anxiety * 0.25 - aiState.fatigue * 0.15 + 30) / 100,
+        (g("joy") * 0.5 - g("sadness") * 0.42 - g("anger") * 0.5 - g("anxiety") * 0.25 - g("fatigue") * 0.15 + 30) / 100,
     );
-    const energy = clamp01(aiState.energy / 100 * 0.7 + mind.energy * 0.3);
-    const confidence = clamp01(aiState.confidence / 100 * 0.7 + mind.willingness_to_talk * 0.3);
-    const arousal = clamp01((aiState.joy + aiState.anger + aiState.surprise) / 300 + (aiState.energy / 100) * 0.2);
+    const energy = clamp01(g("energy") / 100 * 0.7 + mind.energy * 0.3);
+    const confidence = clamp01(g("confidence") / 100 * 0.7 + mind.willingness_to_talk * 0.3);
+    const arousal = clamp01((g("joy") + g("anger") + g("surprise")) / 300 + (g("energy") / 100) * 0.2);
     return { mood, energy, confidence, arousal };
 }
 
@@ -935,12 +942,14 @@ export function runAgentPipeline(text: string, opts: { proactive?: boolean; like
     const ai = updateAiMind(mind.ai, analysis, ctx, { likes: opts?.likes });
     const rel = updateRelationship(mind.rel, analysis);
     // 重大事件标记 → 关系状态（放慢后续情绪衰减）+ 注入上下文 recent
-    if (u.majorEventLabel) {
-        rel.next.lastMajorLabel = u.majorEventLabel;
+    // 注意：先取出常量再收窄，箭头函数回调内属性收窄会失效（TS2345）
+    const majorLabel = u.majorEventLabel;
+    if (majorLabel) {
+        rel.next.lastMajorLabel = majorLabel;
         rel.next.lastMajorTurn = store.turnCount;
         rel.next.lastMajorVirtualAt = store.virtualMs;
-        if (!ctx.recentEvents.some((r) => r.includes(u.majorEventLabel))) {
-            ctx.recentEvents.push(u.majorEventLabel);
+        if (!ctx.recentEvents.some((r) => r.includes(majorLabel))) {
+            ctx.recentEvents.push(majorLabel);
         }
     }
 
