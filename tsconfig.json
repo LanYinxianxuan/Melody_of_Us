@@ -1,0 +1,36 @@
+{
+    "compilerOptions": {
+        "target": "ES2022",
+        "lib": ["ES2022", "DOM", "DOM.Iterable"],
+        "module": "ESNext",
+        "moduleResolution": "bundler",
+        "types": [],
+
+        "noEmit": true,
+        "isolatedModules": true,
+        "verbatimModuleSyntax": false,
+        "resolveJsonModule": true,
+        "skipLibCheck": true,
+        "forceConsistentCasingInFileNames": true,
+
+        /* ===== 严格度分级 =====
+         * 已启用（阶段 0，全仓 0 错误）：
+         *   strict                —— 含 strictNullChecks / noImplicitAny / strictFunctionTypes 等
+         *   noImplicitOverride / noFallthroughCasesInSwitch
+         *
+         * 待启用（阶段 1）：noUncheckedIndexedAccess
+         *   实测该开关会新增 108 个错误，其中约 100 个来自 state.ts 的
+         *   `interface AIState { [k: string]: number }` 索引签名 —— 它使 38 个维度
+         *   全部呈现为 number | undefined。正确做法是把 AIState 改为按 DimKey 精确建模
+         *   （而非靠断言兜底），因此与「38 维类型化」一并放在阶段 1 处理。
+         *   开启后 expectedErrors 应为 0，届时删除本注释。
+         */
+        "noUncheckedIndexedAccess": false,
+
+        /* 基础质量检查：不阻塞但暴露真实问题 */
+        "noUnusedLocals": false,
+        "noUnusedParameters": false
+    },
+    "include": ["playground/**/*.ts", "tests/**/*.ts"],
+    "exclude": ["node_modules", "dist"]
+}

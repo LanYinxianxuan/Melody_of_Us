@@ -6,9 +6,25 @@
   "type": "module",
   "scripts": {
     "dev": "vite --port 5173",
-    "build": "vite build && cp -r public/* dist/playground/ && cp dist/playground/home.html dist/playground/index.html && cp -r dist/assets dist/playground/assets && sed -i 's|\\.\\./assets/|./assets/|g' dist/playground/*.html"
+    "build": "vite build && cp -r public/* dist/playground/ && cp dist/playground/home.html dist/playground/index.html && cp -r dist/assets dist/playground/assets && sed -i 's|\\.\\./assets/|./assets/|g' dist/playground/*.html",
+    "preview": "vite preview --outDir dist/playground --port 4173",
+    "typecheck": "tsc --noEmit",
+    "test": "node tests/agent-smoke.mjs",
+    "test:e2e": "node tests/e2e.mjs",
+    "test:dist": "node tests/dist-check.mjs",
+    "test:css": "node tests/css-equivalence.mjs",
+    "test:boundaries": "node tests/boundaries.test.mjs",
+    "verify": "npm run typecheck && npm run build && npm run test:unit && npm run test:css && npm run test:boundaries && npm run test:dist && npm run test:e2e && npm run test:smoke",
+    "test:schema": "node tests/save-schema.test.mjs",
+    "test:store": "node tests/voice-store.test.mjs",
+    "test:gate": "node tests/state-gate.test.mjs",
+    "test:unit": "npm run test:schema && npm run test:store && npm run test:gate && npm test",
+    "test:smoke": "node tests/smoke.mjs",
+    "test:idb": "node tests/idb-real.mjs",
+    "verify:full": "npm run verify && npm run test:idb"
   },
   "devDependencies": {
+    "typescript": "^5.9.3",
     "vite": "^5.0.0"
   },
   "dependencies": {

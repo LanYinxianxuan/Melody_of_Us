@@ -33,11 +33,19 @@ npm run dev
 ## 🔧 构建与部署
 
 ```bash
+# 质量门禁（类型 + 构建 + 单测 + 产物完整性 + 真实浏览器 e2e）
+npm run verify
+
+# 单独运行
+npm run typecheck    # tsc --noEmit（strict）
+npm test             # Agent Mind 场景测试（50 断言 / 11 场景）
+npm run test:e2e     # 真实 Chromium + 真实 localStorage 的跨会话持久化验证
+npm run test:dist    # 构建产物引用完整性 + PWA 资产 + 体积护栏
+
 # 构建生产版本
 npm run build
-
-# 预览构建结果
-npm run preview
+npm run test:dist    # 构建后校验产物
+npm run preview      # 本地预览 dist/playground
 ```
 
 把 `dist/` 目录部署到任意静态托管：

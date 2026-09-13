@@ -4,7 +4,8 @@
 // 原则：主角永远第一优先级；NPC 是世界的生命力，不是陪聊机器人。
 
 import { store, saveState } from "./storage";
-import { type NpcState, updateNpcSchedule, npcLearn, applyNpcDelta } from "./npc";
+import { type NpcState, updateNpcSchedule, npcLearn, applyNpcDelta, npcScheduleAt } from "./npc";
+import { goalKindOf, goalScoreBonus, isGoalRelevant, type NpcGoalKind } from "./npc-goal";
 import { currentDayIndex, fmtVirtualTime, currentSchedule, herLocation } from "./time";
 
 // ============ 介入模式 ============
@@ -55,9 +56,23 @@ function keywordHit(npc: NpcState, recentText: string): boolean {
     return npc.profile.keywords.some((k) => recentText.includes(k));
 }
 
+/**
+ * 【Phase 4-D 决策 C-1】最近一次筛选里每个 NPC 的 goal 相关性判定结果。
+ *
+ * 为什么记录它：`goalBonus` 是"相关才可能为 12"的，因此**只看分数无法区分**
+ * "不相关（0）"与"相关但没掷中（0）"。测试与诊断都需要能直接读出判定本身。
+ * 这是纯观测数据，不参与任何逻辑。
+ */
+export const lastGoalRelevance = new Map<
+    string,
+    { relevant: boolean; bonus: number; kind: NpcGoalKind | null }
+>();
+
 // 主函数：输入最近对话文本 + 虚拟时间，输出候选 NPC 列表（带介入模式与理由）
 export function screenNpcCandidates(recentText: string): InterventionCandidate[] {
     const candidates: InterventionCandidate[] = [];
+    // 【C-1】每次筛选重置观测记录，避免读到上一轮的陈旧判定
+    lastGoalRelevance.clear();
 
     for (const npc of Object.values(store.npcs)) {
         // 已经在场：不重复触发（由在场管理处理离场）
@@ -97,14 +112,40 @@ export function screenNpcCandidates(recentText: string): InterventionCandidate[]
         if (npc.relToUser > 50) score += 5;
 
         // 剧情相关：当前剧情线提到她
-        if (store.activeThread && npc.profile.keywords.some((k) => store.activeThread.includes(k))) {
+        // 先取本地快照：store 是可变的，闭包内 TS 无法保持 activeThread 的非空收窄
+        const activeThread = store.activeThread;
+        if (activeThread && npc.profile.keywords.some((k) => activeThread.includes(k))) {
             score += 15;
             reason = reason || `和你们之间的事有关`;
         }
 
-        // 她有自己的目标/心事 → 可能主动找主角（低概率但有）
-        if (npc.goal && Math.random() < 0.25) {
-            score += 12;
+        // 她有自己的目标/心事 → 若**与本次候选场景相关**，才可能主动找主角
+        //
+        // 【Phase 4-D 决策 C-1】语义修正：
+        //   修复前是 `if (npc.goal && Math.random() < 0.25) score += 12` ——
+        //   而全部内置 NPC 都带 goal → 条件**恒为真** → 等价于"每次筛选无条件 25% 概率 +12"，
+        //   goal 的文本内容从不参与判断。
+        //
+        //   现在：先判断"她的目标与这次场景是否基本相关"（`isGoalRelevant`，纯显式映射，
+        //   无 NLP / 无 LLM）；只有相关时才允许掷原本那个 25% 的骰子。
+        //
+        //   边界（务必保持）：goal **只影响候选评分**，不决定"能否介入"，
+        //   也**不能**绕过下方的 Core 世界安全守卫。
+        const goalCtx = {
+            goal: npc.goal,
+            goalKind: npc.profile.goalKind ?? null,
+            keywordHit: hit,
+            nearby: npcIsNearby(npc),
+            relationContext: PRIVATE_TOPIC_PATTERN.test(recentText),
+        };
+        const goalBonus = goalScoreBonus(goalCtx, () => Math.random());
+        lastGoalRelevance.set(npc.profile.id, {
+            relevant: isGoalRelevant(goalCtx),
+            bonus: goalBonus,
+            kind: goalKindOf(goalCtx.goal, goalCtx.goalKind),
+        });
+        if (goalBonus > 0) {
+            score += goalBonus;
             reason = reason || `${npc.profile.name}心里有事想找${mainNameGetter()}`;
             mode = mode === "none" ? "message" : mode;
         }
@@ -115,7 +156,7 @@ export function screenNpcCandidates(recentText: string): InterventionCandidate[]
         // 场景私密保护：深夜/私人话题不加 NPC
         if (store.presentNpcs.length === 0 && currentSchedule().label === "深夜") score = 0;
         // 私人话题关键词（亲密/秘密）→ 不介入
-        if (/喜欢你|我爱你|亲你|抱你|秘密|心里话/.test(recentText)) score = 0;
+        if (PRIVATE_TOPIC_PATTERN.test(recentText)) score = 0; // 【4-B3】与 Core 守卫共用同一份规则
 
         // 阈值：≥25 才够格进入第二层
         if (score >= 25) {
@@ -126,6 +167,67 @@ export function screenNpcCandidates(recentText: string): InterventionCandidate[]
     // 排序：分数高的优先
     candidates.sort((a, b) => b.score - a.score);
     return candidates;
+}
+
+// ============ 【4-B3】Core 安全守卫（供任意入口复用）============
+//
+// 为什么需要它：Director 路径（`chat.ts` 的 `executeDirectorDecision`）以 `score: 100`
+// 直接调 `runNpcIntervention`，**绕过了 `screenNpcCandidates` 里的全部检查** ——
+// 包括那些与世界安全有关的规则（深夜保护、私密话题、参与者合法性）。
+//
+// 关键区分（这是 4-B3 的核心裁决）：
+//   · **世界安全规则** → 任何入口都必须遵守（深夜保护 / 私密话题 / NPC 合法性与在场）：
+//       它们保证"世界里不会发生不该发生的事"。
+//   · **调度条件** → 只属于 Director 的调度语义（6 小时冷却 / 概率门）：
+//       它们表达的是"多久尝试一次"，不是"合不合法"。
+//       Director 的介入天然只发生在跨天与离线回归这两个时刻，
+//       若也套用 6 小时冷却与概率门，跨天/离线介入会**直接失效**，
+//       等于把已批准的功能关掉 —— 因此**不由 Core 阻断**。
+//
+// 本函数只做"世界安全"判定，不做任何概率与冷却判断。纯函数（除读取 store 的既有状态）。
+
+/** 私密话题正则：与 `screenNpcCandidates` 使用同一份规则（单一来源） */
+export const PRIVATE_TOPIC_PATTERN = /喜欢你|我爱你|亲你|抱你|秘密|心里话/;
+
+export interface InterventionSafety {
+    ok: boolean;
+    /** 不合法时的原因（可诊断，供日志与测试断言） */
+    reason?: "unknown-npc" | "npc-present" | "npc-asleep" | "late-night" | "private-topic" | "npc-busy";
+}
+
+/**
+ * 世界安全守卫：判断"此刻让这个 NPC 介入"是否合法。
+ *
+ * @param npcId        被提议的 NPC id（Director 提供）
+ * @param recentText   当前语境文本（用于私密话题判定；无则传空串）
+ * @param opts.npcBusy 调用方已知的"另一个介入正在进行"
+ */
+export function checkInterventionSafety(
+    npcId: string | null | undefined,
+    recentText: string,
+    opts: { npcBusy?: boolean } = {},
+): InterventionSafety {
+    if (opts.npcBusy) return { ok: false, reason: "npc-busy" };
+
+    // 参与者合法性：不存在的 NPC / 未指定参与者
+    if (typeof npcId !== "string" || !npcId) return { ok: false, reason: "unknown-npc" };
+    const npc = store.npcs[npcId];
+    if (!npc) return { ok: false, reason: "unknown-npc" };
+
+    // 已经在场：不重复触发
+    if (npc.present) return { ok: false, reason: "npc-present" };
+
+    // 深夜保护：她该睡觉了（沿用 NPC 自己的作息标签，与常规路径同一判据）
+    const label = npc.label !== "" ? npc.label : npcScheduleAt(npc, store.virtualMs, store.dayBaseMs).label;
+    if (label === "深夜" || npc.activity.includes("睡")) return { ok: false, reason: "npc-asleep" };
+
+    // 场景私密保护：深夜独处 / 私密话题不加 NPC
+    if (store.presentNpcs.length === 0 && currentSchedule().label === "深夜") {
+        return { ok: false, reason: "late-night" };
+    }
+    if (PRIVATE_TOPIC_PATTERN.test(recentText)) return { ok: false, reason: "private-topic" };
+
+    return { ok: true };
 }
 
 // ============ 第二层：AI 判断 + 执行 ============

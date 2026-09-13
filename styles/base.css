@@ -1,0 +1,167 @@
+/* ============================================================
+ * Melody of Us · Base
+ * ------------------------------------------------------------
+ * reset / 排版 / 焦点 / 无障碍工具类 / 背景层。
+ * 三页共享；页面特有布局在 pages/*.css。
+ * ============================================================ */
+
+/* ---------- Reset ---------- */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html,
+body {
+    max-width: 100%;
+    overflow-x: hidden;
+}
+
+img,
+canvas,
+svg,
+video {
+    max-width: 100%;
+}
+
+/* 注意：这里刻意**不定义全局 body 布局**。
+   三页的 body 虽然共享字体/底色，但布局各不相同（home/menu 是 min-height:100vh 的文档流，
+   chat 是 height:100dvh 的固定应用壳）。若把布局提到全局，各页再覆盖，就会出现
+   只有部分声明生效的隐蔽差异（实测：home 的 min-height/display 被全局规则吞掉）。
+   因此字体与底色也一并在 styles/pages/*.css 里按页声明 —— 保持与原内联完全一致。 */
+body {
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* ---------- 焦点可见性（全站统一，三页各写一份的历史终结）---------- */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+    outline: 1px solid var(--ink);
+    outline-offset: 2px;
+}
+
+/* ---------- 图标尺寸档位 ---------- */
+.ico {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+    vertical-align: -0.18em;
+}
+
+.ico-sm {
+    width: 14px;
+    height: 14px;
+}
+
+/* ---------- 无障碍：仅供屏幕阅读器 ---------- */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* ---------- 滚动条（细、灰，不抢视觉）---------- */
+.scroll-thin {
+    scrollbar-width: thin;
+    scrollbar-color: var(--line-strong) transparent;
+}
+
+.scroll-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+.scroll-thin::-webkit-scrollbar-thumb {
+    background: var(--line-strong);
+    border-radius: var(--r-scrollbar);
+}
+
+.scroll-thin::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+/* ============================================================
+ * 背景层（home / menu 共用）
+ * ------------------------------------------------------------
+ * 三页历史上各自复制了一份；实测 home 38–79 与 menu 36–77 逐字节相同。
+ * 这里合并为一份，由使用页面自行决定是否引入标记。
+ * ============================================================ */
+
+.bg-parallax {
+    position: fixed;
+    inset: var(--parallax-inset);
+    z-index: var(--z-grid);
+    pointer-events: none;
+    will-change: transform;
+}
+
+.bg-grid {
+    position: absolute;
+    inset: 0;
+    background-image: linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
+        linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
+    background-size: var(--grid-size) var(--grid-size);
+    animation: bg-drift 90s linear infinite;
+}
+
+@keyframes bg-drift {
+    from {
+        transform: translate3d(0, 0, 0);
+    }
+    to {
+        transform: translate3d(-40px, 40px, 0);
+    }
+}
+
+.bg-noise {
+    position: fixed;
+    inset: 0;
+    z-index: var(--z-noise);
+    pointer-events: none;
+    opacity: var(--noise-opacity);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+}
+
+.bg-fluid {
+    position: fixed;
+    inset: 0;
+    z-index: var(--z-content);
+    opacity: 0.55;
+    pointer-events: none;
+    filter: blur(2px);
+}
+
+/* ============================================================
+ * 减少动效（全站统一）
+ * ------------------------------------------------------------
+ * 原有三份实现不一致：home/menu 会真正停掉动画，而 chat 只把
+ * transition-duration 统一成 0.15s（等于仍然有动效）。这里统一为
+ * 「停掉循环动画 + 去掉位移反馈 + 关闭平滑滚动」。
+ * ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+    .bg-grid {
+        animation: none;
+    }
+
+    .bg-fluid {
+        display: none;
+    }
+
+    .msg {
+        animation: none;
+    }
+
+    .toggle-arrow {
+        transition: none;
+    }
+
+    * {
+        scroll-behavior: auto !important;
+    }
+}

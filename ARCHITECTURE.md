@@ -5,9 +5,9 @@
 | 项目 | 说明 |
 |---|---|
 | 技术栈 | Vite 5 · TypeScript · 原生 DOM · DeepSeek API |
-| 存储 | localStorage（5 槽存档） |
+| 存储 | localStorage（菜单页 5 槽；`storage.ts` 内部允许 1–9） |
 | 部署 | PWA 静态站 · Capacitor Android APK |
-| 代码量 | 12 个 TS 模块，约 4400 行 |
+| 代码量 | 22 个 TS 模块 8,819 行 + 3 个 HTML 3,481 行（实测，2026-09） |
 
 ---
 
@@ -20,12 +20,16 @@
 │  世界系统层 time · story · npc ·             │  时间/剧情/NPC/调度
 │            intervention · director · wizard │  （世界的"模拟"）
 ├─────────────────────────────────────────────┤
+│  Agent Mind  mind.ts · mind-debug.ts        │  情感判断与对话决策（本地规则+状态机，0成本）
+├─────────────────────────────────────────────┤
 │  数据层    state · storage · character       │  38维情感 / 存档 / 角色卡
 ├─────────────────────────────────────────────┤
 │  AI 引擎   ai.ts                             │  DeepSeek 直连 · 提示词 · 解析
 └─────────────────────────────────────────────┘
         ↑ 主角 / NPC / 访谈 / Director 四条调用链共用 ai.ts
 ```
+
+**Agent Mind 位置**：介于界面层与数据层之间——每轮回复前完成"分析→状态更新→策略"，再把紧凑状态摘要注入最终 LLM 调用（LLM 只负责按角色人格把策略翻译成语言）。
 
 ---
 
@@ -36,10 +40,10 @@
 | 模块 | 职责 | 关键数据/接口 |
 |---|---|---|
 | `state.ts` | 38 维情感状态机 | `aiState` · `DIMENSIONS` · `applyDelta` · `initStateForRelation` |
-| `storage.ts` | 存档中心 | `store` 单例 · `saveState/loadState` · 5 槽 · `scene` 场景配置 |
+| `storage.ts` | 存档中心 | `store` 单例 · `saveState/loadState` · 菜单页 5 槽 · `scene` 场景配置 |
 | `character.ts` | 角色卡 | `CHARACTER` · `PRESETS` · `loadCharacter`（空模板防污染） |
 
-### 世界系统层（6）
+### 世界系统层（7）
 
 | 模块 | 职责 | 关键接口 |
 |---|---|---|
@@ -49,6 +53,7 @@
 | `intervention.ts` | NPC 介入·规则筛选 | `screenNpcCandidates` · `decideIntervention` · `applyNpcResult` |
 | `director.ts` | 世界调度（AI 决策） | `detectTrigger` · `callDirector` · `normalizeDecision` |
 | `wizard.ts` | 角色创建向导 | 预设 / 自定义介绍 + AI 访谈 / 场景询问 |
+| `event-card.ts` | 多人模式随机事件卡 | `maybeShowEventCard` · `setEventChoiceSender` · `passOpenEventCards` |
 
 ### 界面层（2）
 
@@ -62,6 +67,13 @@
 | 模块 | 职责 | 提供 |
 |---|---|---|
 | `ai.ts` | DeepSeek 直连 | `chatWithDeepSeek`（主角）· `npcSpeak`（NPC）· `interviewWithAI`（向导）· `thinkingParams`（Director 共用） |
+
+### Agent Mind（情感判断与对话决策，2）
+
+| 模块 | 职责 | 关键接口 |
+|---|---|---|
+| `mind.ts` | 完整决策链：用户消息分析（情绪/意图/潜在需求）→ 上下文 → 用户状态更新（惯性+衰减+事件影响）→ AI 状态更新 → 关系状态更新 → 策略选择 → 紧凑上下文组装 | `runAgentPipeline` · `analyzeMessage` · `applyTimeDecay` · `refineWithModelAnalysis` |
+| `mind-debug.ts` | 决策状态调试面板（第十八节） | `renderAgentDebug` · `installMindDebugHooks`（`window.__mind`） |
 
 ---
 
@@ -92,17 +104,20 @@ director / intervention / wizard / chat  →  都依赖 ai + storage + state
 │ sendMessage │───────────────┐
 └────────────┘               │
    │                         ▼
-   │                    深夜？ ──是──► "被吵醒，迷迷糊糊回应"（prompt 注入睡意）
+   │             深夜？ ──是──► "被吵醒，迷迷糊糊回应"（prompt 注入睡意）
    ▼                        │否
+   │                         ▼
+   │                    Agent Mind（0成本，见"九-A"）：分析 → 上下文 → 状态更新 → 策略决策
+   ▼                        │
 ┌──────────────┐            ▼
 │ chatWithDeepSeek │  组装 SYSTEM_PROMPT：
-└──────────────┘  角色卡 + 38维数值 + 场景描述 + 记忆 + 剧情档案
-   │
+└──────────────┘  角色卡 + 38维数值 + 场景描述 + 记忆 + 剧情档案 + 【CURRENT CONTEXT + STRATEGY】
+   │                （LLM 只生成语言；同轮回传 user_analysis 可微调本地信号）
    ▼
 AI 返回 JSON → 容错解析（提取{}块 → dialogue兜底 → 重试）
    │
    ▼
-applyDelta 更新情感 → 写历史/记忆/事件 → saveState
+applyDelta 更新情感 → 写历史/记忆/事件 → saveState → 刷新决策调试面板
    │
    ▼
 typeReply 打字机渲染
@@ -215,6 +230,55 @@ sceneDescription → 注入 SYSTEM_PROMPT（你此刻的方位与交流方式）
 ⑤ 确认角色卡 → 保存
    └─ 按关系初始化情感（恋人≠陌生人）：initStateForRelation
 ```
+
+---
+
+## 🧠 九-A、Agent Mind（情感判断与对话决策系统）
+
+**原则**：LLM 是最终语言生成器，不是情感系统本身。每轮回复前，先用本地规则 + 状态机走完整个决策链（0 次额外 LLM 调用），再把**压缩后的状态摘要**注入最终调用。
+
+```
+用户消息
+  ↓
+① 分析：情绪(primary/secondary/intensity/valence/arousal) · 意图(带置信度) · 潜在需求(假设+置信度)
+  ↓
+② 上下文：最近 24 条消息 → 话题 · 情绪走向 · 对话能量 · 未了结事件 · 最近事件
+  ↓
+③ 用户状态更新：14 维 0~1 连续值（惯性 + 逐轮衰减 + 时间衰减 + 事件影响 + 上下文修正）
+  ↓
+④ AI 状态更新：interest/patience/curiosity/willingness/energy/topicFatigue…（受对话动态影响）
+  ↓
+⑤ 关系状态更新：tension 独立演化；trust/familiarity/closeness 由 38 维推导（缓慢积累）
+  ↓
+⑥ 策略层：综合全部状态 → 多策略 + 优先级 + 约束指令（do_not_push / no_forced_comfort…）
+  ↓
+⑦ 压缩为【CURRENT CONTEXT / STRATEGY】注入 LLM → LLM 按角色人格生成最终语言
+```
+
+### 关键子设计
+
+| 设计 | 说明 |
+|---|---|
+| 5 层状态分离 | UserState / AI 决策状态 / RelationshipState / ConversationContext / Strategy 各自独立更新，互不耦合 |
+| 情绪惯性 | `new = old × persistence + signal × influence`；不同情绪不同衰减率 |
+| 时间衰减 | 按虚拟时间指数衰减到基线（非机械归零）；重大事件（考砸/分手…）触发 6 小时内慢衰减 |
+| 允许不完美 | `IMPERFECTION`（6% 概率）：累/不确定时允许"我也不知道该怎么说"，不追求永远正确 |
+| 禁止过度读心 | 潜在需求只是 hypothesis；`calmMask`（"没事"）→ 削弱负面信号 + `don_t_read_mind` 指令 |
+| 防心理咨询 | 连续安慰计数 comfortCount；关系不够近时 comfort 降到 0.5 倍并追加 `not_a_counselor` |
+| 0 额外成本 | 分析/决策全本地；LLM 每轮仍只 1 次（同轮回传 `user_analysis` 语义微调） |
+| 可调试 | 左侧面板"决策状态（调试）" + `window.__mind` / `__debug.mind*`；轨迹记录 previous→signal→transition→strategy→response |
+| 兼容旧档 | `userMind/aiMind/relMind` 随存档持久化；旧档缺字段自动补默认值 |
+
+### 状态视图对应（38 维 ↔ Agent Mind）
+
+- **AI 状态**：`mood/energy/confidence/arousal` 由 38 维推导（复用已有系统，不重造）；`interest/patience/…` 为对话引擎精调参数
+- **关系状态**：`trust/familiarity/closeness/comfort` 由 38 维关系层推导；`tension` 独立演化
+- **验收测试**（三条命令，CI 已全部接入）：
+  - `npm run typecheck` —— `tsc --noEmit`，strict 模式 0 错误（阶段 0 建立）
+  - `npm test` —— `node tests/agent-smoke.mjs`，50 项断言覆盖 11 组场景（无恒真断言）
+  - `npm run test:e2e` —— 真实 Chromium + 真实 localStorage，验证「情绪跨会话持久化 + 时间衰减」
+  - `npm run test:dist` —— 构建产物引用完整性（16 条本地引用 + PWA 资产 + 体积护栏）
+  - 一键：`npm run verify`
 
 ---
 

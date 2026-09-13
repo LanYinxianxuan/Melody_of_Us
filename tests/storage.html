@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>Melody Storage E2E</title>
+<style>
+  body { font: 13px/1.6 ui-monospace, monospace; margin: 0; padding: 16px; }
+  pre { white-space: pre-wrap; }
+</style>
+</head>
+<body>
+<!--
+  极简宿主页：仅用于测试 playground/storage.ts 的读写链路。
+  为什么需要独立页：storage.ts 本身只依赖 location / localStorage / history，
+  但 chat.ts 有 180+ 行模块级副作用（DOM 绑定、启动时钟、开向导），
+  会把"存档加载"这件事淹没在无关行为里。这里给它一个最小、可精确控制的环境。
+-->
+<p id="e2e-boot">booting</p>
+<script>
+  // 经典脚本：必须早于 module 执行，才能在 storage.ts 读取 localStorage 之前
+  // 按 ?scenario= 写入测试夹具。
+  window.__e2eLoadError = null;
+  window.addEventListener("error", function (e) {
+    if (window.__e2eLoadError) return;
+    window.__e2eLoadError = (e.error && e.error.stack) || String(e.message || "unknown error");
+  });
+  window.addEventListener("unhandledrejection", function (e) {
+    if (window.__e2eLoadError) return;
+    var r = e.reason;
+    window.__e2eLoadError = (r && r.stack) || String(r || "unhandled rejection");
+  });
+</script>
+<!-- 夹具植入：必须在 module 之前（storage.ts 在模块求值期就读取 localStorage） -->
+<script src="./scenarios.js"></script>
+<script type="module" src="/bundle.js"></script>
+<script>
+  (function () {
+    function report() {
+      if (!window.__e2eLoadError || document.getElementById("e2e-results")) return;
+      var pre = document.createElement("pre");
+      pre.id = "e2e-results";
+      pre.textContent = "E2E_FATAL|模块加载期抛错\n" + window.__e2eLoadError;
+      document.body.appendChild(pre);
+    }
+    report();
+    document.addEventListener("DOMContentLoaded", report);
+  })();
+</script>
+</body>
+</html>

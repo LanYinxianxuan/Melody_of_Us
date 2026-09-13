@@ -41,3 +41,13 @@ android-sdk/
 android/
 MelodyAI.apk
 *.apk
+
+# agent 测试临时产物
+.agent-test-bundle.mjs
+tests/e2e.bundle.js
+
+# 编辑器/工具写入的临时目录（形如 .foo.ts.<pid>.<uuid>.tmpdir）
+*.tmpdir/
+
+# UI 截图（本地调试用）
+tests/shots/

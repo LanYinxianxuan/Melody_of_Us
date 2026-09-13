@@ -3,11 +3,12 @@
 // 只在代码层 trigger 命中时调用（不每轮调用）；普通聊天完全不经过 Director。
 // 保留 intervention.ts 的第一层规则筛选；Director 只负责第二层智能决策。
 
-import { store } from "./storage";
+import { store, currentSlot, slotKey, KEY_PREFIX } from "./storage";
 import { aiState, DIMENSIONS, describeMood } from "./state";
 import { currentDayIndex, currentSchedule, fmtVirtualDate, fmtVirtualTime, herLocation } from "./time";
 import { storyStage, journalText } from "./story";
 import { thinkingParams } from "./ai";
+import { joinUrl, postJson } from "./ai/client";
 
 // ============ 触发条件（代码层，不消耗 API） ============
 
@@ -154,10 +155,11 @@ export const DIRECTOR_PROMPT =
 
 // 获取当前供应商配置（与 ai.ts 保持一致）
 function getDirectorConfig(): { baseUrl: string; headers: Record<string, string>; key: string; model: string } {
-    const slot = parseInt(localStorage.getItem("melai-current-slot") ?? "1", 10) || 1;
-    const provider = localStorage.getItem(`provider-${slot}`) ?? "deepseek";
-    const key = localStorage.getItem(`apikey-${slot}`)?.trim() ?? "";
-    const model = localStorage.getItem(`model-${slot}`) ?? "deepseek-chat";
+    // 【P0-13】与存档写入同源（页面冻结槽位），避免读 A 写 B
+    const slot = currentSlot;
+    const provider = localStorage.getItem(slotKey(KEY_PREFIX.provider, slot)) ?? "deepseek";
+    const key = localStorage.getItem(slotKey(KEY_PREFIX.apikey, slot))?.trim() ?? "";
+    const model = localStorage.getItem(slotKey(KEY_PREFIX.model, slot)) ?? "deepseek-chat";
 
     const PROVIDERS: Record<string, { baseUrl: string }> = {
         deepseek: { baseUrl: "https://api.deepseek.com" },
@@ -166,7 +168,7 @@ function getDirectorConfig(): { baseUrl: string; headers: Record<string, string>
         qwen: { baseUrl: "https://dashscope.aliyuncs.com/compatible-mode/v1" },
         zhipu: { baseUrl: "https://open.bigmodel.cn/api/paas/v4" },
         xiaomi: { baseUrl: "https://api.xiaomimimo.com/v1" },
-        custom: { baseUrl: localStorage.getItem(`custom-url-${slot}`)?.trim() ?? "" },
+        custom: { baseUrl: localStorage.getItem(slotKey(KEY_PREFIX.customUrl, slot))?.trim() ?? "" },
     };
 
     const baseUrl = PROVIDERS[provider]?.baseUrl ?? PROVIDERS["deepseek"]!.baseUrl;
@@ -209,13 +211,12 @@ export async function callDirector(trigger: DirectorTrigger): Promise<DirectorDe
         },
     ];
 
-    const resp = await fetch(`${baseUrl}/chat/completions`, {
-        method: "POST",
+    // 【A-1】传输层走 ai/client；错误判定保持原样（原代码**不检查 resp.ok**）
+    const { data } = await postJson(
+        joinUrl(baseUrl, "chat/completions"),
         headers,
-        body: JSON.stringify({ model, messages, ...thinkingParams(), response_format: { type: "json_object" }, max_tokens: 1024 }),
-    });
-
-    const data = await resp.json();
+        { model, messages, ...thinkingParams(), response_format: { type: "json_object" }, max_tokens: 1024 },
+    );
     if (data.error) throw new Error(data.error.message ?? "Director 请求失败");
 
     const msg = data.choices?.[0]?.message ?? {};
@@ -245,7 +246,13 @@ export async function callDirector(trigger: DirectorTrigger): Promise<DirectorDe
 }
 
 // 规范化 + 校验（防止 AI 返回非法字段破坏世界状态）
-function normalizeDecision(raw: any): DirectorDecision {
+/**
+ * 【4-B1 / 4-B2】把 AI 的原始输出归一化为合法的 Director Intent。
+ *
+ * 导出是为了让"Intent 契约"可被独立验证（见 `DIRECTOR_INTENT_CONTRACT.md`）。
+ * 它只做**字段级合法化**：白名单、类型、范围、存在性。**不执行任何世界修改。**
+ */
+export function normalizeDecision(raw: any): DirectorDecision {
     const d: DirectorDecision = {
         needEvent: !!raw?.needEvent,
         eventType: "none",

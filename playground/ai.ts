@@ -2,7 +2,7 @@
 // 纯逻辑层，不操作 DOM。
 
 import { aiState, clamp, describeMood, DIMENSIONS, EMOTION_NAMES } from "./state";
-import { store } from "./storage";
+import { store, currentSlot, slotKey, KEY_PREFIX } from "./storage";
 import { characterToText } from "./character";
 import { describeNpcMood, type NpcState } from "./npc";
 import {
@@ -19,6 +19,8 @@ import type { CharacterProfile } from "./character";
 import { agendaContext } from "./agenda";
 import { FORMAT_INSTRUCTION, NPC_FORMAT_INSTRUCTION } from "./response-template";
 import { fallbackAction, isGenericAction } from "./actions";
+// 类型导入：Agent Mind 的语义修正与策略（运行时无依赖，避免循环）
+import type { RefinedAnalysis, ConversationStrategy, MessageAnalysis } from "./mind";
 
 // ============ 聊天接口 ============
 
@@ -34,6 +36,10 @@ export interface ChatResult {
     memory?: string;
     // 日程：对话中产生了新的约定/事件（加入时间线，由 AI 后续推动）
     agenda?: { add?: { time?: string; title: string; desc?: string }[] };
+    // Agent Mind：LLM 在同一次调用内可选择性回传对用户情绪的语义判断（仅作本地规则的微调）
+    user_analysis?: RefinedAnalysis | null;
+    // 预判用户此刻可能的动作/表情（可选）：展示为输入框上方快捷动作条，与随机事件无关的独立功能
+    suggestions?: { action: string; expression: string }[] | null;
 }
 
 export { EMOTION_NAMES };
@@ -303,9 +309,40 @@ function buildHistoryContext(): { role: "user" | "assistant"; content: string }[
     return ctx;
 }
 
+// ============ 思考模式（effort）设置：唯一真理源 ============
+//
+// 【P0-7】此键曾经分裂成两个：menu.ts 写 "melai-effort"，而 ai.ts:520 与 chat.ts:357
+// 读 "deepseek-effort"（全仓从无写入方）。后果：
+//   ① 用户选择「关闭」思考模式后，请求里仍然带 thinking.enabled —— 设置完全无效；
+//   ② 顶栏状态永远显示「思考中…」，因为判断依据的键恒为 undefined → 走默认 "high"。
+// 现在统一为 EFFORT_KEY 一个常量 + 两个访问器，UI 与请求参数不可能再各读各的。
+//
+// 作用域：全局设置（非 per-slot）—— menu.ts 的注释「effort 全局共享」表明这是有意设计。
+export const EFFORT_KEY = "melai-effort";
+
+export type EffortLevel = "disabled" | "low" | "high" | "max";
+
+/** 全部合法取值（菜单下拉的 option value 必须与此一致） */
+export const EFFORT_LEVELS: readonly EffortLevel[] = ["disabled", "low", "high", "max"];
+
+const DEFAULT_EFFORT: EffortLevel = "high";
+
+/** 读取当前思考等级；非法/缺失值一律回落到默认 high */
+export function getEffort(): EffortLevel {
+    const raw = localStorage.getItem(EFFORT_KEY);
+    return (EFFORT_LEVELS as readonly string[]).includes(raw ?? "")
+        ? (raw as EffortLevel)
+        : DEFAULT_EFFORT;
+}
+
+/** 思考模式是否开启 —— 供 UI 状态文案与请求参数共用，避免两处判断不一致 */
+export function isThinkingEnabled(): boolean {
+    return getEffort() !== "disabled";
+}
+
 // 思考模式：官方默认开启（effort 默认 high），我们按用户选择传参
 export function thinkingParams() {
-    const effort = localStorage.getItem("melai-effort") ?? "high";
+    const effort = getEffort();
 
     if (effort === "disabled") {
         return { thinking: { type: "disabled" } };
@@ -319,11 +356,20 @@ export function thinkingParams() {
 }
 
 // 获取当前供应商配置（按存档槽位独立读取）
-function getProviderConfig(): { baseUrl: string; headers: Record<string, string>; key: string; model: string } {
-    const slot = parseInt(localStorage.getItem("melai-current-slot") ?? "1", 10) || 1;
-    const provider = localStorage.getItem(`provider-${slot}`) ?? "deepseek";
-    const key = localStorage.getItem(`apikey-${slot}`)?.trim() ?? "";
-    const model = localStorage.getItem(`model-${slot}`) ?? "deepseek-chat";
+function getProviderConfig(): {
+    baseUrl: string;
+    headers: Record<string, string>;
+    key: string;
+    model: string;
+    provider: string;
+} {
+    // 【P0-13】与存档写入使用**同一来源**（页面冻结槽位）。
+    // 曾用实时重读：另一标签页改写 melai-current-slot 后，本页会读新槽的 Key/Model
+    // 却把存档写回旧槽 —— 这正是"读 A 写 B"分叉。页面即槽位，读与写必须同源。
+    const slot = currentSlot;
+    const provider = localStorage.getItem(slotKey(KEY_PREFIX.provider, slot)) ?? "deepseek";
+    const key = localStorage.getItem(slotKey(KEY_PREFIX.apikey, slot))?.trim() ?? "";
+    const model = localStorage.getItem(slotKey(KEY_PREFIX.model, slot)) ?? "deepseek-chat";
 
     const PROVIDERS: Record<string, { baseUrl: string; headerFn?: (key: string) => Record<string, string> }> = {
         deepseek: { baseUrl: "https://api.deepseek.com" },
@@ -341,7 +387,7 @@ function getProviderConfig(): { baseUrl: string; headers: Record<string, string>
         qwen: { baseUrl: "https://dashscope.aliyuncs.com/compatible-mode/v1" },
         zhipu: { baseUrl: "https://open.bigmodel.cn/api/paas/v4" },
         xiaomi: { baseUrl: "https://api.xiaomimimo.com/v1" },
-        custom: { baseUrl: localStorage.getItem(`custom-url-${slot}`)?.trim() ?? "" },
+        custom: { baseUrl: localStorage.getItem(slotKey(KEY_PREFIX.customUrl, slot))?.trim() ?? "" },
     };
 
     const p = PROVIDERS[provider] ?? PROVIDERS["deepseek"]!;
@@ -350,7 +396,7 @@ function getProviderConfig(): { baseUrl: string; headers: Record<string, string>
         Authorization: `Bearer ${key}`,
     };
 
-    return { baseUrl: p.baseUrl, headers, key, model };
+    return { baseUrl: p.baseUrl, headers, key, model, provider };
 }
 
 // DeepSeek 官方 API 基础地址（保留兼容）
@@ -451,16 +497,22 @@ export async function* chatWithDeepSeekStream(userText: string): AsyncGenerator<
     yield { content: fullContent, delta: "", done: true, reasoning: fullReasoning };
 }
 
-// 非流式聊天（保留兼容）
-export async function chatWithDeepSeek(userText: string, retry = 2, eventSeed?: string): Promise<ChatResult> {
-    const { baseUrl, headers, key, model } = getProviderConfig();
+// 非流式聊天（保留兼容；agentPrompt = Agent Mind 策略/状态注入块，见 mind.ts）
+export async function chatWithDeepSeek(userText: string, retry = 2, eventSeed?: string, agentPrompt?: string): Promise<ChatResult> {
+    const { baseUrl, headers, key, model, provider } = getProviderConfig();
 
     if (!key) {
         throw new Error("请先在菜单页设置 API Key（或点「演示」免 Key 体验）");
     }
 
+    const baseSys = SYSTEM_PROMPT(await getCharacter(), eventSeed);
+    const sysContent = agentPrompt
+        ? baseSys.includes("【最关键：输出格式】")
+            ? baseSys.replace("【最关键：输出格式】", agentPrompt + "\n\n【最关键：输出格式】")
+            : baseSys + "\n" + agentPrompt
+        : baseSys;
     const messages = [
-        { role: "system", content: SYSTEM_PROMPT(await getCharacter(), eventSeed) },
+        { role: "system", content: sysContent },
         ...buildHistoryContext(),
         { role: "user", content: userText },
     ];
@@ -474,7 +526,8 @@ export async function chatWithDeepSeek(userText: string, retry = 2, eventSeed?: 
         max_tokens: 16384,
     };
     console.group(`%c📤 [DEBUG] 发送请求 → ${model}`, "color: #d65a7e; font-weight: bold;");
-    console.log(`%c供应商: ${localStorage.getItem("melai-provider") ?? "deepseek"} | 地址: ${baseUrl}/chat/completions`, "color: #888;");
+    // 曾误读孤儿键 "melai-provider"（全仓无写入方）→ 调试日志恒显示 deepseek
+    console.log(`%c供应商: ${provider} | 地址: ${baseUrl}/chat/completions`, "color: #888;");
     console.log(`%c消息数量: ${messages.length}`, "color: #888;");
     console.log(`%c完整请求体:`, "color: #34d399;", JSON.parse(JSON.stringify(requestBody)));
     console.groupEnd();
@@ -505,18 +558,19 @@ export async function chatWithDeepSeek(userText: string, retry = 2, eventSeed?: 
     const msg = choice?.message ?? {};
 
     let content: string = msg.content ?? "";
-    const thinkingActive = (localStorage.getItem("deepseek-effort") ?? "high") !== "disabled";
+    // 【P0-7】曾误读 "deepseek-effort"（无写入方的孤儿键）→ 关闭思考模式不生效
+    const thinkingActive = isThinkingEnabled();
 
     // 思考模式下思维链在 reasoning_content；若 content 为空说明模型只思考了没给出最终回答
     if (thinkingActive && !content.trim() && typeof msg.reasoning_content === "string" && msg.reasoning_content.trim()) {
         console.warn("思考模式下 content 为空，重试中…");
-        return chatWithDeepSeek(userText + "\n只输出JSON，不要思考过程。", retry - 1, eventSeed);
+        return chatWithDeepSeek(userText + "\n只输出JSON，不要思考过程。", retry - 1, eventSeed, agentPrompt);
     }
 
     if (!content.trim()) {
         if (retry > 0) {
             console.warn("返回空内容，重试中…");
-            return chatWithDeepSeek(userText + "\n只输出JSON。", retry - 1, eventSeed);
+            return chatWithDeepSeek(userText + "\n只输出JSON。", retry - 1, eventSeed, agentPrompt);
         }
         throw new Error("连续返回为空");
     }
@@ -526,7 +580,7 @@ export async function chatWithDeepSeek(userText: string, retry = 2, eventSeed?: 
     } catch (e) {
         if (retry > 0) {
             console.warn("解析失败，重试中：", content.slice(0, 100));
-            return chatWithDeepSeek(userText + `\n你上次输出了纯文本。必须输出JSON格式：{"dialogue":"...","action":"...","thoughts":"...","delta":{},"user_emotion":"neutral","memory":"","story":{"event":"","progress":0,"thread":"new"}}`, retry - 1, eventSeed);
+            return chatWithDeepSeek(userText + `\n你上次输出了纯文本。必须输出JSON格式：{"dialogue":"...","action":"...","thoughts":"...","delta":{},"user_emotion":"neutral","memory":"","story":{"event":"","progress":0,"thread":"new"}}`, retry - 1, eventSeed, agentPrompt);
         }
 
         // 最终兜底：从纯文本中提取对话
@@ -635,7 +689,34 @@ const DEMO_RESPONSES: Record<string, { dialogue: string; action: string; thought
         delta: { laziness: 8, fatigue: 6, intimacy: 2, affection: 1 },
     },
 };
-export function demoReply(userText: string): ChatResult {
+// 策略感知的演示回复：当本地决策层判到"退避/责怪/开心"时，模板也遵循策略（演示模式同样可见决策效果）
+const DEMO_STRATEGY_REPLIES: Record<string, { dialogue: string; action: string; thoughts: string; delta: Record<string, number> }> = {
+    show_presence: {
+        dialogue: "嗯……那我不说了。我在这。",
+        action: "轻轻点了点头，安静地坐在旁边",
+        thoughts: "他现在不想说话……那就陪着就好",
+        delta: { affection: 1, sadness: 2, anxiety: -2 },
+    },
+    give_space: {
+        dialogue: "好，你先自己待会儿。",
+        action: "没有追问，只是把声音放得很轻",
+        thoughts: "给他一点空间……",
+        delta: { affection: 1, sadness: 1 },
+    },
+    acknowledge: {
+        dialogue: "嗯……你这么说，是我刚才太吵了吧。",
+        action: "抿了抿嘴，没有反驳",
+        thoughts: "他说得对……先别争辩",
+        delta: { sadness: 3, stress: 2, guilt: 2 },
+    },
+    playful: {
+        dialogue: "嘿嘿，也让我高兴一下嘛～再说说看？",
+        action: "眼睛弯起来，凑近了一点",
+        thoughts: "他/她心情好，那就一起开心",
+        delta: { joy: 6, affection: 2 },
+    },
+};
+export function demoReply(userText: string, analysis?: MessageAnalysis, strategy?: ConversationStrategy): ChatResult {
     const userEmo = detectUserEmotion(userText);
 
     // demo 模式也要尽量承接上下文：上一轮她说过话时，优先顺着话题走，而不是跳模板
@@ -644,19 +725,33 @@ export function demoReply(userText: string): ChatResult {
 
     const emo = hadPrior && userEmo === "surprised" && !/[？?]/.test(userText) ? "neutral" : userEmo;
     const tpl = DEMO_RESPONSES[emo] ?? DEMO_RESPONSES.neutral!;
+
+    // 策略感知覆盖：策略层判定"退避/受责/开心"时，让演示回复也遵循策略（验证决策链路）
+    let chosen = tpl;
+    let chosenEmo = emo;
+    if (strategy && analysis) {
+        const has = (id: string) => strategy.choices.some((c) => c.id === id);
+        const withdraw = analysis.intents.find((i) => i.surface_intent === "withdraw")?.score ?? 0;
+        const blame = analysis.intents.find((i) => i.surface_intent === "blame_ai")?.score ?? 0;
+        if (withdraw > 0.5 && has("show_presence")) { chosen = DEMO_STRATEGY_REPLIES.show_presence!; chosenEmo = "sad"; }
+        else if (withdraw > 0.7 && has("give_space")) { chosen = DEMO_STRATEGY_REPLIES.give_space!; chosenEmo = "sad"; }
+        else if (blame > 0.5 && has("acknowledge")) { chosen = DEMO_STRATEGY_REPLIES.acknowledge!; chosenEmo = "sad"; }
+        else if (analysis.emotion.primary_emotion === "joy" && has("playful")) { chosen = DEMO_STRATEGY_REPLIES.playful!; chosenEmo = "joy"; }
+    }
+
     const next: Record<string, number> = { ...aiState };
 
-    for (const key of Object.keys(tpl.delta)) {
-        next[key] = clamp(next[key]! + tpl.delta[key]!);
+    for (const key of Object.keys(chosen.delta)) {
+        next[key] = clamp(next[key]! + chosen.delta[key]!);
     }
 
     return {
-        dialogue: tpl.dialogue,
-        action: tpl.action,
-        thoughts: tpl.thoughts,
+        dialogue: chosen.dialogue,
+        action: chosen.action,
+        thoughts: chosen.thoughts,
         stats: next,
-        delta: tpl.delta,
-        user_emotion: emo,
+        delta: chosen.delta,
+        user_emotion: chosenEmo,
         story: fallbackStory(),
     };
 }
@@ -823,4 +918,110 @@ export async function npcSpeak(npc: NpcState, context: string): Promise<NpcSpeak
             delta: {},
         };
     }
+}
+
+// ============ 随机事件生成（JSON 规范：推送消息与输出均严格 JSON） ============
+// 注意：事件卡只做场景呈现；"预判动作/表情"是独立功能（见 action-suggest.ts），不在此生成。
+
+export interface RandomEventResult {
+    title: string;       // 事件标题（≤6字）
+    scene: string;       // 场景描写：环境细节 + 感官 + 站位 + 氛围（60~150字）
+    npc: string;         // 站位/反应描写（40~80字，单人就写主角、多人写NPC）
+}
+
+// 系统提示：事件生成规范（LLM 只负责生成事件，不生成聊天文本/选项）
+export const RANDOM_EVENT_PROMPT = `
+你是本作中的随机事件生成器：为此刻的场景（单人/多人模式均可）生成一张事件卡。
+生成的事件要像真实生活里"突然发生的一桩小事"。
+
+【场景描写（scene）要求——必须细致具体】
+1. 环境细节：周围具体有什么（物件/光线/声音/动静），交代清楚这一幕的现场；
+2. 感官信息：视觉/听觉/嗅觉/触觉——至少覆盖两类；
+3. 角色站位：现在场景里的每个人在哪、在做什么、彼此相距多远；
+4. 氛围变化：一句话点明这一刻气氛的转变（如"空气突然安静下来"）。
+总长 60~150 字，写成一段流畅的中文描写，不要条目式罗列。
+
+【npc 字段】40~80 字，依据 context.mode 描述：
+- mode="multi"（有在场 NPC）：描写在场 NPC 的自然反应/动向（谁先动了、说了什么、目光落向谁、是否注意到用户）；
+- mode="single"（只有两人）：描写主角（main_character，即与你聊天的这个人）此刻的站位与反应——她先发现了什么、望向哪里、表情与动作如何、是否开口。
+
+【严禁】
+- 不要输出聊天对话/台词；不要生成超自然、惊悚或破坏世界观的内容；
+- 事件必须与当前时间、地点、在场角色（若有）、正在聊的话题融洽（不突兀、不重复之前的同类事件）；
+- 输出中禁止出现 Markdown 代码块标记（\`\`\`）或任何解释性文字。
+
+严格输出 JSON（只输出以下结构，不要任何多余内容）：
+{
+  "title": "事件标题，8字内",
+  "scene": "场景描写（60~150字）",
+  "npc": "站位与反应（40~80字；单人就写主角、多人就写NPC）"
+}
+`;
+
+// 容错解析 + 结构校验（提取{}块、截断）
+export function normalizeRandomEvent(raw: any): RandomEventResult {
+    const r = raw && typeof raw === "object" ? raw : {};
+    return {
+        title: typeof r.title === "string" && r.title.trim() ? r.title.trim().slice(0, 12) : "一件小事",
+        scene: (typeof r.scene === "string" ? r.scene.trim() : "").slice(0, 300),
+        npc: (typeof r.npc === "string" && r.npc.trim() ? r.npc.trim() : "").slice(0, 240),
+    };
+}
+
+// 预判动作/表情建议的容错规范化（主回复同次调用回传；不足 2 项视为无）
+export function normalizeSuggestions(raw: any): { action: string; expression: string }[] | null {
+    if (!Array.isArray(raw)) return null;
+    const list = raw
+        .filter((x) => x && typeof x === "object" && typeof x.action === "string" && typeof x.expression === "string")
+        .map((x) => ({
+            action: x.action.trim().slice(0, 12) || "站在原地",
+            expression: x.expression.trim().slice(0, 12) || "没说话",
+        }))
+        .slice(0, 5);
+    return list.length >= 2 ? list : null;
+}
+
+// 生成随机事件（一次独立调用；输入 JSON 化的请求体，输出严格 JSON）
+// context：纯数据对象（时间/地点/在场角色/最近对话/剧情线等，由 event-card.ts 组装）
+export async function generateRandomEvent(contextJson: Record<string, unknown>): Promise<RandomEventResult> {
+    const { baseUrl, headers, key, model } = getProviderConfig();
+    if (!key) throw new Error("随机事件需要 API Key");
+
+    const messages = [
+        { role: "system", content: RANDOM_EVENT_PROMPT },
+        // 推送给 DS 的消息：统一为结构化 JSON（task + context），不夹带散文式说明
+        { role: "user", content: JSON.stringify({
+            task: "generate_random_event",
+            context: contextJson,
+            note: "依据 context 生成事件卡；严格按系统提示中的 JSON 结构输出。",
+        }) },
+    ];
+
+    const resp = await fetch(`${baseUrl}/chat/completions`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ model, messages, thinking: { type: "disabled" }, response_format: { type: "json_object" }, max_tokens: 900 }),
+    });
+    const data = await resp.json();
+    if (data.error) throw new Error(data.error.message ?? "随机事件请求失败");
+
+    const msg = data.choices?.[0]?.message ?? {};
+    const content = typeof msg.content === "string" && msg.content.trim() ? msg.content : "";
+    if (!content.trim()) throw new Error("随机事件返回为空");
+
+    let parsed: any = null;
+    try {
+        parsed = JSON.parse(content);
+    } catch {
+        const s = content.indexOf("{");
+        const e = content.lastIndexOf("}");
+        if (s !== -1 && e > s) {
+            try { parsed = JSON.parse(content.slice(s, e + 1)); } catch { parsed = null; }
+        }
+    }
+    if (!parsed) throw new Error("随机事件 JSON 解析失败");
+
+    const result = normalizeRandomEvent(parsed);
+    if (!result.scene) throw new Error("随机事件缺少场景描写");
+    return result;
 }

@@ -3,6 +3,8 @@
 
 import { aiState, clamp } from "./state";
 import { store, saveState } from "./storage";
+import { isFactualStoryEvent } from "./save-schema";
+import { renderStoryLog, type StoryLogRow } from "./ui/world/story-log-surface";
 import { currentSchedule, currentDayIndex, fmtVirtualTime, isFirstMeeting, proactiveEnabled, tryProactiveSpeak, tryProactiveSpeakForce } from "./time";
 
 // 角色名注入（chat.ts 注册，避免循环依赖）
@@ -98,7 +100,9 @@ export function dayKey(ms: number): number {
 export function finalizeDay(day: number) {
     if (store.journal.some((j) => j.day === day)) return;
 
-    const dayEvents = store.storyEvents.filter((e) => e.day === day).map((e) => e.text);
+    // 【4-A7】只有"既成事实"（Core 产出）进入每日归档；AI 叙述 / Director 解释不进。
+    // 归档会被 `journalText()` 回注下一轮 prompt，因此它是"世界历史"而不只是展示。
+    const dayEvents = store.storyEvents.filter(isFactualStoryEvent).filter((e) => e.day === day).map((e) => e.text);
     const dayChats = store.chatHistory.filter((c) => c.ts && dayKey(c.ts) === day);
 
     // 用当天的对话做更丰富的摘要：首尾各 2 条 + 中间的关键对话
@@ -131,7 +135,8 @@ export function journalText(): string {
         lines.push(`第 ${j.day} 天：${j.summary}`);
     }
 
-    const todayEvents = store.storyEvents.filter((e) => e.day === today).slice(-3).map((e) => e.text);
+    // 【4-A7】同 finalizeDay：回注 prompt 的必须是既成事实
+    const todayEvents = store.storyEvents.filter(isFactualStoryEvent).filter((e) => e.day === today).slice(-3).map((e) => e.text);
     if (todayEvents.length) lines.push(`今天（第 ${today} 天）发生的事：${todayEvents.join("；")}`);
     if (store.journal.length === 0 && !todayEvents.length) {
         lines.push(isFirstMeeting() ? "这是你们故事的第一天，一切都还陌生。" : "你们的故事从相识到如今，已经一起走过了不少日子。");
@@ -224,9 +229,20 @@ export function maybeRandomMoment() {
         return;
     }
 
-    // 新存档保护期：刚创建（还没聊过任何一轮）不触发"被冷落"
-    // （避免创建完成就被说"你为什么不回我"）
-    if (store.turnCount === 0) {
+    // 【P0 · 4-A2】新存档保护期：刚创建（还没**完成过任何一轮有效交互**）不触发"被冷落"
+    // （避免创建完成就被说"你为什么不回我"）。
+    //
+    // 缺陷原貌：`store.turnCount` 在 `sendMessage` 里**没有任何自增点**，因此它恒为 0
+    //   → 本分支恒真 → `triggerNeglectReaction` 永不执行（整条"被冷落"情感回路不可达）；
+    //   → 且该分支**每个 tick** 把 `lastReplyRealAt` 重置为当下，
+    //     导致 `neglectLevel()` 的 `realIdleMin` 恒 < 3 分钟，
+    //     送给模型的 `neglectContext()` 恒输出「他/她刚刚还在和你说话」——
+    //     这是**事实错误**，不只是缺失功能。
+    // 修复：`store.turnCount` 现在是"持久化的历史有效交互回合数"，由 `chat.ts` 的
+    //   `countCompletedTurn()` 在**渲染真正落定后**自增（失败/卡住的轮次不计数）。
+    //   `events.ts` 的会话级 `turnCounter` 未被触碰，随机事件节奏不变。
+    // 判定抽成具名函数，使"门是否可达"可被测试直接断言（无需等定时器）。
+    if (isNewSaveProtectionActive()) {
         // 但仍允许真实的主动开口（打招呼/分享）——只是不触发被冷落
         if (neglectLevel().level > 0) {
             store.lastReplyRealAt = Date.now();
@@ -294,6 +310,17 @@ function fmtIdle(mins: number): string {
 }
 
 // 根据真实闲置时长判定"被冷落"等级
+/**
+ * 【4-A2】"新存档保护期"的判定（具名导出，便于测试直接断言门是否可达）。
+ *
+ * 语义：`store.turnCount === 0` 表示**这个档还没有完成过任何一轮有效交互**
+ * ——只有这种状态才需要保护（避免刚建好角色就被质问"你为什么不回我"）。
+ * 一旦完成过任意一轮（无论成功还是失败后重来），冷落判定就必须生效。
+ */
+export function isNewSaveProtectionActive(): boolean {
+    return store.turnCount === 0;
+}
+
 export function neglectLevel(): NeglectInfo {
     const realIdleMin = (Date.now() - store.lastReplyRealAt) / 60000;
     const virtualIdleMin = (store.virtualMs - store.lastReplyVirtualAt) / 60000;
@@ -347,9 +374,12 @@ export function triggerNeglectReaction(info: NeglectInfo): boolean {
 
     const situation = (NEGLECT_SITUATION[info.level] ?? NEGLECT_SITUATION[1]!).replace("${since}", info.sinceText);
 
+    // 【4-A7】Core 事实：文本由代码模板 + 本地时钟数值生成（模型不参与），
+    // 因此这是"代码确认在游戏世界里真的发生了"的事件 → source: "core"
     store.storyEvents.push({
         day: currentDayIndex(),
         text: `她等了你 ${info.sinceText}，一直没有回复`,
+        source: "core",
     });
     if (store.storyEvents.length > 100) store.storyEvents.shift();
 
@@ -364,6 +394,31 @@ export function triggerNeglectReaction(info: NeglectInfo): boolean {
 }
 
 // 剧情 UI（面板事件时间线）
+/**
+ * 【Phase 5-A4】Story Log 的数据来源（由 `app/` 注入）。
+ *
+ * 为什么要注入而不是直接 import `buildWorldViewModel()`：
+ *   `ui/world/world-view-model.ts` 需要 import `storyStage()`（来自本文件），
+ *   若本文件再 import 它，就形成 **模块级循环依赖**（实测会在 `noUnusedLocals` 下
+ *   被 `tsc` 报出未使用导入，更重要的是 ESM 下的求值顺序会变得脆弱）。
+ *   注入式保持依赖单向：`ui/world → story.ts`，反向只走回调。
+ *
+ * 未注入时返回空数组 → Story Log 显示自然空状态（不伪造事件）。
+ */
+/**
+ * Story Log 的行形状 —— 直接复用 `story-log-surface` 的最小类型，
+ * 避免本文件对 `world-view-model` 产生任何引用（打断模块级循环）。
+ */
+type StoryLogEvent = StoryLogRow;
+let storyLogEventsProvider: () => StoryLogEvent[] = () => [];
+export function setStoryLogEventsProvider(fn: () => StoryLogEvent[]): void {
+    storyLogEventsProvider = fn;
+}
+function storyLogEvents(): StoryLogEvent[] {
+    // 防御：provider 必须始终是函数（测试可能把它换掉；换坏时退化为空列表而不是抛错）
+    return typeof storyLogEventsProvider === "function" ? storyLogEventsProvider() : [];
+}
+
 export function updateStoryUI() {
     const stage = storyStage();
 
@@ -387,13 +442,11 @@ export function updateStoryUI() {
     const pctEl = document.getElementById("panel-char-pct");
     if (pctEl) pctEl.textContent = `${store.storyProgress}%`;
 
-    const box = document.getElementById("story-events")!;
-    box.innerHTML = "";
-
-    for (const ev of store.storyEvents.slice(-6)) {
-        const div = document.createElement("div");
-        div.className = "story-event";
-        div.textContent = `📖 ${ev.text}`;
-        box.appendChild(div);
-    }
+    // 【Phase 5-A4】事件列表（Story Log）改由 `ui/world/story-log-surface` 渲染 ——
+    // 它与"最近发生（Recent Core Events）"是两个不同的表面：
+    //   · Story Log  = 完整叙事记录（core / narrative / director **都保留**，每条标来源）
+    //   · Recent Core Events = 只显示 `source === "core"` 的世界事实
+    // 本函数只负责**剧情卡本体**（阶段名 / 描述 / 进度条 / 进度环 / 百分比），
+    // 不再直接拼 DOM —— 渲染边界继续上移，与 Phase 3 的方向一致。
+    renderStoryLog(storyLogEvents(), currentDayIndex());
 }

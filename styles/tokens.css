@@ -1,0 +1,145 @@
+/* ============================================================
+ * Melody of Us · Design Tokens
+ * ------------------------------------------------------------
+ * 唯一真理源。三个页面（home / menu / chat）都只 @import 本文件，
+ * 不再各自定义 :root —— 历史上三份 :root 已经产生过实际漂移：
+ *   · --line-strong 在 home 是 #c9c9c9，在 menu/chat 是 #bdbdbd（同名不同值）
+ *   · --danger / --font-mono 只在部分页面存在
+ *
+ * 设计约束（与 UI_STYLE.md 一致，本次仅收敛不为改版）：
+ *   · 黑 / 白 / 灰为主，唯一强调色是 --danger
+ *   · 禁止渐变装饰、玻璃拟态、发光、胶囊按钮、大圆角
+ *   · 层级用边框 + 灰度 + 字重表达，不用阴影
+ *   · 动效只表达状态变化，时长 0.1–0.2s
+ * ============================================================ */
+
+:root {
+    /* ---------- 颜色：文字 ---------- */
+    --ink: #111111; /* 主文字 / 强调黑 */
+    --ink-soft: #555555; /* 次文字 */
+    --ink-faint: #8a8a8a; /* 弱文字（≥12px 使用；更小字号请用 --ink-mute） */
+    --ink-mute: #6b6b6b; /* 弱文字的可读变体（对白底 5.1:1，满足 AA） */
+    --ink-on-dark: #fff; /* 深底上的文字 */
+    --ink-on-dark-soft: rgba(255, 255, 255, 0.55);
+    --ink-on-dark-strong: rgba(255, 255, 255, 0.7);
+
+    /* ---------- 颜色：底色 ---------- */
+    --bg: #ffffff; /* 页面底色 */
+    --bg-soft: #f6f6f6; /* 次级底（hover 灰、提示块） */
+    --bg-hover: #fcfcfc; /* 输入/可点区域的 hover 底 */
+    --bg-active: #ededed; /* 按下态 */
+    --bg-active-strong: #eeeeee; /* 列表项按下态 */
+
+    /* ---------- 颜色：描边 ---------- */
+    --line: #e3e3e3; /* 分隔线 / 卡片边框 */
+    --line-strong: #bdbdbd; /* 强调线（输入框默认边框） */
+    --line-on-dark: rgba(255, 255, 255, 0.15);
+    --line-on-dark-strong: rgba(255, 255, 255, 0.4);
+
+    /* ---------- 颜色：交互态（黑阶）---------- */
+    --ink-hover: #333; /* 主按钮 hover（深底变浅） */
+    --ink-hover-alt: #333333; /* 同上，历史写法统一 */
+    --ink-active: #000; /* 主按钮 active（更深） */
+    --ink-active-alt: #000000; /* 同上，历史写法统一 */
+
+    /* ---------- 颜色：遮罩与网格 ---------- */
+    --overlay: rgba(17, 17, 17, 0.5); /* 模态遮罩 */
+    --overlay-light: rgba(17, 17, 17, 0.4); /* 抽屉遮罩（更淡，因为不阻断阅读） */
+    --grid-line: rgba(17, 17, 17, 0.03); /* 40px 发丝网格 */
+    --grid-line-strong: rgba(17, 17, 17, 0.025);
+    --grid-line-faint: rgba(17, 17, 17, 0.018);
+    --noise-opacity: 0.05;
+
+    /* ---------- 颜色：危险（全站唯一强调色）---------- */
+    --danger: #a32119;
+    --danger-soft: rgba(163, 33, 25, 0.06);
+    --danger-soft-hover: rgba(163, 33, 25, 0.12);
+    --danger-line: rgba(163, 33, 25, 0.4);
+
+    /* ---------- 字体 ---------- */
+    --font-ui: "PingFang SC", "HarmonyOS Sans SC", "MiSans", "微软雅黑", "Noto Sans SC", system-ui, sans-serif;
+    --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Consolas, monospace;
+
+    /* ---------- 字号阶梯 ----------
+     * 收敛自 14 个散落取值 → 9 档。取值**不变**，只是给了名字，
+     * 因此视觉零变化；后续新增 UI 请从阶梯里挑，不要再写裸数值。 */
+    --fs-2xs: 9px; /* 仅画布轴标等极端场景 */
+    --fs-xs: 10px; /* 时间戳、日程时间 */
+    --fs-sm: 11px; /* 高密度辅助文字（默认档） */
+    --fs-base: 12px; /* 次要正文 */
+    --fs-md: 13px; /* 正文 / 表单 */
+    --fs-lg: 14px; /* 强调正文 */
+    --fs-xl: 15px; /* 小节标题 / 模态标题 */
+    --fs-2xl: 17px; /* 页面标题 */
+    --fs-3xl: 24px; /* 时间胶囊主数字 */
+    --fs-hero: 34px; /* 落地页主标题 */
+
+    /* ---------- 行高 ---------- */
+    --lh-tight: 1.4;
+    --lh-base: 1.6;
+    --lh-relaxed: 1.7;
+    --lh-loose: 1.9;
+
+    /* ---------- 间距阶梯（4 的倍数为主，允许 6/10 以兼容现有取值）---------- */
+    --sp-1: 2px;
+    --sp-2: 4px;
+    --sp-3: 6px;
+    --sp-4: 8px;
+    --sp-4b: 5px; /* 紧凑值（原内联大量使用 5px） */
+    --sp-5: 10px;
+    --sp-6: 12px;
+    --sp-7: 14px;
+    --sp-8: 16px;
+    --sp-9: 18px;
+    --sp-10: 20px;
+    --sp-11: 24px;
+    --sp-12: 32px;
+
+    /* ---------- 圆角（克制：全局 2px）---------- */
+    --r: 2px; /* 全局微圆角 */
+    --r-sm: 2px; /* 保留别名，便于语义化书写 */
+    --r-full: 50%; /* 仅状态点 / 头像 */
+    --r-scrollbar: 3px;
+
+    /* ---------- 组件尺寸 ---------- */
+    --ctl-h-sm: 26px; /* 紧凑输入（时间胶囊内） */
+    --ctl-h-md: 30px; /* 图标按钮 / 小按钮 */
+    --ctl-h-lg: 34px; /* 表单控件 */
+    --ctl-h-xl: 36px; /* 对话框主按钮 / 移动端输入 */
+    --ctl-h-2xl: 42px; /* 落地页 CTA */
+    --ctl-pad-lg: 24px; /* 落地页 CTA 左右内边距 */
+    --ctl-gap-lg: 7px; /* 落地页 CTA 图标间距 */
+    --touch-min: 30px; /* 触控目标下限（移动端图标按钮） */
+    --panel-w: 320px; /* 世界面板（#state-panel）抽屉宽度 */
+    --modal-w: 480px; /* 模态框宽度 */
+    --chat-max-w: 860px; /* 消息流与输入行最大宽度 */
+    --menu-max-w: 1060px; /* 菜单页内容列最大宽度 */
+
+    /* ---------- 动效 ---------- */
+    --dur-fast: 0.1s; /* 位移反馈 */
+    --dur-base: 0.15s; /* 颜色 / 边框（默认档）*/
+    --dur-slow: 0.2s; /* 面板、箭头 */
+    --dur-drawer: 0.25s; /* 抽屉 */
+    --dur-progress: 0.6s; /* 进度条（情绪 / 剧情）*/
+    --dur-progress-slow: 0.8s;
+    --dur-enter: 0.22s; /* 消息淡入 */
+    --dur-hero: 0.5s; /* 落地页入场 */
+    --ease: ease;
+    --ease-out: ease-out;
+
+    /* ---------- 层级 ---------- */
+    --z-grid: -3;
+    --z-noise: -2; /* 噪点层（原 .bg-noise z-index:-2）*/
+    --z-fluid: 1; /* 流体光斑：压在内容之上（原 .bg-fluid z-index:1）*/
+    --z-content: 1;
+    --z-header: 10;
+    --z-mask: 39;
+    --z-drawer: 40;
+    --z-modal: 100;
+    --z-modal-full: 105; /* 全屏浮层（情感明细）*/
+    --z-modal-top: 110; /* 向导（最高）*/
+
+    /* ---------- 背景层几何 ---------- */
+    --grid-size: 40px;
+    --parallax-inset: -120px;
+}

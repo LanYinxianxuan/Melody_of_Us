@@ -2,16 +2,34 @@
 // 使用小米 MiMo v2.5-tts-voiceclone API，支持音色克隆
 
 
-// TTS 配置存储键
-const TTS_ENABLED_KEY = "melai-tts-enabled";
-const TTS_VOICE_KEY_PREFIX = "melai-tts-voice"; // 每个槽位独立
-const TTS_STYLE_KEY_PREFIX = "melai-tts-style";
-const TTS_API_KEY_PREFIX = "melai-tts-apikey"; // TTS 专用 API Key
-const TTS_LANG_KEY_PREFIX = "melai-tts-lang"; // TTS 语言：zh / ja
+import { currentSlot as activeSlot, slotKey, KEY_PREFIX } from "./storage";
+import { joinUrl, postJson } from "./ai/client";
+import {
+    readVoiceData,
+    writeVoice,
+    deleteVoice,
+    migrateVoiceFromLocalStorage,
+    isIndexedDbAvailable,
+    type WriteVoiceResult,
+} from "./voice-store";
 
-// 当前槽位
+// TTS 配置存储键（前缀集中来自 storage.KEY_PREFIX，避免同一前缀在多处重复书写）
+const TTS_VOICE_KEY_PREFIX = KEY_PREFIX.ttsVoice; // 每个槽位独立
+const TTS_STYLE_KEY_PREFIX = KEY_PREFIX.ttsStyle;
+const TTS_API_KEY_PREFIX = KEY_PREFIX.ttsApiKey; // TTS 专用 API Key
+const TTS_LANG_KEY_PREFIX = KEY_PREFIX.ttsLang; // TTS 语言：zh / ja
+const TTS_ENABLED_KEY_PREFIX = KEY_PREFIX.ttsEnabled;
+
+/**
+ * 【P0-13】页面槽位：统一取自 storage（URL 参数优先，模块加载时冻结）。
+ *
+ * 缺陷原貌：这里在**每次调用**时重新读 localStorage，而 storage.ts 的 currentSlot 是
+ * 冻结值。两者不一致时（例如直接打开 `chat.html?slot=3`）TTS 音色会存到另一个槽位，
+ * 与存档 / 角色卡 / API Key 全都对不上。
+ * 现在统一用 storage 的冻结值，保证"这个页面 = 这一个槽位"。
+ */
 function currentSlot(): number {
-    return parseInt(localStorage.getItem("melai-current-slot") ?? "1", 10) || 1;
+    return activeSlot;
 }
 
 // 支持的语言
@@ -21,73 +39,157 @@ export const TTS_LANGS: Record<TtsLang, { name: string; flag: string }> = {
     ja: { name: "日本語", flag: "🇯🇵" },
 };
 
-// ============ TTS 状态 ============
+/**
+ * 【G6】TTS 访问器一律接受**显式 slot**（默认本页槽位）。
+ *
+ * 为什么必须带形参：菜单页可以在页面内切换要配置的槽位（点存档卡「API 设置」
+ * → menu.ts 更新自己的 activeSlot 与 localStorage），而本模块的冻结值不会随之改变。
+ * 若只依赖冻结默认值，菜单页会把音色 / 专用 Key / 风格 / 语言 / 开关读写到**错误的槽位**
+ * （面板标题写着"存档 5"，实际写进了 *-1）。chat 页因为 URL 总带 ?slot=N，默认值即正确。
+ */
 
-let ttsEnabled = localStorage.getItem(TTS_ENABLED_KEY) === "true";
+/**
+ * 旧版全局 TTS 开关键（无 `-{slot}` 后缀）。仅为一次性迁移而读取。
+ */
+const LEGACY_TTS_ENABLED_KEY = KEY_PREFIX.ttsEnabled;
+
+function ttsEnabledKey(slot: number): string {
+    return slotKey(TTS_ENABLED_KEY_PREFIX, slot);
+}
+
+/**
+ * 一次性迁移：把旧的全局 TTS 开关复制到每个槽位，然后删除旧键。
+ *
+ * 为什么复制到所有槽位：旧语义下"开"就是全开，复制到所有槽位是保留用户原有意图、
+ * 且不改变任何槽位行为的最小失真映射。（已单独设置过的槽位不覆盖。）
+ * 删除旧键后，src 中不再存在对 `melai-tts-enabled` 的读取，避免长期留下孤儿键。
+ *
+ * 幂等：旧键不存在时直接返回。
+ */
+export function migrateTtsEnabledScope(slots: readonly number[]): { migrated: boolean; appliedTo: number[] } {
+    let legacy: string | null = null;
+    try {
+        legacy = localStorage.getItem(LEGACY_TTS_ENABLED_KEY);
+    } catch {
+        return { migrated: false, appliedTo: [] };
+    }
+    if (legacy === null) return { migrated: false, appliedTo: [] };
+
+    const appliedTo: number[] = [];
+    for (const slot of slots) {
+        const key = ttsEnabledKey(slot);
+        try {
+            if (localStorage.getItem(key) === null) {
+                localStorage.setItem(key, legacy);
+                appliedTo.push(slot);
+            }
+        } catch {
+            /* 单个槽位写失败不影响其它槽位 */
+        }
+    }
+    try {
+        localStorage.removeItem(LEGACY_TTS_ENABLED_KEY);
+    } catch {
+        /* 删不掉就留着，下次再试 */
+    }
+    return { migrated: true, appliedTo };
+}
+
+/**
+ * 读取某槽位的 TTS 开关（只读 per-slot 键）。
+ * 旧全局键的兼容由 migrateTtsEnabledScope 一次性完成，**不做读时隐式复制** ——
+ * 那会让"同一份偏好落在哪个槽位"取决于访问顺序，难以推理与测试。
+ */
+function readTtsEnabled(slot: number): boolean {
+    try {
+        return localStorage.getItem(ttsEnabledKey(slot)) === "true";
+    } catch {
+        return false;
+    }
+}
+
+/** 本页槽位的开关缓存（chat 页使用） */
+let ttsEnabled = readTtsEnabled(activeSlot);
 
 export function isTtsEnabled(): boolean {
     return ttsEnabled;
 }
 
-export function setTtsEnabled(enabled: boolean) {
-    ttsEnabled = enabled;
-    localStorage.setItem(TTS_ENABLED_KEY, String(enabled));
+/** 读取任意槽位的开关（菜单页配置其它槽位时使用） */
+export function isTtsEnabledForSlot(slot: number): boolean {
+    return readTtsEnabled(slot);
+}
+
+export function setTtsEnabled(enabled: boolean, slot: number = activeSlot) {
+    if (slot === activeSlot) ttsEnabled = enabled; // 仅当改的是本页槽位才同步缓存
+    try {
+        localStorage.setItem(ttsEnabledKey(slot), String(enabled));
+    } catch {
+        /* 与既有行为一致：写失败不抛出 */
+    }
 }
 
 // ============ 音色管理 ============
 
-// 获取当前槽位的音色 Base64
-export function getVoiceBase64(): string | null {
-    return localStorage.getItem(`${TTS_VOICE_KEY_PREFIX}-${currentSlot()}`);
+/**
+ * 【P0-2 / G3】读取音色（**异步**）。
+ *
+ * 改为 Promise 的依据是调用点审计：全仓 5 个调用点里 4 个本来就在 async 上下文
+ * （synthesizeSpeech / synthesizeSpeechStream / 试听 handler / 上传 handler），
+ * 只有 loadTtsSettings 需要自身改 async。因此 async 的范围明显小于
+ * "同步 API + 内存预热 + 首次加载竞态处理"那套方案。
+ *
+ * 存储介质：IndexedDB 优先；迁移尚未完成时由 voice-store 自动回退 localStorage。
+ */
+export async function getVoiceBase64(slot: number = currentSlot()): Promise<string | null> {
+    return readVoiceData(slot);
 }
 
-// 保存音色 Base64
-export function setVoiceBase64(base64: string) {
-    localStorage.setItem(`${TTS_VOICE_KEY_PREFIX}-${currentSlot()}`, base64);
+/** 写入音色（异步；含与存档安全的 operation-scoped 联动） */
+export async function setVoiceBase64(base64: string, slot: number = currentSlot()): Promise<WriteVoiceResult> {
+    return writeVoice(base64, slot);
 }
 
-// 清除音色
-export function clearVoice() {
-    localStorage.removeItem(`${TTS_VOICE_KEY_PREFIX}-${currentSlot()}`);
+/** 清除音色（IDB 与 localStorage 两处都清，幂等） */
+export async function clearVoice(slot: number = currentSlot()): Promise<void> {
+    return deleteVoice(slot);
+}
+
+/** 【P0-2】把某槽位的音色从 localStorage 迁移到 IndexedDB（fail-safe，幂等） */
+export async function migrateVoice(slot: number = currentSlot()) {
+    return migrateVoiceFromLocalStorage(slot);
 }
 
 // 获取风格指令
-export function getTtsStyle(): string {
-    return localStorage.getItem(`${TTS_STYLE_KEY_PREFIX}-${currentSlot()}`) ?? "";
+export function getTtsStyle(slot: number = currentSlot()): string {
+    return localStorage.getItem(slotKey(TTS_STYLE_KEY_PREFIX, slot)) ?? "";
 }
 
 // 保存风格指令
-export function setTtsStyle(style: string) {
-    localStorage.setItem(`${TTS_STYLE_KEY_PREFIX}-${currentSlot()}`, style);
+export function setTtsStyle(style: string, slot: number = currentSlot()) {
+    localStorage.setItem(slotKey(TTS_STYLE_KEY_PREFIX, slot), style);
 }
 
 // 获取 TTS 专用 API Key
-export function getTtsApiKey(): string {
-    return localStorage.getItem(`${TTS_API_KEY_PREFIX}-${currentSlot()}`) ?? "";
+export function getTtsApiKey(slot: number = currentSlot()): string {
+    return localStorage.getItem(slotKey(TTS_API_KEY_PREFIX, slot)) ?? "";
 }
 
 // 保存 TTS 专用 API Key
-export function setTtsApiKey(key: string) {
-    localStorage.setItem(`${TTS_API_KEY_PREFIX}-${currentSlot()}`, key);
+export function setTtsApiKey(key: string, slot: number = currentSlot()) {
+    localStorage.setItem(slotKey(TTS_API_KEY_PREFIX, slot), key);
 }
 
 // 获取 TTS 语言
-export function getTtsLang(): TtsLang {
-    const lang = localStorage.getItem(`${TTS_LANG_KEY_PREFIX}-${currentSlot()}`);
-    return (lang === "ja" || lang === "zh") ? lang : "zh";
+export function getTtsLang(slot: number = currentSlot()): TtsLang {
+    const lang = localStorage.getItem(slotKey(TTS_LANG_KEY_PREFIX, slot));
+    return lang === "ja" ? "ja" : "zh";
 }
 
-// 保存 TTS 语言
-export function setTtsLang(lang: TtsLang) {
-    localStorage.setItem(`${TTS_LANG_KEY_PREFIX}-${currentSlot()}`, lang);
+export function setTtsLang(lang: TtsLang, slot: number = currentSlot()) {
+    localStorage.setItem(slotKey(TTS_LANG_KEY_PREFIX, slot), lang);
 }
 
-// ============ 翻译功能 ============
-// 翻译由 AI 在回复时直接输出 dialogue_ja，TTS 直接使用，无需单独翻译
-
-// ============ 情感风格生成 ============
-
-// 根据情感状态生成 TTS 风格指令（自然语言控制）
 export function generateEmotionStyle(emotions: Record<string, number>): string {
     const styles: string[] = [];
 
@@ -208,16 +310,16 @@ export function readAudioFile(file: File): Promise<string> {
 // 获取 API 配置（优先使用 TTS 专用 Key，否则使用主 Key）
 function getTtsConfig(): { baseUrl: string; headers: Record<string, string>; key: string } {
     const slot = currentSlot();
-    const provider = localStorage.getItem(`provider-${slot}`) ?? "xiaomi";
+    const provider = localStorage.getItem(slotKey(KEY_PREFIX.provider, slot)) ?? "xiaomi";
     // 优先使用 TTS 专用 Key，否则使用主 Key
     const ttsKey = getTtsApiKey();
-    const mainKey = localStorage.getItem(`apikey-${slot}`)?.trim() ?? "";
+    const mainKey = localStorage.getItem(slotKey(KEY_PREFIX.apikey, slot))?.trim() ?? "";
     const key = ttsKey || mainKey;
 
     // TTS 只支持小米 MiMo，但允许自定义地址
     let baseUrl = "https://api.xiaomimimo.com/v1";
     if (provider === "custom") {
-        baseUrl = localStorage.getItem(`custom-url-${slot}`)?.trim() || baseUrl;
+        baseUrl = localStorage.getItem(slotKey(KEY_PREFIX.customUrl, slot))?.trim() || baseUrl;
     }
 
     const headers = {
@@ -249,7 +351,7 @@ function buildTtsMessages(text: string, style?: string, emotions?: Record<string
 // 调用 TTS API 合成语音（非流式，兼容用）
 export async function synthesizeSpeech(text: string, style?: string, emotions?: Record<string, number>): Promise<ArrayBuffer> {
     const { baseUrl, headers, key } = getTtsConfig();
-    const voiceBase64 = getVoiceBase64();
+    const voiceBase64 = await getVoiceBase64();
 
     if (!key) {
         throw new Error("请先设置 API Key");
@@ -272,18 +374,12 @@ export async function synthesizeSpeech(text: string, style?: string, emotions?: 
 
     console.log("[TTS] 发送合成请求（非流式）:", { text: text.slice(0, 50) + "..." });
 
-    const resp = await fetch(`${baseUrl}/chat/completions`, {
-        method: "POST",
-        headers,
-        body: JSON.stringify(requestBody),
-    });
+    // 【A-1】传输层走 ai/client；错误语义保持原样（检查 resp.ok + TTS 专属文案）
+    const { resp, data } = await postJson(joinUrl(baseUrl, "chat/completions"), headers, requestBody);
 
     if (!resp.ok) {
-        const err = await resp.json().catch(() => ({}));
-        throw new Error(err.error?.message ?? `TTS 请求失败: HTTP ${resp.status}`);
+        throw new Error((data as any).error?.message ?? `TTS 请求失败: HTTP ${resp.status}`);
     }
-
-    const data = await resp.json();
 
     // 从响应中提取音频数据
     const audioData = data.choices?.[0]?.message?.audio?.data;
@@ -298,7 +394,7 @@ export async function synthesizeSpeech(text: string, style?: string, emotions?: 
 // 流式 TTS 合成：逐步返回音频块
 export async function* synthesizeSpeechStream(text: string, style?: string, emotions?: Record<string, number>): AsyncGenerator<ArrayBuffer> {
     const { baseUrl, headers, key } = getTtsConfig();
-    const voiceBase64 = getVoiceBase64();
+    const voiceBase64 = await getVoiceBase64();
 
     if (!key) {
         throw new Error("请先设置 API Key");
@@ -322,15 +418,11 @@ export async function* synthesizeSpeechStream(text: string, style?: string, emot
 
     console.log("[TTS] 发送合成请求（流式）:", { text: text.slice(0, 50) + "..." });
 
-    const resp = await fetch(`${baseUrl}/chat/completions`, {
-        method: "POST",
-        headers,
-        body: JSON.stringify(requestBody),
-    });
+    // 【A-1】传输层走 ai/client；流式读取仍用同一个 Response 句柄
+    const { resp, data } = await postJson(joinUrl(baseUrl, "chat/completions"), headers, requestBody);
 
     if (!resp.ok) {
-        const err = await resp.json().catch(() => ({}));
-        throw new Error(err.error?.message ?? `TTS 请求失败: HTTP ${resp.status}`);
+        throw new Error((data as any).error?.message ?? `TTS 请求失败: HTTP ${resp.status}`);
     }
 
     const reader = resp.body?.getReader();
@@ -498,16 +590,25 @@ export async function speak(text: string, style?: string, emotions?: Record<stri
 // ============ UI 辅助 ============
 
 // TTS 状态显示文本
-export function ttsStatusText(): string {
+export async function ttsStatusText(): Promise<string> {
     if (!ttsEnabled) return "语音关闭";
-    const voice = getVoiceBase64();
+    const voice = await getVoiceBase64();
     if (!voice) return "未设置音色";
     return "语音开启";
 }
 
 // 初始化 TTS 模块
 export function initTts() {
-    // 恢复启用状态
-    ttsEnabled = localStorage.getItem(TTS_ENABLED_KEY) === "true";
-    console.log("[TTS] 初始化完成，启用状态:", ttsEnabled);
+    // 恢复启用状态（per-slot，含旧全局键的一次性迁移）
+    ttsEnabled = readTtsEnabled(activeSlot);
+
+    // 【P0-2】预热 IndexedDB 探测。
+    // 为什么必须在启动时预热：在"IDB 后端无响应"的环境下探测要等到超时才返回 false
+    // （实测该环境正是如此）。若等用户点「朗读」时才第一次探测，那一次操作会多等一个
+    // 探测超时（1.5s），表现为"点了没反应"。启动预热后，真正的读写在已有结论时零等待。
+    void isIndexedDbAvailable().then((ok) => {
+        console.log("[TTS] IndexedDB 可用:", ok, ok ? "（音色存 IndexedDB）" : "（回退 localStorage）");
+    });
+
+    console.log("[TTS] 初始化完成，启用状态:", ttsEnabled, "槽位:", activeSlot);
 }

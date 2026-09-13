@@ -60,7 +60,9 @@ export function setProactiveEnabled(v: boolean) {
 
 // 外部回调（chat.ts 注册）
 let slotChangeHandler: (() => void) | null = null;
-let dayChangeHandler: ((oldDay: number) => void) | null = null;
+// 【P0-10】签名显式携带 newDay —— 此前只有 oldDay，newDay 由消费方去读 store.dayIndex 推断，
+// 而两处触发点的「赋值 / 回调」顺序相反，导致 tickClock 路径上传出的 newDay 永远等于 oldDay。
+let dayChangeHandler: ((oldDay: number, newDay: number) => void) | null = null;
 let messageSender: ((text: string, opts?: { proactive?: boolean }) => void) | null = null;
 let randomMomentHook: (() => void) | null = null;
 // 角色关系回调（chat.ts 注入，避免 time ↔ character 循环依赖）
@@ -69,7 +71,7 @@ let relationGetter: (() => string) | null = null;
 let proactiveDriveGetter: (() => number) | null = null;
 
 export function setSlotChangeHandler(fn: () => void) { slotChangeHandler = fn; }
-export function setDayChangeHandler(fn: (oldDay: number) => void) { dayChangeHandler = fn; }
+export function setDayChangeHandler(fn: (oldDay: number, newDay: number) => void) { dayChangeHandler = fn; }
 export function setMessageSender(fn: (text: string, opts?: { proactive?: boolean }) => void) { messageSender = fn; }
 export function setRandomMomentHook(fn: () => void) { randomMomentHook = fn; }
 export function setRelationGetter(fn: () => string) { relationGetter = fn; }
@@ -100,26 +102,57 @@ export function setProactiveGate(fn: () => boolean) {
     proactiveGate = fn;
 }
 
+/**
+ * 读取当前已注册的门控（仅供测试观察，不改变任何行为）。
+ *
+ * 为什么需要它：`setProactiveGate` 只有写入口，测试无法确认"chat.ts 到底注册了什么"，
+ * 于是像"闭包是否活读 busy"这类退化只能靠间接行为去猜。有了只读出口之后，
+ * e2e 可以在**不改行为**的前提下在门控外面套一层观察器，同时看到门控的返回值
+ * 与那一刻的 busy 状态 —— 恒 false 的门控再也蒙混不过去。
+ * 与 `__setVoiceBackendForTest` 同类：只增加测试可观察性，不参与生产逻辑。
+ */
+export function getProactiveGateForTest(): (() => boolean) | null {
+    return proactiveGate;
+}
+
+// 【P0-8】是否具备聊天能力（当前存档是否配置了 API Key）。
+//
+// 缺陷原貌：onSlotChanged() 里写的是 `!!localStorage.getItem("deepseek-key")`，
+// 而全仓从来没有任何地方写入过 "deepseek-key"（现行键是 per-slot 的 `apikey-${slot}`）。
+// 因此该判断恒为 false → **时段切换的主动开口永远不会触发**。
+// 更隐蔽的是：story.ts 的随机时刻主动开口走的是 tryProactiveSpeak 的另一条调用路径，
+// 它当时完全没有能力判断，会在没有 API Key 时也尝试开口。
+//
+// 修法：把「是否具备聊天能力」提升为 tryProactiveSpeak / tryProactiveSpeakForce 的
+// 统一门控，由 chat.ts（唯一知道当前槽位与 Key 的模块）通过既有回调注入模式注册。
+// time.ts 因此不需要 import ai.ts / chat.ts，依赖方向保持不变（无环）。
+//
+// 默认值说明：未注册时视为"具备能力"。这是为了不改变既有默认行为 ——
+// 生产环境由 chat.ts 注册真实判断；测试环境可显式注册以固定行为。
+let hasChatCapability: () => boolean = () => true;
+export function setChatCapabilityGetter(fn: () => boolean) {
+    hasChatCapability = fn;
+}
+
 export function markUserReplied() {
     awaitingReply = false;
 }
 
 export function tryProactiveSpeak(text: string): boolean {
     const now = Date.now();
+    // 没有聊天能力（未配置 API Key / 演示模式）：静默跳过，不占用冷却
+    if (!hasChatCapability()) return false;
     if (proactiveGate && !proactiveGate()) {
         return false; // 忙碌/输入中：不排队、不占用冷却，下次再试
     }
     if (awaitingReply) {
-        console.log("[主动开口] 跳过：awaitingReply=true");
         return false;
     }
     if (now - lastProactiveAt < PROACTIVE_COOLDOWN_MS) {
-        console.log(`[主动开口] 跳过：冷却中 (${Math.round((PROACTIVE_COOLDOWN_MS - (now - lastProactiveAt)) / 1000)}s)`);
         return false;
     }
     lastProactiveAt = now;
     awaitingReply = true;
-    console.log("[主动开口] ✅ 发送消息");
     messageSender?.(text, { proactive: true });
     return true;
 }
@@ -127,6 +160,7 @@ export function tryProactiveSpeak(text: string): boolean {
 // 被冷落升级：允许突破"等待回复"，但仍有冷却
 export function tryProactiveSpeakForce(text: string): boolean {
     const now = Date.now();
+    if (!hasChatCapability()) return false; // 同 tryProactiveSpeak：无能力时不开口
     if (proactiveGate && !proactiveGate()) return false;
     if (now - lastProactiveAt < PROACTIVE_COOLDOWN_MS) return false;
     lastProactiveAt = now;
@@ -288,7 +322,7 @@ export function setVirtualTime(day: number, hhmm: string) {
     store.scheduleIndex = scheduleIndexFor(store.virtualMs);
     store.dayIndex = currentDayIndex();
 
-    if (oldDay !== store.dayIndex) dayChangeHandler?.(oldDay);
+    if (oldDay !== store.dayIndex) dayChangeHandler?.(oldDay, store.dayIndex);
 
     saveState();
     updateScheduleUI();
@@ -326,8 +360,12 @@ export function tickClock() {
     const day = currentDayIndex();
 
     if (day !== store.dayIndex) {
-        dayChangeHandler?.(store.dayIndex);
+        // 顺序修正（P0-10）：先更新 dayIndex 再回调，且新旧天数都显式传入。
+        // 原实现先回调后赋值，消费方读 store.dayIndex 拿到的是旧值 →
+        // Director 触发原因被写成「第X天 → 第X天」。
+        const oldDay = store.dayIndex;
         store.dayIndex = day;
+        dayChangeHandler?.(oldDay, day);
     }
 
     if (idx !== store.scheduleIndex) {
@@ -528,9 +566,10 @@ export function onSlotChanged() {
     const drive = proactiveDriveGetter?.() ?? 1;
     const chance = Math.max(0, Math.min(1, slot.speakChance * drive));
 
-    const hasChatCapability = !!localStorage.getItem("deepseek-key");
-
-    if (slot.speakChance > 0 && proactiveEnabled && hasChatCapability && Math.random() < chance) {
+    // 【P0-8】能力判断已上移到 tryProactiveSpeak / tryProactiveSpeakForce 统一门控，
+    // 由 chat.ts 注册真实的 per-slot API Key 判断。此处不再自行读键
+    // （原先误读孤儿键 "deepseek-key"，导致本段永不触发）。
+    if (slot.speakChance > 0 && proactiveEnabled && Math.random() < chance) {
         // 统一收口：等用户回复时不再主动开口（防止连续轰炸）
         tryProactiveSpeak(
             `（现在是${fmtVirtualTime()}${slot.label}。你手头正在做的事：${slot.activity}。基于这件事，主动和对方说一句话——可以分享、吐槽、求助，或者继续手头的事顺口说起。不要没话找话。）`,

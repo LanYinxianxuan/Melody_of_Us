@@ -1,6 +1,6 @@
 // character.ts —— 角色档案：预设、自定义、存取
 
-import { CHAR_KEY, type SceneConfig } from "./storage";
+import { CHAR_KEY, notifySaveFailure, type SceneConfig } from "./storage";
 
 export interface CharacterProfile {
     name: string; // 名字
@@ -158,18 +158,63 @@ export function loadCharacter(): CharacterProfile {
     }
 }
 
-export let CHARACTER: CharacterProfile = loadCharacter();
+export const CHARACTER: CharacterProfile = loadCharacter();
 
-// 整体替换角色（自定义创建时用：直接覆盖，不继承任何预设默认值）
+// CharacterProfile 的规范字段集合（唯一真理源；loadCharacter / setCharacter 共用）
+const CHARACTER_KEYS: readonly (keyof CharacterProfile)[] = [
+    "name",
+    "age",
+    "appearance",
+    "personality",
+    "background",
+    "speechStyle",
+    "likes",
+    "dislikes",
+    "relation",
+    "secrets",
+];
+
+/**
+ * 整体替换角色（自定义创建时用：直接覆盖，不继承任何预设默认值）。
+ *
+ * 【为什么是就地改写而不是 CHARACTER = {...c}】
+ * character.ts 的 CHARACTER 是一个被多个模块长期持有的对象引用：
+ *   - chat.ts:114  `let CHARACTER_REF: CharacterProfile = CHARACTER`
+ *   - chat.ts:116/1386 `setCharacterGetter(() => CHARACTER_REF)`
+ *   - chat.ts:1387/1388/1392 关系、角色名、日程规划三处 getter
+ *   - agent-smoke / e2e 直接读 CHARACTER
+ * 一旦重新赋值（`CHARACTER = {...c}`），上述所有快照仍指向**旧对象**，于是
+ * 自定义创建的角色在刷新页面前对 AI 完全不可见（system prompt 是空模板）。
+ * 预设路径（wizard.ts:182 `Object.assign(CHARACTER, profile)`）本来就是就地改写，
+ * 所以两条创建路径此前语义不一致 —— 本函数统一到就地改写。
+ *
+ * 与 resetState()（state.ts）同思路：不重新绑定，保持 import 引用有效。
+ * 同时只保留规范字段：`{...c}` 会把调用方对象上的额外键（如预设残留的 `scene`）
+ * 一起带进来，而 loadCharacter() 明确不把 scene 写入角色卡。
+ */
 export function setCharacter(c: CharacterProfile) {
-    CHARACTER = { ...c };
+    // ① 就地覆盖调用方带来的字段（保持 CHARACTER 的对象身份不变）
+    Object.assign(CHARACTER, c);
+
+    // ② 删除所有非规范键。`c` 上可能带着额外字段（例如预设残留的 `scene`，
+    //    或旧存档遗留字段），Object.assign 会把它们一并带进来 —— 与
+    //    loadCharacter() 明确不把 scene 写入角色卡的行为保持一致。
+    for (const key of Object.keys(CHARACTER)) {
+        if (!(CHARACTER_KEYS as readonly string[]).includes(key)) {
+            delete (CHARACTER as unknown as Record<string, unknown>)[key];
+        }
+    }
 }
 
-export function saveCharacter() {
+/** 角色卡存档是否成功（【P0-3】此前失败被静默吞掉；复用 storage 的失败上报通道） */
+export function saveCharacter(): boolean {
     try {
         localStorage.setItem(CHAR_KEY, JSON.stringify(CHARACTER));
-    } catch {
-        /* ignore */
+        return true;
+    } catch (error) {
+        // 与 saveState 共用同一套失败通知，避免界面层需要注册两个回调
+        notifySaveFailure(CHAR_KEY, error, JSON.stringify(CHARACTER));
+        return false;
     }
 }
 

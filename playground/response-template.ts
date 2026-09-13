@@ -13,6 +13,10 @@ export const FORMAT_INSTRUCTION = `
 - thoughts: 内心想法。20字内。如"心跳好快…""他/她怎么突然说这种话"。
 - delta: 情感维度变化量。如{"affection":6,"joy":12}。每维-15~15。
 - user_emotion: 用户消息情绪。只能是 joy/anger/sad/shy/surprised/neutral 之一。
+- user_analysis（可选）: 你对用户这条消息的情绪判断（决策层会用它微调，属可选增强）。格式：
+  {"primary_emotion":"joy|sadness|anger|fear|anxiety|disappointment|loneliness|embarrassment|neutral","intensity":0.65,"valence":-0.55,"arousal":0.3,"intents":{"withdraw":0.86},"needs":{"space":0.51}}。
+  没有把握就不输出或输出 null，不要猜测编造。
+- suggestions（可选）: 预判「用户此刻可能的反应」3~5 项，每项为{"action":"动作3~10字","expression":"表情3~10字"}，如{"action":"上前一步","expression":"认真地看着她"}。要求：贴合当前对话情境、各项差异明显、只是可能性参考不作为剧情决定。没把握可省略该字段。
 - memory: 值得长期记住的事。30字内，没有写空字符串""。
 - story.event: 值得记录的小事。15~30字，普通聊天写空字符串""。
 - story.progress: 推动剧情程度0~5，普通聊天写0。

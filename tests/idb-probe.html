@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>IDB Probe</title>
+</head>
+<body>
+<!--
+  真实 IndexedDB 验证的宿主页。
+  必须由 **Vite dev server** 提供（不是静态服务器），因为探针脚本 import 的是 .ts 源文件，
+  需要 Vite 做 TS→JS 转换。tests/idb-real.mjs 会用 headed Chromium + CDP 打开本页并调用
+  window.__probe 上的方法，全部走生产代码路径（voice-store / storage）。
+-->
+<pre id="idb-probe-status">loading</pre>
+<script type="module">
+import {
+    readVoice, readVoiceData, writeVoice, deleteVoice,
+    migrateVoiceFromLocalStorage, isIndexedDbAvailable,
+} from "/playground/voice-store.ts";
+import { currentSlot, slotKey, KEY_PREFIX } from "/playground/storage.ts";
+
+const VOICE_KEY = (slot) => slotKey(KEY_PREFIX.ttsVoice, slot);
+
+/** 造一个约 mb MB 的 base64 音频样本（1–3MB 正是"会吃掉 localStorage 配额"的量级） */
+function makeSample(mb) {
+    const b64 = "QUJDREVGR0g=".repeat(Math.floor((mb * 1024 * 1024) / 12));
+    return "data:audio/mpeg;base64," + b64;
+}
+
+window.__probe = {
+    async info() {
+        return { slot: currentSlot, idb: await isIndexedDbAvailable() };
+    },
+    async idbDatabases() {
+        try { return await indexedDB.databases(); } catch { return null; }
+    },
+    async idbRecordCount() {
+        return await new Promise((resolve) => {
+            const req = indexedDB.open("melody-of-us", 1);
+            req.onsuccess = () => {
+                const db = req.result;
+                const tx = db.transaction("tts-voice", "readonly");
+                const c = tx.objectStore("tts-voice").count();
+                c.onsuccess = () => { db.close(); resolve(c.result); };
+                c.onerror = () => { db.close(); resolve(-1); };
+            };
+            req.onerror = () => resolve(-1);
+        });
+    },
+    /** 直接读 IndexedDB，绕过生产层 —— 作为"数据真的落盘了吗"的独立证据 */
+    async rawIdb(slot) {
+        return await new Promise((resolve) => {
+            const req = indexedDB.open("melody-of-us", 1);
+            req.onsuccess = () => {
+                const db = req.result;
+                const tx = db.transaction("tts-voice", "readonly");
+                const g = tx.objectStore("tts-voice").get(slot);
+                g.onsuccess = () => { db.close(); resolve(g.result ?? null); };
+                g.onerror = () => { db.close(); resolve(null); };
+            };
+            req.onerror = () => resolve(null);
+        });
+    },
+    async rawIdbDelete(slot) {
+        return await new Promise((resolve) => {
+            const req = indexedDB.open("melody-of-us", 1);
+            req.onsuccess = () => {
+                const db = req.result;
+                const tx = db.transaction("tts-voice", "readwrite");
+                tx.objectStore("tts-voice").delete(slot);
+                tx.oncomplete = () => { db.close(); resolve(true); };
+                tx.onerror = () => { db.close(); resolve(false); };
+            };
+            req.onerror = () => resolve(false);
+        });
+    },
+    makeSample,
+    VOICE_KEY,
+    async write(slot, data) { return await writeVoice(data, slot); },
+    async read(slot) { return await readVoice(slot); },
+    async readData(slot) { return await readVoiceData(slot); },
+    async del(slot) { return await deleteVoice(slot); },
+    async migrate(slot) { return await migrateVoiceFromLocalStorage(slot); },
+    lsGet(k) { return localStorage.getItem(k); },
+    lsSet(k, v) { localStorage.setItem(k, v); },
+    lsRemove(k) { localStorage.removeItem(k); },
+    lsBytes() {
+        let n = 0;
+        for (let i = 0; i < localStorage.length; i++) {
+            const k = localStorage.key(i);
+            if (k) n += (k.length + (localStorage.getItem(k) ?? "").length) * 2;
+        }
+        return n;
+    },
+};
+document.getElementById("idb-probe-status").textContent = "probe ready";
+window.__probeReady = true;
+</script>
+</body>
+</html>

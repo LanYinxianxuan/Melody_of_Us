@@ -31,6 +31,17 @@ export interface NpcProfile {
     keywords: string[];       // 触发关键词（提到她时介入概率上升）
     meetLocation: string;     // 常见出没地点（与主角交集）
     goal?: string | null;     // 她自己的小目标/心事（推动剧情用）
+    /**
+     * 【Phase 4-D 决策 C-1】goal 的**显式类别**。
+     *
+     * 为什么需要它：`goal` 原本只是一个字符串，代码只能判断"非空"，于是
+     * "有目标"恒等于"无条件 +12"。要让目标真正参与判断，必须有一个**显式**的语义标签。
+     *
+     * ⚠️ 这是**静态配置**字段（`NpcProfile` 是常量表，`createNpcState` 时被引用），
+     *    **不进存档**：`NpcState` 才是持久化结构，它的字段一个都没加。
+     *    因此 **Save Schema 未修改**，旧档语义不变。
+     */
+    goalKind?: "connect" | "understand" | null;
 }
 
 export interface NpcState {
@@ -87,6 +98,8 @@ export const NPCS: NpcProfile[] = [
         keywords: ["小雨", "前排", "八卦", "奶茶", "社团"],
         meetLocation: "学校",
         goal: "想撮合你和主角，最近老想找机会打趣你们俩",
+        // 她的目标围绕"你们的关系" → 关系互动/被提到时相关
+        goalKind: "connect",
     },
     {
         id: "xiaomei",
@@ -114,6 +127,8 @@ export const NPCS: NpcProfile[] = [
         keywords: ["小美", "图书馆", "隔壁班", "书", "自习"],
         meetLocation: "图书馆",
         goal: "想多了解主角，但一直没找到合适的机会",
+        // 她需要"合适的机会" → 恰好在场/被提到时相关
+        goalKind: "understand",
     },
 ];
 
